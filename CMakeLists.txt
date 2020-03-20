@@ -7,6 +7,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 option(ENABLE_CUDA   "Enable CUDA-accelerated SWE_Blocks" ON)
 option(ENABLE_NETCDF "Enable Output using NetCDF" ON)
 option(ENABLE_OPENMP "Enable shared-memory parallelization of intra-block iterations using OpenMP" ON)
+option(ENABLE_TEAMPI "Enable use of TeaMPI replication" OFF)
 
 #todo: adapt these to supported solvers
 set(SOLVER_STRINGS "rusanov" "augRie" "fwave")
@@ -27,9 +28,12 @@ message(STATUS "Using riemann solver ${SOLVER}")
 find_package(NetCDF)
 find_package(OpenMP)
 find_package(MPI)
+find_library(TEAMPI_LIBRARY NAMES tmpi PATHS /home/xile273/HPC/Code/teaMPI/lib)
 
 add_executable(swe-single-node)
 add_library(swe)
+
+
 
 if(SOLVER STREQUAL "augRie")
   target_compile_definitions(swe PUBLIC SOLVER_AUGRIE)
@@ -63,10 +67,22 @@ if (MPI_FOUND)
         PRIVATE
         src/examples/swe_mpi.cpp
     )
+    if(ENABLE_TEAMPI)
+        message(STATUS "Enabled TeaMPI")
+        target_link_libraries(swe-mpi PUBLIC ${TEAMPI_LIBRARY})
+        #add_library(libtmpi SHARED IMPORTED GLOBAL)
+        #set_target_properties(libtmpi PROPERTIES IMPORTED_LOCATION /home/xile273/HPC/Code/teaMPI/lib/libtmpi.so)
+        #target_link_libraries(swe-mpi PUBLIC libtmpi)
+        get_target_property(OUT swe-mpi LINK_LIBRARIES)
+        message(STATUS ${OUT})
+    endif()
     target_link_libraries(swe-mpi PUBLIC swe)
     target_link_libraries(swe-mpi PRIVATE ${MPI_CXX_LIBRARIES})
+    message(STATUS ${MPI_CXX_LIBRARIES})
     target_include_directories(swe-mpi PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_include_directories(swe-mpi PRIVATE ${MPI_CXX_INCLUDE_DIRS})
+    #Location of TeaMPI harcoded 
+    
 endif()
 
 if (OpenMP_FOUND AND ENABLE_OPENMP)
