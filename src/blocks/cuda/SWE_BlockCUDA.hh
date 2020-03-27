@@ -169,5 +169,6 @@ int getBathyCoord(int x, int y, int ny) {
    return x*ny + y;
 }
 
+SWE_Block* getCudaBlockInstance(float nx, float ny, float dx, float dy);
 
 #endif

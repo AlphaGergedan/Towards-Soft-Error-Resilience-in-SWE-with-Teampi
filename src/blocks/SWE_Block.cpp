@@ -28,19 +28,12 @@
 
 #include "blocks/SWE_Block.hh"
 
-// without CUDA
 #if !defined(CUDA) 
-#if defined(SOLVER_FWAVE) || defined(SOLVER_AUGRIE)
+#if defined(SOLVER_FWAVE) || defined(SOLVER_AUGRIE) || defined(SOLVER_HLLE)
 #include "blocks/SWE_WaveAccumulationBlock.hh"
 #elif defined(SOLVER_RUSANOV)
-#include "blocks/SWE_RusanovBlock.hh"
+#include "blocks/rusanov/SWE_RusanovBlock.hh"
 #endif
-// with CUDA
-#else 
-#if defined(SOLVER_FWAVE)
-#include "blocks/cuda/SWE_WavePropagationBlockCuda.hh"
-#endif
-
 #endif
 
 #include "tools/help.hh"
@@ -49,29 +42,29 @@
 #include <iostream>
 #include <cassert>
 #include <limits>
-#include <memory>
 #include <type_traits>
 
 // gravitational acceleration
 const float SWE_Block::g = 9.81f;
 
-std::shared_ptr<SWE_Block> SWE_Block::getBlockInstance(float nx, float ny, float dx, float dy) {
+#if defined(CUDA)
+extern SWE_Block* getCudaBlockInstance(float, float, float, float);
+#endif
 
+
+SWE_Block* SWE_Block::getBlockInstance(float nx, float ny, float dx, float dy) {
   #if !defined(CUDA)
-    #if defined(SOLVER_FWAVE) || defined(SOLVER_AUGRIE)
-        std::shared_ptr<SWE_Block> block = std::make_shared<SWE_WaveAccumulationBlock>(nx, ny, dx,dy);
+    #if defined(SOLVER_FWAVE) || defined(SOLVER_AUGRIE) || defined(SOLVER_HLLE)
+        SWE_Block *block = new SWE_WaveAccumulationBlock(nx, ny, dx,dy);
     #elif defined(SOLVER_RUSANOV)
-        std::shared_ptr<SWE_Block> block = std::make_shared<SWE_RusanovBlock>(nx,ny,dx,dy);
+        SWE_Block *block = new SWE_RusanovBlock(nx,ny,dx,dy);
     #elif defined(SOLVER_AUGRIE_SIMD)
         #error "Not implemented yet!"
     #endif
   #else
-    //Todo: other solvers with CUDA
-    #if defined(SOLVER_FWAVE)
-        std::shared_ptr<SWE_Block> block = std::make_shared<SWE_WavePropagationBlockCuda>(nx, ny, dx,dy);
-    #endif
+      SWE_Block *block = getCudaBlockInstance(nx, ny, dx,dy);
   #endif
-    return block;
+  return block;
 }
 
 
@@ -259,7 +252,7 @@ void SWE_Block::setBathymetry(float (*_b)(float, float)) {
 const Float2D& SWE_Block::getWaterHeight() { 
   synchWaterHeightBeforeRead();
   return h; 
-};
+}
 
 /**
  * return reference to discharge unknown hu
@@ -267,7 +260,7 @@ const Float2D& SWE_Block::getWaterHeight() {
 const Float2D& SWE_Block::getDischarge_hu() { 
   synchDischargeBeforeRead();
   return hu; 
-};
+}
 
 /**
  * return reference to discharge unknown hv
@@ -275,7 +268,7 @@ const Float2D& SWE_Block::getDischarge_hu() {
 const Float2D& SWE_Block::getDischarge_hv() { 
   synchDischargeBeforeRead();
   return hv;
-};
+}
 
 /**
  * return reference to bathymetry unknown b
@@ -283,7 +276,7 @@ const Float2D& SWE_Block::getDischarge_hv() {
 const Float2D& SWE_Block::getBathymetry() { 
   synchBathymetryBeforeRead();
   return b; 
-};
+}
 
 //==================================================================
 // methods for simulation
