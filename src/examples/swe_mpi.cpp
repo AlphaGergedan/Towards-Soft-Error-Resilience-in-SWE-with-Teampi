@@ -45,6 +45,10 @@
 #include "scenarios/SWE_simple_scenarios.hh"
 #endif
 
+#ifdef TEAMPI
+#include "teaMPI.h"
+#endif
+
 #include "tools/args.hh"
 #include "tools/help.hh"
 #include "tools/Logger.hh"
@@ -81,6 +85,16 @@ void exchangeBottomTopGhostLayers( const int i_bottomNeighborRank, SWE_Block1D* 
  * Main program for the simulation on a single SWE_WavePropagationBlock or SWE_WaveAccumulationBlock.
  */
 int main( int argc, char** argv ) {
+   //Just to let me attach gdb
+    {
+    volatile int i = 1;
+    char hostname[256];
+    gethostname(hostname, sizeof(hostname));
+    printf("PID %d on %s ready for attach\n", getpid(), hostname);
+    fflush(stdout);
+    while (0 == i)
+        sleep(5);
+    }
   /**
    * Initialization.
    */
@@ -89,10 +103,19 @@ int main( int argc, char** argv ) {
   //! number of MPI processes.
   int l_numberOfProcesses;
 
+  #ifdef TEAMPI
+  //! TeaMPI team number
+  int l_teamNumber;
+  #endif
+
   // initialize MPI
   if ( MPI_Init(&argc,&argv) != MPI_SUCCESS ) {
     std::cerr << "MPI_Init failed." << std::endl;
   }
+
+  #ifdef TEAMPI
+  l_teamNumber = TMPI_GetTeamNumber();
+  #endif
 
   // determine local MPI rank
   MPI_Comm_rank(MPI_COMM_WORLD,&l_mpiRank);
@@ -152,6 +175,11 @@ int main( int argc, char** argv ) {
   l_nX = args.getArgument<int>("grid-size-x");
   l_nY = args.getArgument<int>("grid-size-y");
   l_baseName = args.getArgument<std::string>("output-basepath");
+
+  #ifdef TEAMPI
+  l_baseName = l_baseName + "_team_" + std::to_string(l_teamNumber);
+  tools::Logger::logger.printString(l_baseName);
+  #endif
 
   //! number of SWE_Blocks in x- and y-direction.
   int l_blocksX, l_blocksY;

@@ -14,7 +14,7 @@ option(ENABLE_TEAMPI "Enable use of TeaMPI replication" OFF)
 
 #todo: adapt these to supported solvers
 set(SOLVER_STRINGS "rusanov" "augRie" "fwave" "hlle")
-
+set(TEAMPI_PATH "/home/xile273/HPC/Code/teaMPI/lib")
 set(SOLVER "augRie" CACHE STRING "Default Riemann solver")
 set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVER_STRINGS})
 
@@ -31,7 +31,7 @@ message(STATUS "Using riemann solver ${SOLVER}")
 find_package(NetCDF)
 find_package(OpenMP)
 find_package(MPI)
-find_library(TEAMPI_LIBRARY NAMES tmpi PATHS /home/xile273/HPC/Code/teaMPI/lib)
+find_library(TEAMPI_LIBRARY NAMES tmpi PATHS ${TEAMPI_PATH})
 
 add_executable(swe-single-node)
 add_library(swe)
@@ -77,6 +77,9 @@ if (MPI_FOUND)
             message(FATAL_ERROR "teaMPI is enabled bit teaMPI Library was not found")
         endif()
         message(STATUS "Enabled TeaMPI")
+        target_compile_definitions(swe-mpi PRIVATE TEAMPI)
+        target_include_directories(swe-mpi PRIVATE ${TEAMPI_PATH})
+        target_sources(swe-mpi PRIVATE ${TEAMPI_PATH}/teaMPI.h)
         target_link_libraries(swe-mpi PUBLIC ${TEAMPI_LIBRARY})
     endif()
     target_link_libraries(swe-mpi PUBLIC swe)
