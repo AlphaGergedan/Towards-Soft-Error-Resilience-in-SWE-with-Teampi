@@ -72,7 +72,7 @@ private:
 
 
   public:
-    NetCdfWriter(const std::string &i_fileName,
+    NetCdfWriter(const std::string &i_fileName, const std::string &i_backupName,
     			 const Float2D &i_b,
                  const BoundarySize &i_boundarySize,
                  int i_nX, int i_nY,
@@ -86,6 +86,8 @@ private:
                         const Float2D &i_hu,
                         const Float2D &i_hv,
                         float i_time);
+
+    void commitBackup();
 
   private:
     /**

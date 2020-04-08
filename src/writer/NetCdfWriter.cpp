@@ -31,6 +31,7 @@
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include <fstream>
 
 /**
  * Create a netCdf-file
@@ -44,9 +45,9 @@
  * @param i_originX
  * @param i_originY
  * @param i_flush If > 0, flush data to disk every i_flush write operation
- * @param i_dynamicBathymetry
+ * @param i_dynamicBa thymetry
  */
-io::NetCdfWriter::NetCdfWriter( const std::string &i_baseName,
+io::NetCdfWriter::NetCdfWriter( const std::string &i_baseName, const std::string &i_backupName,
 		const Float2D &i_b,
 		const BoundarySize &i_boundarySize,
 		int i_nX, int i_nY,
@@ -54,7 +55,7 @@ io::NetCdfWriter::NetCdfWriter( const std::string &i_baseName,
 		float i_originX, float i_originY,
 		unsigned int i_flush) :
 		//const bool  &i_dynamicBathymetry) : //!TODO
-  io::Writer(i_baseName + ".nc", i_b, i_boundarySize, i_nX, i_nY),
+  io::Writer(i_baseName + ".nc", i_backupName, i_b, i_boundarySize, i_nX, i_nY),
   flush(i_flush)
 {
 	int status;
@@ -222,4 +223,14 @@ void io::NetCdfWriter::writeTimeStep( const Float2D &i_h,
 
 	if (flush > 0 && timeStep % flush == 0)
 		nc_sync(dataFile);
+}
+
+void io::NetCdfWriter::commitBackup(){
+	nc_close(dataFile);
+	std::ifstream src(fileName, std::ios::binary);
+	std::ofstream out(backupName + "_temp", std::ios::binary);
+	out << src.rdbuf();
+	std::remove(backupName.c_str());
+	std::rename((backupName + "_temp").c_str(), (backupName + ".nc").c_str());
+	nc_open(fileName.c_str(), NC_WRITE, &dataFile);
 }

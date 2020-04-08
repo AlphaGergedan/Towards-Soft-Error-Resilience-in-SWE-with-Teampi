@@ -54,6 +54,7 @@
 #include "tools/Logger.hh"
 #include "tools/ProgressBar.hh"
 
+
 /**
  * Compute the number of block rows from the total number of processes.
  *
@@ -140,7 +141,8 @@ int main( int argc, char** argv ) {
   args.addOption("grid-size-y", 'y', "Number of cell in y direction");
   args.addOption("output-basepath", 'o', "Output base file name");
   args.addOption("output-steps-count", 'c', "Number of output time steps");
-  
+  args.addOption("backup-basepath", 'b', "Bath of the checkpoint file and metadata used to restart in case of failure");
+
 #ifdef ASAGI
   args.addOption("bathymetry-file", 'b', "File containing the bathymetry");
   args.addOption("displacement-file", 'd', "File containing the displacement");
@@ -169,12 +171,15 @@ int main( int argc, char** argv ) {
   int l_nX, l_nY;
 
   //! l_baseName of the plots.
-  std::string l_baseName;
+  std::string l_baseName, l_backupBase;
 
   // read command line parameters
   l_nX = args.getArgument<int>("grid-size-x");
   l_nY = args.getArgument<int>("grid-size-y");
   l_baseName = args.getArgument<std::string>("output-basepath");
+  l_backupBase = args.getArgument<std::string>("backup-basepath");
+
+  
 
   #ifdef TEAMPI
   l_baseName = l_baseName + "_team_" + std::to_string(l_teamNumber);
@@ -224,7 +229,7 @@ int main( int argc, char** argv ) {
                                simulationDuration, simulationArea);
   #else
   // create a simple artificial scenario
-  SWE_RadialDamBreakScenario l_scenario;
+  SWE_BathymetryDamBreakScenario l_scenario;
   #endif
 
   //! number of checkpoints for visualization (at each checkpoint in time, an output file is written).
@@ -236,6 +241,16 @@ int main( int argc, char** argv ) {
   //! size of a single cell in x- and y-direction
   float l_dX, l_dY;
 
+  //boundary types and position of the scenario used to init Checkpoint Metadata
+  std::vector<BoundaryType> l_boundaryTypes(4);
+  std::vector<float> l_boundaryPositions(4);
+
+  for(int i=0; i <= 3; i++){
+    l_boundaryTypes[i] = l_scenario.getBoundaryType(static_cast<BoundaryEdge>(i));
+    l_boundaryPositions[i] = l_scenario.getBoundaryPos(static_cast<BoundaryEdge>(i));
+  }
+  //end time of the scenario used to init checkpoint metadata
+  float l_totalTime = l_scenario.endSimulation();
   // compute local number of cells for each SWE_Block
   l_nXLocal = (l_blockPositionX < l_blocksX-1) ? l_nX/l_blocksX : l_nX - (l_blocksX-1)*(l_nX/l_blocksX);
   l_nYLocal = (l_blockPositionY < l_blocksY-1) ? l_nY/l_blocksY : l_nY - (l_blocksY-1)*(l_nY/l_blocksY);
@@ -377,6 +392,9 @@ int main( int argc, char** argv ) {
   progressBar.update(0.);
 
   std::string l_fileName = generateBaseFileName(l_baseName,l_blockPositionX,l_blockPositionY);
+  std::string l_backupName = generateBaseFileName(l_backupBase, l_blockPositionX, l_blockPositionY);
+  std::string l_backupMetadataName = l_backupBase + "_metadata";
+
   //boundary size of the ghost layers
   io::BoundarySize l_boundarySize = {{1, 1, 1, 1}};
   /*
@@ -400,14 +418,21 @@ int main( int argc, char** argv ) {
   */
   auto l_writer = io::Writer::createWriterInstance(
           l_fileName,
+          l_backupName,
           l_waveBlock->getBathymetry(),
           l_boundarySize,
           l_nXLocal, l_nYLocal,
           l_dX, l_dY,
           l_blockPositionX*l_nXLocal, l_blockPositionY*l_nYLocal,
           l_originX, l_originY,
-          0);
-  //
+          0); 
+
+  if(l_mpiRank == 0){  
+    l_writer->initMetadataFile(l_backupMetadataName,l_totalTime, l_numberOfProcesses, l_nX, l_nY, l_numberOfCheckPoints, l_boundaryTypes, l_boundaryPositions);
+  }
+ 
+
+
   // Write zero time step
   l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                           l_waveBlock->getDischarge_hu(),
@@ -427,6 +452,7 @@ int main( int argc, char** argv ) {
 
   unsigned int l_iterations = 0;
 
+  int saved = 0;
   // loop over checkpoints
   for(int c=1; c<=l_numberOfCheckPoints; c++) {
 
@@ -495,7 +521,15 @@ int main( int argc, char** argv ) {
                             l_waveBlock->getDischarge_hu(),
                             l_waveBlock->getDischarge_hv(),
                             l_t);
-  }
+
+    if(l_iterations >= 200 && !saved){
+      if(l_mpiRank == 0){
+          l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
+        }
+      l_writer->commitBackup();
+      saved = 1;
+    }
+  }  
 
   /**
    * Finalize.
