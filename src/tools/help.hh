@@ -300,5 +300,26 @@ inline int replaceConfigureFileValue(std::string filename,std::string key, std::
   return found;
 }
 
+inline std::string readConfigureFileValue(const std::string &filename, const std::string &key){
+  std::ifstream fileIn;
+  fileIn.open(filename);
+  while(!fileIn.eof()){
+    std::string line;
+    std::string currentKey;
+    size_t pos;
+
+    std::getline(fileIn, line);
+    pos = line.find("=");
+
+    if(pos == std::string::npos) continue;
+
+    currentKey = line.substr(0, pos);
+    if(key == currentKey){
+      return line.substr(pos+1);
+    } 
+  }
+  return "";
+}
+
 #endif
 
