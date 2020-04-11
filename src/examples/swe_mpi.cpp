@@ -38,11 +38,13 @@
 #include "blocks/SWE_Block.hh"
 
 #include "writer/Writer.hh"
+#include "reader/Reader.hh"
 
 #ifdef ASAGI
 #include "scenarios/SWE_AsagiScenario.hh"
 #else
 #include "scenarios/SWE_simple_scenarios.hh"
+#include "scenarios/SWE_LoadNetCdfScenario.hh"
 #endif
 
 #ifdef TEAMPI
@@ -87,6 +89,7 @@ void exchangeBottomTopGhostLayers( const int i_bottomNeighborRank, SWE_Block1D* 
  */
 int main( int argc, char** argv ) {
    //Just to let me attach gdb
+   SWE_Scenario *l_scenario;
     {
     volatile int i = 1;
     char hostname[256];
@@ -141,7 +144,8 @@ int main( int argc, char** argv ) {
   args.addOption("grid-size-y", 'y', "Number of cell in y direction");
   args.addOption("output-basepath", 'o', "Output base file name");
   args.addOption("output-steps-count", 'c', "Number of output time steps");
-  args.addOption("backup-basepath", 'b', "Bath of the checkpoint file and metadata used to restart in case of failure");
+  args.addOption("backup-basepath", 'b', "Path of the checkpoint file and metadata used to restart in case of failure");
+  args.addOption("restart-basepath", 'r', "Path of the Backup that will be loaded when restarting", tools::Args::Argument::Required, false);
 
 #ifdef ASAGI
   args.addOption("bathymetry-file", 'b', "File containing the bathymetry");
@@ -171,15 +175,16 @@ int main( int argc, char** argv ) {
   int l_nX, l_nY;
 
   //! l_baseName of the plots.
-  std::string l_baseName, l_backupBase;
+  std::string l_baseName, l_backupBase, l_restartBase;
 
   // read command line parameters
   l_nX = args.getArgument<int>("grid-size-x");
   l_nY = args.getArgument<int>("grid-size-y");
   l_baseName = args.getArgument<std::string>("output-basepath");
   l_backupBase = args.getArgument<std::string>("backup-basepath");
-
-  
+  if(args.isSet("restart-basepath")){
+    l_restartBase = args.getArgument<std::string>("restart-basepath");
+  }
 
   #ifdef TEAMPI
   l_baseName = l_baseName + "_team_" + std::to_string(l_teamNumber);
@@ -205,6 +210,16 @@ int main( int argc, char** argv ) {
   l_blockPositionX = l_mpiRank / l_blocksY;
   l_blockPositionY = l_mpiRank % l_blocksY;
 
+  //! number of checkpoints for visualization (at each checkpoint in time, an output file is written).
+  int l_numberOfCheckPoints;
+
+  if(args.isSet("restart-basepath")){
+    io::Reader reader(l_restartBase, l_mpiRank, l_numberOfProcesses, l_blockPositionX, l_blockPositionY);
+    l_nX = reader.getGridSizeX();
+    l_nY = reader.getGridSizeY();
+    l_numberOfCheckPoints = reader.getRemainingCheckpoints();
+    l_scenario = reader.getScenario();
+  }
   #ifdef ASAGI
   /*
    * Pixel node registration used [Cartesian grid]
@@ -229,11 +244,12 @@ int main( int argc, char** argv ) {
                                simulationDuration, simulationArea);
   #else
   // create a simple artificial scenario
-  SWE_BathymetryDamBreakScenario l_scenario;
+  if(!args.isSet("restart-basepath")){
+    l_scenario = new SWE_SplashingConeScenario();
+  }
   #endif
 
-  //! number of checkpoints for visualization (at each checkpoint in time, an output file is written).
-  int l_numberOfCheckPoints = args.getArgument<int>("output-steps-count");
+  l_numberOfCheckPoints = args.getArgument<int>("output-steps-count");
 
   //! number of grid cells in x- and y-direction per process.
   int l_nXLocal, l_nYLocal;
@@ -246,18 +262,20 @@ int main( int argc, char** argv ) {
   std::vector<float> l_boundaryPositions(4);
 
   for(int i=0; i <= 3; i++){
-    l_boundaryTypes[i] = l_scenario.getBoundaryType(static_cast<BoundaryEdge>(i));
-    l_boundaryPositions[i] = l_scenario.getBoundaryPos(static_cast<BoundaryEdge>(i));
+    l_boundaryTypes[i] = l_scenario->getBoundaryType(static_cast<BoundaryEdge>(i));
+    l_boundaryPositions[i] = l_scenario->getBoundaryPos(static_cast<BoundaryEdge>(i));
+    
   }
+
   //end time of the scenario used to init checkpoint metadata
-  float l_totalTime = l_scenario.endSimulation();
+  float l_totalTime = l_scenario->endSimulation();
   // compute local number of cells for each SWE_Block
   l_nXLocal = (l_blockPositionX < l_blocksX-1) ? l_nX/l_blocksX : l_nX - (l_blocksX-1)*(l_nX/l_blocksX);
   l_nYLocal = (l_blockPositionY < l_blocksY-1) ? l_nY/l_blocksY : l_nY - (l_blocksY-1)*(l_nY/l_blocksY);
 
   // compute the size of a single cell
-  l_dX = (l_scenario.getBoundaryPos(BND_RIGHT) - l_scenario.getBoundaryPos(BND_LEFT) )/l_nX;
-  l_dY = (l_scenario.getBoundaryPos(BND_TOP) - l_scenario.getBoundaryPos(BND_BOTTOM) )/l_nY;
+  l_dX = (l_scenario->getBoundaryPos(BND_RIGHT) - l_scenario->getBoundaryPos(BND_LEFT) )/l_nX;
+  l_dY = (l_scenario->getBoundaryPos(BND_TOP) - l_scenario->getBoundaryPos(BND_BOTTOM) )/l_nY;
 
   // print information about the cell size and local number of cells
   tools::Logger::logger.printCellSize(l_dX, l_dY);
@@ -266,18 +284,22 @@ int main( int argc, char** argv ) {
   //! origin of the simulation domain in x- and y-direction
   float l_originX, l_originY;
 
+  tools::Logger::logger.printString("test1");
   // get the origin from the scenario
-  l_originX = l_scenario.getBoundaryPos(BND_LEFT) + l_blockPositionX*l_nXLocal*l_dX;;
-  l_originY = l_scenario.getBoundaryPos(BND_BOTTOM) + l_blockPositionY*l_nYLocal*l_dY;
+  l_originX = l_scenario->getBoundaryPos(BND_LEFT) + l_blockPositionX*l_nXLocal*l_dX;;
+  l_originY = l_scenario->getBoundaryPos(BND_BOTTOM) + l_blockPositionY*l_nYLocal*l_dY;
 
+  tools::Logger::logger.printString("test2");
   // create a single wave propagation block
   auto l_waveBlock = SWE_Block::getBlockInstance(l_nXLocal, l_nYLocal, l_dX, l_dY);
   
+  
   // initialize the wave propgation block
   l_waveBlock->initScenario(l_originX, l_originY, l_scenario, true);
-
+  tools::Logger::logger.printString("test3");
   //! time when the simulation ends.
-  float l_endSimulation = l_scenario.endSimulation();
+  float l_endSimulation = l_scenario->endSimulation();
+  tools::Logger::logger.printString("test4");
 
   //! checkpoints when output files are written.
   float* l_checkPoints = new float[l_numberOfCheckPoints+1];
@@ -286,6 +308,8 @@ int main( int argc, char** argv ) {
   for(int cp = 0; cp <= l_numberOfCheckPoints; cp++) {
      l_checkPoints[cp] = cp*(l_endSimulation/l_numberOfCheckPoints);
   }
+
+  
 
   /*
    * Connect SWE blocks at boundaries
@@ -455,7 +479,7 @@ int main( int argc, char** argv ) {
   int saved = 0;
   // loop over checkpoints
   for(int c=1; c<=l_numberOfCheckPoints; c++) {
-
+    
     // do time steps until next checkpoint is reached
     while( l_t < l_checkPoints[c] ) {
       //reset CPU-Communication clock
@@ -481,7 +505,7 @@ int main( int argc, char** argv ) {
 
       //! maximum allowed time step width within a block.
       float l_maxTimeStepWidth = l_waveBlock->getMaxTimestep();
-
+      
       // update the cpu time in the logger
       tools::Logger::logger.updateTime("Cpu");
 
@@ -522,9 +546,9 @@ int main( int argc, char** argv ) {
                             l_waveBlock->getDischarge_hv(),
                             l_t);
 
-    if(l_iterations >= 200 && !saved){
+    if(l_iterations >= 10 && !saved){
       if(l_mpiRank == 0){
-          l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
+          l_writer->updateMetadataFile(l_backupMetadataName, l_t, l_numberOfCheckPoints-c);
         }
       l_writer->commitBackup();
       saved = 1;

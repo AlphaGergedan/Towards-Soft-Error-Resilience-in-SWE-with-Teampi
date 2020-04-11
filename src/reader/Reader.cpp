@@ -18,7 +18,7 @@ io::Reader::Reader(std::string i_backupFilename, int i_rank, int i_mpiSizeCurren
 }
 
 io::Reader::~Reader(){
-    free(scenario);
+    
 }
 
 //TODO implement real parser for those files

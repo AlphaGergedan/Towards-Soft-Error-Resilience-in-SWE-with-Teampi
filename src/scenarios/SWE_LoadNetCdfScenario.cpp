@@ -1,4 +1,8 @@
 #include <algorithm>
+#include <cassert>
+#include <cmath>
+
+#include <sstream>
 
 #include "SWE_LoadNetCdfScenario.hh"
 #include "tools/Logger.hh"
@@ -12,8 +16,13 @@ SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endT
                            boundaryPositions(i_boundaryPositions){
 
 
+    tools::Logger::logger.printString("Loading NetCdf");
     std::string file = i_file + ".nc";
     int error = nc_open(file.c_str(), NC_NOWRITE, &dataFile);
+    if(error != NC_NOERR){
+        assert(false);
+        return;
+    }
     //TODO Error Handling
     nc_inq_varid(dataFile, "time", &timeVar); 
     nc_inq_varid(dataFile, "x", &xVar);
@@ -34,8 +43,12 @@ SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endT
     size_t pos = numTimesteps - 1;
     size_t index[] = {pos};
     nc_get_var1_float(dataFile, timeVar, index, &endTime);
+    index[0] = 0;
+    nc_get_var1_float(dataFile, xVar, index, &dX);
+    nc_get_var1_float(dataFile, yVar, index, &dY);
 
-    tools::Logger::logger.printString("xLen: " + std::to_string(xLen));
+    tools::Logger::logger.printString("dX: " + std::to_string(dX));
+    tools::Logger::logger.printString("dY: " + std::to_string(dY));
     float *x = new float[xLen];
     float *y = new float[yLen];
 
@@ -60,6 +73,18 @@ SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endT
     std::copy(x, x+xLen, xVec.begin());
     std::copy(y, y+yLen, yVec.begin());
 
+    for(size_t i = 0; i < xVec.size(); i++){
+        std::stringstream xStream;
+        xStream << std::setprecision(15) << xVec.at(i);
+        //tools::Logger::logger.printString("x: " + xStream.str());
+    }
+
+    for(size_t i = 0; i < yVec.size(); i++){
+        std::stringstream yStream;
+        yStream << std::setprecision(15) << yVec.at(i);
+        //tools::Logger::logger.printString("y: " + yStream.str());
+    }
+
     delete(x);
     delete(y);
     
@@ -69,7 +94,7 @@ SWE_LoadNetCdfScenario::~SWE_LoadNetCdfScenario(){
     //delete(x);
     //delete(y);
     
-
+    
     delete(h);
     delete(hu);
     delete(hv);
@@ -80,32 +105,32 @@ SWE_LoadNetCdfScenario::~SWE_LoadNetCdfScenario(){
 
 float SWE_LoadNetCdfScenario::getWaterHeight(float x, float y){
     int indexX, indexY;
-    if(validCoords(x,y,&indexX, &indexY)){
-        return *h[indexX][indexY];
+    if(toValidCoords(x,y,&indexX, &indexY)){
+        return (*h)[indexX][indexY];
     }
     return 0.0;
 }
 
 float SWE_LoadNetCdfScenario::getVeloc_u(float x, float y){
     int indexX, indexY;
-    if(validCoords(x,y,&indexX, &indexY)){
-        return *hu[indexX][indexY];
+    if(toValidCoords(x,y,&indexX, &indexY)){
+        return (*hu)[indexX][indexY];
     }
     return 0.0;
 }
     
 float SWE_LoadNetCdfScenario::getVeloc_v(float x, float y){
     int indexX, indexY;
-    if(validCoords(x,y,&indexX, &indexY)){
-        return *hv[indexX][indexY];
+    if(toValidCoords(x,y,&indexX, &indexY)){
+        return (*hv)[indexX][indexY];
     }
     return 0.0;
 }
     
 float SWE_LoadNetCdfScenario::getBathymetry(float x, float y){
     int indexX, indexY;
-    if(validCoords(x,y,&indexX, &indexY)){
-        return *b[indexX][indexY];
+    if(toValidCoords(x,y,&indexX, &indexY)){
+        return (*b)[indexX][indexY];
     }
     return 0.0;
 }
@@ -119,22 +144,34 @@ float SWE_LoadNetCdfScenario::endSimulation(){
 }
     
 BoundaryType SWE_LoadNetCdfScenario::getBoundaryType(BoundaryEdge edge){
-    return boundaryTypes.at(static_cast<int>(edge));;
+    return boundaryTypes.at(static_cast<int>(edge));
 }
 
 float SWE_LoadNetCdfScenario::getBoundaryPos(BoundaryEdge edge){
     return boundaryPositions.at(static_cast<int>(edge));
 }
 
-int SWE_LoadNetCdfScenario::validCoords(float x, float y, int *indexX, int *indexY){
-    auto itx = std::find(xVec.begin(), xVec.end(), x);
-    auto ity = std::find(yVec.begin(), yVec.end(), y);
+//Change vector and find to something better
+int SWE_LoadNetCdfScenario::toValidCoords(float x, float y, int *indexX, int *indexY){
+    std::stringstream xStream, yStream, ixStream, iyStream;
+    xStream << std::setprecision(15) << x;
+    yStream << std::setprecision(15) << y;
+    //tools::Logger::logger.printString("accessing x:" + xStream.str());
+    //tools::Logger::logger.printString("accessing y:" + yStream.str());
+    *indexX = std::round((x-dX)/(2*dX));
+    *indexY = std::round((y-dY)/(2*dY));
+    if(*indexX >= (int) xLen || *indexY >= (int) yLen){
+        tools::Logger::logger.printString("this shouldnt happen");
+    }
 
-    if(itx == xVec.end() || ity == yVec.end()) return 0;
+    if(*indexX < 0 || *indexY < 0){ tools::Logger::logger.printString("this shouldnt happen");
+         tools::Logger::logger.printString("this shouldnt happen2");
+    }
+    ixStream << std::setprecision(15) << *indexX;
+    iyStream << std::setprecision(15) << *indexY;
 
-    *indexX = std::distance(xVec.begin(), itx);
-    *indexY = std::distance(yVec.begin(), ity);
-
+    //tools::Logger::logger.printString("returning x:" + ixStream.str());
+    //tools::Logger::logger.printString("returning y:" + iyStream.str());
     return 1;
 
 }

@@ -37,6 +37,7 @@
 #include <string>
 #include <iostream>
 #include <ctime>
+#include <iomanip>
 
 namespace tools {
   class Logger;
@@ -240,8 +241,8 @@ class tools::Logger {
      */
     void printString(const std::string i_string) {
       if (processRank == 0 )
-      timeCout() << indentation
-                << i_string << std::endl;
+      timeCout() << indentation << 
+                 i_string << std::endl;
     }
 
     /**

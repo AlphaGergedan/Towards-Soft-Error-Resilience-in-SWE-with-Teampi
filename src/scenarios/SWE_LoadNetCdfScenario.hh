@@ -16,25 +16,25 @@ class SWE_LoadNetCdfScenario : public SWE_Scenario{
                            std::vector<BoundaryType> &boundaryTypes,
                            std::vector<float> &boundaryPositions);
 
-    ~SWE_LoadNetCdfScenario();
+    virtual ~SWE_LoadNetCdfScenario();
 
-    float getWaterHeight(float x, float y);
-    float getVeloc_u(float x, float y);
-    float getVeloc_v(float x, float y);
-    float getBathymetry(float x, float y);
+    virtual float getWaterHeight(float x, float y);
+    virtual float getVeloc_u(float x, float y);
+    virtual float getVeloc_v(float x, float y);
+    virtual float getBathymetry(float x, float y);
     
-    float waterHeightAtRest();
+    virtual float waterHeightAtRest();
 
-    float endSimulation();
+    virtual float endSimulation();
     
-    BoundaryType getBoundaryType(BoundaryEdge edge);
-    float getBoundaryPos(BoundaryEdge edge);
+    virtual BoundaryType getBoundaryType(BoundaryEdge edge);
+    virtual float getBoundaryPos(BoundaryEdge edge);
 
     private:
-        int validCoords(float x, float y, int *indexX, int *indexY);
+        int toValidCoords(float x, float y, int *indexX, int *indexY);
 
     private:
-        float endTime;
+        float endTime, dX, dY;
         int dataFile;
         size_t numTimesteps, xLen, yLen;
         int timeDim, xDim, yDim;
