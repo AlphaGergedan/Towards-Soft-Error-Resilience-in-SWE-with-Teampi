@@ -1,0 +1,14 @@
+total_time=0.500000
+current_time=0.375004
+ranks=4 
+grid_size_x=250
+grid_size_y=250
+boundary_type_0=0
+boundary_position_0=0.000000
+boundary_type_1=0
+boundary_position_1=1.000000
+boundary_type_2=0
+boundary_position_2=0.000000
+boundary_type_3=0
+boundary_position_3=1.000000
+checkpoints_unfinished=10

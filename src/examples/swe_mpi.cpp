@@ -196,7 +196,7 @@ int main( int argc, char** argv ) {
                                simulationDuration, simulationArea);
   #else
   // create a simple artificial scenario
-  SWE_RadialDamBreakScenario l_scenario;
+  SWE_SplashingConeScenario l_scenario;
   #endif
 
   //! number of checkpoints for visualization (at each checkpoint in time, an output file is written).
@@ -242,6 +242,7 @@ int main( int argc, char** argv ) {
   // compute the checkpoints in time
   for(int cp = 0; cp <= l_numberOfCheckPoints; cp++) {
      l_checkPoints[cp] = cp*(l_endSimulation/l_numberOfCheckPoints);
+     tools::Logger::logger.printString(std::to_string(l_checkPoints[cp]));
   }
 
   /*
@@ -453,6 +454,7 @@ int main( int argc, char** argv ) {
 
       // print the current simulation time
       progressBar.clear();
+      tools::Logger::logger.printString("maxTimeStepWdth: " + std::to_string(l_maxTimeStepWidthGlobal));
       tools::Logger::logger.printSimulationTime(l_t);
       progressBar.update(l_t);
     }

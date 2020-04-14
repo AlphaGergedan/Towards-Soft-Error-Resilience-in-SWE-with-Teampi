@@ -1,0 +1,37 @@
+[
+{
+  "directory": "/home/xile273/HPC/Code/SWERepo/SWE/build",
+  "command": "/usr/bin/c++  -DLOOP_OPENMP -DSOLVER_FWAVE -I/home/xile273/HPC/Code/SWERepo/SWE/src -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi -I/usr/lib/x86_64-linux-gnu/openmpi/include  -g   -Wall -Wextra -Wno-unused-parameter -g -pedantic -std=gnu++11 -o CMakeFiles/swe-mpi.dir/src/examples/swe_mpi.cpp.o -c /home/xile273/HPC/Code/SWERepo/SWE/src/examples/swe_mpi.cpp",
+  "file": "/home/xile273/HPC/Code/SWERepo/SWE/src/examples/swe_mpi.cpp"
+},
+{
+  "directory": "/home/xile273/HPC/Code/SWERepo/SWE/build",
+  "command": "/usr/bin/c++  -DLOOP_OPENMP -DSOLVER_FWAVE -I/home/xile273/HPC/Code/SWERepo/SWE/src  -g   -Wall -Wextra -Wno-unused-parameter -g -pedantic -std=gnu++11 -o CMakeFiles/swe-single-node.dir/src/examples/swe_simple.cpp.o -c /home/xile273/HPC/Code/SWERepo/SWE/src/examples/swe_simple.cpp",
+  "file": "/home/xile273/HPC/Code/SWERepo/SWE/src/examples/swe_simple.cpp"
+},
+{
+  "directory": "/home/xile273/HPC/Code/SWERepo/SWE/build",
+  "command": "/usr/bin/c++  -DLOOP_OPENMP -DSOLVER_FWAVE -DWRITENETCDF -I/home/xile273/HPC/Code/SWERepo/SWE/src  -g   -Wall -Wextra -Wno-unused-parameter -g -pedantic -fopenmp -std=gnu++11 -o CMakeFiles/swe.dir/src/blocks/SWE_Block.cpp.o -c /home/xile273/HPC/Code/SWERepo/SWE/src/blocks/SWE_Block.cpp",
+  "file": "/home/xile273/HPC/Code/SWERepo/SWE/src/blocks/SWE_Block.cpp"
+},
+{
+  "directory": "/home/xile273/HPC/Code/SWERepo/SWE/build",
+  "command": "/usr/bin/c++  -DLOOP_OPENMP -DSOLVER_FWAVE -DWRITENETCDF -I/home/xile273/HPC/Code/SWERepo/SWE/src  -g   -Wall -Wextra -Wno-unused-parameter -g -pedantic -fopenmp -std=gnu++11 -o CMakeFiles/swe.dir/src/blocks/SWE_WaveAccumulationBlock.cpp.o -c /home/xile273/HPC/Code/SWERepo/SWE/src/blocks/SWE_WaveAccumulationBlock.cpp",
+  "file": "/home/xile273/HPC/Code/SWERepo/SWE/src/blocks/SWE_WaveAccumulationBlock.cpp"
+},
+{
+  "directory": "/home/xile273/HPC/Code/SWERepo/SWE/build",
+  "command": "/usr/bin/c++  -DLOOP_OPENMP -DSOLVER_FWAVE -DWRITENETCDF -I/home/xile273/HPC/Code/SWERepo/SWE/src  -g   -Wall -Wextra -Wno-unused-parameter -g -pedantic -fopenmp -std=gnu++11 -o CMakeFiles/swe.dir/src/tools/Logger.cpp.o -c /home/xile273/HPC/Code/SWERepo/SWE/src/tools/Logger.cpp",
+  "file": "/home/xile273/HPC/Code/SWERepo/SWE/src/tools/Logger.cpp"
+},
+{
+  "directory": "/home/xile273/HPC/Code/SWERepo/SWE/build",
+  "command": "/usr/bin/c++  -DLOOP_OPENMP -DSOLVER_FWAVE -DWRITENETCDF -I/home/xile273/HPC/Code/SWERepo/SWE/src  -g   -Wall -Wextra -Wno-unused-parameter -g -pedantic -fopenmp -std=gnu++11 -o CMakeFiles/swe.dir/src/writer/NetCdfWriter.cpp.o -c /home/xile273/HPC/Code/SWERepo/SWE/src/writer/NetCdfWriter.cpp",
+  "file": "/home/xile273/HPC/Code/SWERepo/SWE/src/writer/NetCdfWriter.cpp"
+},
+{
+  "directory": "/home/xile273/HPC/Code/SWERepo/SWE/build",
+  "command": "/usr/bin/c++  -DLOOP_OPENMP -DSOLVER_FWAVE -DWRITENETCDF -I/home/xile273/HPC/Code/SWERepo/SWE/src  -g   -Wall -Wextra -Wno-unused-parameter -g -pedantic -fopenmp -std=gnu++11 -o CMakeFiles/swe.dir/src/writer/Writer.cpp.o -c /home/xile273/HPC/Code/SWERepo/SWE/src/writer/Writer.cpp",
+  "file": "/home/xile273/HPC/Code/SWERepo/SWE/src/writer/Writer.cpp"
+}
+]

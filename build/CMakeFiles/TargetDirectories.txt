@@ -1,0 +1,15 @@
+/home/xile273/HPC/Code/SWERepo/SWE/build/CMakeFiles/rebuild_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/CMakeFiles/edit_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/CMakeFiles/swe-mpi.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/CMakeFiles/swe-single-node.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/CMakeFiles/swe.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/blocks/CMakeFiles/rebuild_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/blocks/CMakeFiles/edit_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/blocks/rusanov/CMakeFiles/rebuild_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/blocks/rusanov/CMakeFiles/edit_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/scenarios/CMakeFiles/rebuild_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/scenarios/CMakeFiles/edit_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/tools/CMakeFiles/rebuild_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/tools/CMakeFiles/edit_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/writer/CMakeFiles/rebuild_cache.dir
+/home/xile273/HPC/Code/SWERepo/SWE/build/src/writer/CMakeFiles/edit_cache.dir
