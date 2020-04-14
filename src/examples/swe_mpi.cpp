@@ -536,6 +536,7 @@ int main( int argc, char** argv ) {
       progressBar.clear();
       tools::Logger::logger.printSimulationTime(l_t);
       progressBar.update(l_t);
+      tools::Logger::logger.printString(std::to_string(l_maxTimeStepWidthGlobal));
     }
 
     // print current simulation time
