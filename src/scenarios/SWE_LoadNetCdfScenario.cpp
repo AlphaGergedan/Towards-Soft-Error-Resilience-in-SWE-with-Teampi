@@ -3,6 +3,7 @@
 #include <cmath>
 #include <limits>
 
+
 #include <sstream>
 
 #include "SWE_LoadNetCdfScenario.hh"
@@ -43,8 +44,17 @@ SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endT
 
     size_t pos = numTimesteps - 1;
     size_t index[] = {0};
-    nc_get_var1_float(dataFile, xVar, index, &dX);
-    nc_get_var1_float(dataFile, yVar, index, &dY);
+    float tempX1, tempX2, tempY1, tempY2;
+    nc_get_var1_float(dataFile, xVar, index, &tempX1);
+    nc_get_var1_float(dataFile, yVar, index, &tempY1);
+    index[0] = 1;
+    nc_get_var1_float(dataFile, xVar, index, &tempX2);
+    nc_get_var1_float(dataFile, yVar, index, &tempY2);
+
+    offsetX = tempX1;
+    offsetY = tempY1;
+    dX = (tempX2 - tempX1)/2;
+    dY = (tempY2 - tempY1)/2;
 
     float *x = new float[xLen];
     float *y = new float[yLen];
@@ -135,17 +145,16 @@ float SWE_LoadNetCdfScenario::getBoundaryPos(BoundaryEdge edge){
     return boundaryPositions.at(static_cast<int>(edge));
 }
 
-
+//For border regions this code just returns clostest known value.
+//Will only happen when loadig bathemetry but better solution should be found
 int SWE_LoadNetCdfScenario::toValidCoords(float x, float y){
+    x -= offsetX;
+    y -= offsetY;
     int indexX = std::round((x-dX)/(2*dX));
     int indexY = std::round((y-dY)/(2*dY));
-    if(indexX >= (int) xLen || indexY >= (int) yLen || indexX < 0 || indexY < 0){
-        // tools::Logger::logger.printString("Accessing: " + std::to_string(x) + " " + std::to_string(y)
-        //                                     + " -->Warning index: " + std::to_string(indexX) + " " + std::to_string(indexY));
+    indexX = std::max(0, std::min(indexX,(int) xLen - 1));
+    indexY = std::max(0, std::min(indexY,(int) yLen - 1));
 
-        assert(false);
-    }
-
-    return (indexY * xLen + indexX)%(xLen*yLen);
+    return (indexY * xLen + indexX) % (xLen * yLen);
 
 }

@@ -37,6 +37,7 @@ class SWE_LoadNetCdfScenario : public SWE_Scenario{
 
     private:
         float endTime, dX, dY;
+        float offsetX, offsetY;
         int dataFile;
         size_t numTimesteps, xLen, yLen;
         int timeDim, xDim, yDim;

@@ -141,8 +141,8 @@ void SWE_Block::initScenario( float _offsetX, float _offsetY,
     }
 
   // initialize bathymetry
-  for(int i=1; i<=nx; i++) {
-    for(int j=1; j<=ny; j++) {
+    for(int i=0; i<=nx+1; i++) {
+    for(int j=0; j<=ny+1; j++) {
       b[i][j] = i_scenario->getBathymetry( offsetX + (i-0.5f)*dx,
                                           offsetY + (j-0.5f)*dy );
     }
