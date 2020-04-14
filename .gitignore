@@ -5,7 +5,7 @@ build/
 documentation/doxy/
 
 
-
+*.vscode
 *.pyc
 .sconsign.dblite
 *~

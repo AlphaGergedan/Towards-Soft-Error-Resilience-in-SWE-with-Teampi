@@ -309,7 +309,6 @@ int main( int argc, char** argv ) {
   // compute the checkpoints in time
   for(int cp = 0; cp <= l_numberOfCheckPoints; cp++) {
      l_checkPoints[cp] = l_startTime + cp*((l_endSimulation-l_startTime)/l_numberOfCheckPoints);
-     tools::Logger::logger.printString(std::to_string(l_checkPoints[cp]));
   }
 
   
@@ -536,7 +535,6 @@ int main( int argc, char** argv ) {
       progressBar.clear();
       tools::Logger::logger.printSimulationTime(l_t);
       progressBar.update(l_t);
-      tools::Logger::logger.printString(std::to_string(l_maxTimeStepWidthGlobal));
     }
 
     // print current simulation time
