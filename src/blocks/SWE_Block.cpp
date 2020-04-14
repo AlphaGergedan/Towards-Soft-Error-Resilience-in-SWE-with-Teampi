@@ -37,6 +37,7 @@
 #endif
 
 #include "tools/help.hh"
+#include "tools/Logger.hh"
 
 #include <cmath>
 #include <iostream>
@@ -119,7 +120,7 @@ SWE_Block::~SWE_Block() {
  * @param i_multipleBlocks are the multiple SWE_blocks?
  */
 void SWE_Block::initScenario( float _offsetX, float _offsetY,
-							  SWE_Scenario *i_scenario,
+							  SWE_Scenario *i_scenario, const bool loadMomentumDirectly,
                               const bool i_multipleBlocks ) {
 	offsetX = _offsetX;
 	offsetY = _offsetY;
@@ -130,13 +131,32 @@ void SWE_Block::initScenario( float _offsetX, float _offsetY,
       float x = offsetX + (i-0.5f)*dx;
       float y = offsetY + (j-0.5f)*dy;
       h[i][j] =  i_scenario->getWaterHeight(x,y);
-      hu[i][j] = i_scenario->getVeloc_u(x,y) * h[i][j];
-      hv[i][j] = i_scenario->getVeloc_v(x,y) * h[i][j]; 
+      if(loadMomentumDirectly){
+        hu[i][j] = i_scenario->getMomentum_u(x,y);
+        hv[i][j] = i_scenario->getMomentum_v(x,y);
+      }else{
+        hu[i][j] = i_scenario->getVeloc_u(x,y) * h[i][j];
+        hv[i][j] = i_scenario->getVeloc_v(x,y) * h[i][j]; 
+      }
     };
 
+        for(size_t i = 0; i < ny; i++){
+        for( size_t j = 0; j < nx; j++){
+            tools::Logger::logger.printString("hu: " +std::to_string(hu[j][i]) + " " + std::to_string(10)
+                                                +" " + std::to_string(i)+ " " + std::to_string(j));
+        }
+    }
+
+    for(size_t i = 0; i < ny; i++){
+        for( size_t j = 0; j < nx; j++){
+            tools::Logger::logger.printString("hv: " +std::to_string(hu[j][i]) + " "+ std::to_string(10)
+                                                +" " + std::to_string(i) + " " +std::to_string(j));
+        }
+    }
+
   // initialize bathymetry
-  for(int i=0; i<=nx+1; i++) {
-    for(int j=0; j<=ny+1; j++) {
+  for(int i=1; i<=nx; i++) {
+    for(int j=1; j<=ny; j++) {
       b[i][j] = i_scenario->getBathymetry( offsetX + (i-0.5f)*dx,
                                           offsetY + (j-0.5f)*dy );
     }

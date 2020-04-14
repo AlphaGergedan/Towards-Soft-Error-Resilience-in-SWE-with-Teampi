@@ -212,6 +212,8 @@ int main( int argc, char** argv ) {
 
   //! number of checkpoints for visualization (at each checkpoint in time, an output file is written).
   int l_numberOfCheckPoints;
+  float l_startTime = 0.0f;
+  l_numberOfCheckPoints = args.getArgument<int>("output-steps-count");
 
   if(args.isSet("restart-basepath")){
     io::Reader reader(l_restartBase, l_mpiRank, l_numberOfProcesses, l_blockPositionX, l_blockPositionY);
@@ -219,6 +221,7 @@ int main( int argc, char** argv ) {
     l_nY = reader.getGridSizeY();
     l_numberOfCheckPoints = reader.getRemainingCheckpoints();
     l_scenario = reader.getScenario();
+    l_startTime = reader.getCurrentTime();
   }
   #ifdef ASAGI
   /*
@@ -248,8 +251,6 @@ int main( int argc, char** argv ) {
     l_scenario = new SWE_SplashingConeScenario();
   }
   #endif
-
-  l_numberOfCheckPoints = args.getArgument<int>("output-steps-count");
 
   //! number of grid cells in x- and y-direction per process.
   int l_nXLocal, l_nYLocal;
@@ -291,22 +292,29 @@ int main( int argc, char** argv ) {
 
   tools::Logger::logger.printString("test2");
   // create a single wave propagation block
+  tools::Logger::logger.printString(std::to_string(l_nXLocal)+  " "+ std::to_string(l_nYLocal)+  " " + std::to_string(l_dX)+  " " + std::to_string(l_dY));
   auto l_waveBlock = SWE_Block::getBlockInstance(l_nXLocal, l_nYLocal, l_dX, l_dY);
   
   
   // initialize the wave propgation block
-  l_waveBlock->initScenario(l_originX, l_originY, l_scenario, true);
+  if(args.isSet("restart-basepath")){
+    l_waveBlock->initScenario(l_originX, l_originY, l_scenario, true, true);
+  } else{
+     l_waveBlock->initScenario(l_originX, l_originY, l_scenario, false, true);
+  }
+  
   tools::Logger::logger.printString("test3");
   //! time when the simulation ends.
   float l_endSimulation = l_scenario->endSimulation();
-  tools::Logger::logger.printString("test4");
+  tools::Logger::logger.printString("end: " + std::to_string(l_endSimulation));
 
   //! checkpoints when output files are written.
   float* l_checkPoints = new float[l_numberOfCheckPoints+1];
 
   // compute the checkpoints in time
   for(int cp = 0; cp <= l_numberOfCheckPoints; cp++) {
-     l_checkPoints[cp] = cp*(l_endSimulation/l_numberOfCheckPoints);
+     l_checkPoints[cp] = l_startTime + cp*((l_endSimulation-l_startTime)/l_numberOfCheckPoints);
+     tools::Logger::logger.printString(std::to_string(l_checkPoints[cp]));
   }
 
   
@@ -461,7 +469,7 @@ int main( int argc, char** argv ) {
   l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                           l_waveBlock->getDischarge_hu(),
                           l_waveBlock->getDischarge_hv(),
-                          (float) 0.);
+                          l_startTime);
   /**
    * Simulation.
    */
@@ -471,7 +479,7 @@ int main( int argc, char** argv ) {
   tools::Logger::logger.initWallClockTime(time(NULL));
 
   //! simulation time.
-  float l_t = 0.0;
+  float l_t = l_startTime;
   progressBar.update(l_t);
 
   unsigned int l_iterations = 0;
@@ -546,7 +554,7 @@ int main( int argc, char** argv ) {
                             l_waveBlock->getDischarge_hv(),
                             l_t);
 
-    if(l_iterations >= 10 && !saved){
+    if(c == l_numberOfCheckPoints / 2 && !saved){
       if(l_mpiRank == 0){
           l_writer->updateMetadataFile(l_backupMetadataName, l_t, l_numberOfCheckPoints-c);
         }

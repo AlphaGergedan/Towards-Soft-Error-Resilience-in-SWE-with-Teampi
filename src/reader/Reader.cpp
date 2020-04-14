@@ -39,12 +39,16 @@ void io::Reader::readMetadataFile(std::string filename){
         boundaryTypes.push_back(type);
         boudaryPositions.push_back(pos);
     }
+    
 }
 
  float io::Reader::getRemainingTime(){
         return totalTime - currentTime;
 }
         
+float io::Reader::getCurrentTime(){
+    return currentTime;
+}
 int io::Reader::getRemainingCheckpoints(){
     return remainingCheckpoints;
 }

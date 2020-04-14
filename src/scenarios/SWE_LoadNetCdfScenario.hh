@@ -22,7 +22,9 @@ class SWE_LoadNetCdfScenario : public SWE_Scenario{
     virtual float getVeloc_u(float x, float y);
     virtual float getVeloc_v(float x, float y);
     virtual float getBathymetry(float x, float y);
-    
+    virtual float getMomentum_u(float x, float y);
+    virtual float getMomentum_v(float x, float y);
+
     virtual float waterHeightAtRest();
 
     virtual float endSimulation();
@@ -31,7 +33,7 @@ class SWE_LoadNetCdfScenario : public SWE_Scenario{
     virtual float getBoundaryPos(BoundaryEdge edge);
 
     private:
-        int toValidCoords(float x, float y, int *indexX, int *indexY);
+        int toValidCoords(float x, float y);
 
     private:
         float endTime, dX, dY;
@@ -42,7 +44,7 @@ class SWE_LoadNetCdfScenario : public SWE_Scenario{
         int hVar, huVar, hvVar;
         int bVar;
         std::vector<float> xVec, yVec;
-        Float2D *h, *hu, *hv, *b;
+        std::vector<float> *h, *hu, *hv, *b;
         std::string fileName;
         std::vector<BoundaryType> boundaryTypes;
         std::vector<float> boundaryPositions;

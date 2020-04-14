@@ -18,6 +18,7 @@ class io::Reader{
         int getGridSizeX();
         int getGridSizeY();
         int getRemainingCheckpoints();
+        float getCurrentTime();
         SWE_Scenario *getScenario();
 
     protected:
