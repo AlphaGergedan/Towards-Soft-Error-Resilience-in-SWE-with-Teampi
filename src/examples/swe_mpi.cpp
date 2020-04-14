@@ -285,14 +285,11 @@ int main( int argc, char** argv ) {
   //! origin of the simulation domain in x- and y-direction
   float l_originX, l_originY;
 
-  tools::Logger::logger.printString("test1");
   // get the origin from the scenario
   l_originX = l_scenario->getBoundaryPos(BND_LEFT) + l_blockPositionX*l_nXLocal*l_dX;;
   l_originY = l_scenario->getBoundaryPos(BND_BOTTOM) + l_blockPositionY*l_nYLocal*l_dY;
 
-  tools::Logger::logger.printString("test2");
   // create a single wave propagation block
-  tools::Logger::logger.printString(std::to_string(l_nXLocal)+  " "+ std::to_string(l_nYLocal)+  " " + std::to_string(l_dX)+  " " + std::to_string(l_dY));
   auto l_waveBlock = SWE_Block::getBlockInstance(l_nXLocal, l_nYLocal, l_dX, l_dY);
   
   
@@ -303,10 +300,8 @@ int main( int argc, char** argv ) {
      l_waveBlock->initScenario(l_originX, l_originY, l_scenario, false, true);
   }
   
-  tools::Logger::logger.printString("test3");
   //! time when the simulation ends.
   float l_endSimulation = l_scenario->endSimulation();
-  tools::Logger::logger.printString("end: " + std::to_string(l_endSimulation));
 
   //! checkpoints when output files are written.
   float* l_checkPoints = new float[l_numberOfCheckPoints+1];

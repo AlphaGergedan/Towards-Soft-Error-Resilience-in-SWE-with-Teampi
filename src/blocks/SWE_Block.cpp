@@ -138,20 +138,6 @@ void SWE_Block::initScenario( float _offsetX, float _offsetY,
         hu[i][j] = i_scenario->getVeloc_u(x,y) * h[i][j];
         hv[i][j] = i_scenario->getVeloc_v(x,y) * h[i][j]; 
       }
-    };
-
-        for(size_t i = 0; i < ny; i++){
-        for( size_t j = 0; j < nx; j++){
-            tools::Logger::logger.printString("hu: " +std::to_string(hu[j][i]) + " " + std::to_string(10)
-                                                +" " + std::to_string(i)+ " " + std::to_string(j));
-        }
-    }
-
-    for(size_t i = 0; i < ny; i++){
-        for( size_t j = 0; j < nx; j++){
-            tools::Logger::logger.printString("hv: " +std::to_string(hu[j][i]) + " "+ std::to_string(10)
-                                                +" " + std::to_string(i) + " " +std::to_string(j));
-        }
     }
 
   // initialize bathymetry

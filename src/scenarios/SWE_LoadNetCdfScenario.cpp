@@ -46,8 +46,6 @@ SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endT
     nc_get_var1_float(dataFile, xVar, index, &dX);
     nc_get_var1_float(dataFile, yVar, index, &dY);
 
-    tools::Logger::logger.printString("dX: " + std::to_string(dX));
-    tools::Logger::logger.printString("dY: " + std::to_string(dY));
     float *x = new float[xLen];
     float *y = new float[yLen];
 
@@ -142,8 +140,8 @@ int SWE_LoadNetCdfScenario::toValidCoords(float x, float y){
     int indexX = std::round((x-dX)/(2*dX));
     int indexY = std::round((y-dY)/(2*dY));
     if(indexX >= (int) xLen || indexY >= (int) yLen || indexX < 0 || indexY < 0){
-        tools::Logger::logger.printString("Accessing: " + std::to_string(x) + " " + std::to_string(y)
-                                            + " -->Warning index: " + std::to_string(indexX) + " " + std::to_string(indexY));
+        // tools::Logger::logger.printString("Accessing: " + std::to_string(x) + " " + std::to_string(y)
+        //                                     + " -->Warning index: " + std::to_string(indexX) + " " + std::to_string(indexY));
 
         assert(false);
     }
