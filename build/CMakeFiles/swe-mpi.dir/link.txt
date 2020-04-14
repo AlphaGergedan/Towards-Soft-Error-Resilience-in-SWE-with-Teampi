@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/swe-mpi.dir/src/examples/swe_mpi.cpp.o  -o swe-mpi -Wl,-rpath,/usr/lib/x86_64-linux-gnu/openmpi/lib libswe.a /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi_cxx.so /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so /usr/lib/gcc/x86_64-linux-gnu/9/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so /usr/lib/x86_64-linux-gnu/libnetcdf.so 

@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/swe-single-node.dir/src/examples/swe_simple.cpp.o  -o swe-single-node libswe.a /usr/lib/gcc/x86_64-linux-gnu/9/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.so /usr/lib/x86_64-linux-gnu/libnetcdf.so 

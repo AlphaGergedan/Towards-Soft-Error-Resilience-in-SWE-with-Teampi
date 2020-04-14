@@ -1,2 +1,0 @@
-/usr/bin/ar qc libswe.a  CMakeFiles/swe.dir/src/blocks/SWE_Block.cpp.o CMakeFiles/swe.dir/src/blocks/SWE_WaveAccumulationBlock.cpp.o CMakeFiles/swe.dir/src/tools/Logger.cpp.o CMakeFiles/swe.dir/src/writer/NetCdfWriter.cpp.o CMakeFiles/swe.dir/src/writer/Writer.cpp.o
-/usr/bin/ranlib libswe.a
