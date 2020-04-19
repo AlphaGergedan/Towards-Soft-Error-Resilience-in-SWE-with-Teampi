@@ -12,7 +12,7 @@ namespace io{
 
 class io::Reader{
     public:
-        Reader(std::string backupFilename, int rank, int mpiSize, int blockPosX, int blockPosY);
+        Reader(std::string backupFilename, std::string outputFilename, int rank, int mpiSize, int blockPosX, int blockPosY);
         ~Reader();
         float getRemainingTime();
         int getGridSizeX();
@@ -22,7 +22,7 @@ class io::Reader{
         SWE_Scenario *getScenario();
 
     protected:
-        std::string backupFilename;
+        std::string backupFilename, outputFilename;
         SWE_LoadNetCdfScenario *scenario;
         int rank, mpiCurrentSize, mpiExpectedSize;
         int blockPosX, blockPosY;

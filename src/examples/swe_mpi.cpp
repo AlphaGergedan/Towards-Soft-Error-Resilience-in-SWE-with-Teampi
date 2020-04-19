@@ -216,7 +216,7 @@ int main( int argc, char** argv ) {
   l_numberOfCheckPoints = args.getArgument<int>("output-steps-count");
 
   if(args.isSet("restart-basepath")){
-    io::Reader reader(l_restartBase, l_mpiRank, l_numberOfProcesses, l_blockPositionX, l_blockPositionY);
+    io::Reader reader(l_restartBase, l_baseName,l_mpiRank, l_numberOfProcesses, l_blockPositionX, l_blockPositionY);
     l_nX = reader.getGridSizeX();
     l_nY = reader.getGridSizeY();
     l_numberOfCheckPoints = reader.getRemainingCheckpoints();
@@ -295,9 +295,9 @@ int main( int argc, char** argv ) {
   
   // initialize the wave propgation block
   if(args.isSet("restart-basepath")){
-    l_waveBlock->initScenario(l_originX, l_originY, l_scenario, true, true);
+    l_waveBlock->initScenario(l_originX, l_originY, *l_scenario, true, true);
   } else{
-     l_waveBlock->initScenario(l_originX, l_originY, l_scenario, false, true);
+     l_waveBlock->initScenario(l_originX, l_originY, *l_scenario, false, true);
   }
   
   //! time when the simulation ends.
@@ -451,7 +451,8 @@ int main( int argc, char** argv ) {
           l_dX, l_dY,
           l_blockPositionX*l_nXLocal, l_blockPositionY*l_nYLocal,
           l_originX, l_originY,
-          0); 
+          0, (args.isSet("restart-basepath"))? true : false); 
+      
 
   if(l_mpiRank == 0){  
     l_writer->initMetadataFile(l_backupMetadataName,l_totalTime, l_numberOfProcesses, l_nX, l_nY, l_numberOfCheckPoints, l_boundaryTypes, l_boundaryPositions);
@@ -460,10 +461,12 @@ int main( int argc, char** argv ) {
 
 
   // Write zero time step
+  if(!args.isSet("restart-basepath")){
   l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                           l_waveBlock->getDischarge_hu(),
                           l_waveBlock->getDischarge_hv(),
                           l_startTime);
+  }
   /**
    * Simulation.
    */

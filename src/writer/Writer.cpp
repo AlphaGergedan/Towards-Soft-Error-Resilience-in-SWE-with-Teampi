@@ -13,7 +13,7 @@
 std::shared_ptr<io::Writer> io::Writer::createWriterInstance(std::string &fileName, std::string &backupName, const Float2D &bathymetry,
                                           const BoundarySize &boundarySize, int nX, int nY,
                                           float dX, float dY, float offsetX, float offsetY,
-                                          float originX, float originY, int flush) {                                                 
+                                          float originX, float originY, int flush, bool existingFile) {                                                 
     #ifdef WRITENETCDF
     //construct a NetCdfWriter
     auto writer = std::make_shared<io::NetCdfWriter>( fileName, backupName,
@@ -21,6 +21,7 @@ std::shared_ptr<io::Writer> io::Writer::createWriterInstance(std::string &fileNa
             boundarySize,
             nX, nY,
             dX, dY,
+            existingFile,
             originX, originY,
             flush);         
     #else
@@ -30,7 +31,7 @@ std::shared_ptr<io::Writer> io::Writer::createWriterInstance(std::string &fileNa
             boundarySize,
             nX, nY,
             dX, dY,
-            offsetX, offsetY);         
+            offsetX, offsetY, existingFile);         
     #endif
     return writer;
 }

@@ -4,15 +4,20 @@
 #include <fstream>
 
 
-io::Reader::Reader(std::string i_backupFilename, int i_rank, int i_mpiSizeCurrent, int i_blockPosX, int i_blockPosY):
-                    backupFilename(i_backupFilename),
+io::Reader::Reader(std::string i_backupFilename, std::string i_outputFilename, int i_rank, int i_mpiSizeCurrent, int i_blockPosX, int i_blockPosY):
+                    backupFilename(i_backupFilename), outputFilename(i_outputFilename),
                     rank(i_rank), mpiCurrentSize(i_mpiSizeCurrent),
                     blockPosX(i_blockPosX), blockPosY(i_blockPosY){
     
     readMetadataFile(i_backupFilename + "_metadata");
 
-    std::string dataFileName = generateBaseFileName(backupFilename, blockPosX, blockPosY);
-    scenario = new SWE_LoadNetCdfScenario(dataFileName, totalTime, boundaryTypes, boudaryPositions);
+    std::string backupFileName = generateBaseFileName(backupFilename, blockPosX, blockPosY);
+    std::string outputFileName = generateBaseFileName(outputFileName, blockPosX, blockPosY);
+    std::ifstream src(backupFilename, std::ios::binary);
+	std::ofstream out(outputFileName, std::ios::binary);
+	out << src.rdbuf();
+    
+    scenario = new SWE_LoadNetCdfScenario(backupFileName, totalTime, boundaryTypes, boudaryPositions);
 
     
 }
