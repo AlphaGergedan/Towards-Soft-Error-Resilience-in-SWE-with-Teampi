@@ -430,6 +430,9 @@ class tools::Logger {
     	clocks[i_name] = clock();
     }
 
+    void resetTimer(const std::string &i_name){
+      timer[i_name] = 0;
+    }
     /**
      * Initialize the wall clock time.
      *

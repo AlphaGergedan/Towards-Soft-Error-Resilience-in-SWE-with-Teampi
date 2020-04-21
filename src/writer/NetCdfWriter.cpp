@@ -251,12 +251,13 @@ void io::NetCdfWriter::writeTimeStep( const Float2D &i_h,
 }
 
 void io::NetCdfWriter::commitBackup(){
-	nc_close(dataFile);
-	std::ifstream src(fileName, std::ios::binary);
-	std::ofstream out(backupName + "_temp", std::ios::binary);
-	out << src.rdbuf();
-	std::remove(backupName.c_str());
-	std::rename((backupName + "_temp").c_str(), (backupName + ".nc").c_str());
-	out.close();
-	nc_open(fileName.c_str(), NC_WRITE, &dataFile);
+	// nc_close(dataFile);
+	// std::ifstream src(fileName, std::ios::binary);
+	// std::ofstream out(backupName + "_temp", std::ios::binary);
+	// out << src.rdbuf();
+	// std::remove(backupName.c_str());
+	// std::rename((backupName + "_temp").c_str(), (backupName + ".nc").c_str());
+	// out.close();
+	// nc_open(fileName.c_str(), NC_WRITE, &dataFile);
+	nc_sync(dataFile);
 }
