@@ -27,6 +27,7 @@
  */
 
 #include "NetCdfWriter.hh"
+#include "../tools/Logger.hh"
 #include <string>
 #include <vector>
 #include <iostream>
@@ -60,6 +61,7 @@ io::NetCdfWriter::NetCdfWriter(const std::string &i_baseName, const std::string 
 	int status;
 	if (i_existingFile)
 	{	
+		tools::Logger::logger.printString(fileName);
 		int timeDim;
 		status = nc_open(fileName.c_str(), NC_WRITE, &dataFile);
 		if (status != NC_NOERR)
@@ -255,5 +257,6 @@ void io::NetCdfWriter::commitBackup(){
 	out << src.rdbuf();
 	std::remove(backupName.c_str());
 	std::rename((backupName + "_temp").c_str(), (backupName + ".nc").c_str());
+	out.close();
 	nc_open(fileName.c_str(), NC_WRITE, &dataFile);
 }
