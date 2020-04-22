@@ -3,7 +3,18 @@
 
 #include <vector>
 #include <string>
+#ifdef USEMPI
+#include <mpi.h>
+#ifndef MPI_INCLUDED
+#define MPI_INCLUDED
+#define MPI_INCLUDED_NETCDF
+#endif
+#endif
 #include <netcdf.h>
+#ifdef MPI_INCLUDED_NETCDF
+#undef MPI_INCLUDED
+#undef MPI_INCLUDED_NETCDF
+#endif
 
 #include "SWE_Scenario.hh"
 #include "tools/help.hh"
