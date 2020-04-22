@@ -128,9 +128,11 @@ target_include_directories(swe-single-node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/s
 
 if (ENABLE_NETCDF AND NETCDF_FOUND)
     message(STATUS "Enabled NetCDF writer")
+    message(${NETCDF_INCLUDE_DIRS})
     target_compile_definitions(swe PRIVATE WRITENETCDF)
     target_include_directories(swe PRIVATE ${NETCDF_INCLUDE_DIRS})
     target_link_libraries(swe PRIVATE ${NETCDF_LIBRARIES})
+    target_include_directories(swe-mpi PRIVATE ${NETCDF_INCLUDE_DIRS})
 else ()
     message(WARNING "Enabled VTK IO (Slow, fall-back, as NetCDF is unavailable)")
 endif()
