@@ -210,6 +210,8 @@ public:
 			}
 		}
 
+		//To reset getopt so that it does not fail when parsing second time due to failure
+		optind = 1;
 		return Success;
 	}
 
