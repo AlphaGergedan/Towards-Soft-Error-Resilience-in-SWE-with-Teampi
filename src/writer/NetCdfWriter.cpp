@@ -63,6 +63,7 @@ io::NetCdfWriter::NetCdfWriter(const std::string &i_baseName, const std::string 
 	{	
 		tools::Logger::logger.printString(fileName);
 		int timeDim;
+		
 		status = nc_open(fileName.c_str(), NC_WRITE, &dataFile);
 		if (status != NC_NOERR)
 		{
@@ -80,13 +81,16 @@ io::NetCdfWriter::NetCdfWriter(const std::string &i_baseName, const std::string 
 
 	}
 	else
-	{
+	{	
+		remove(fileName.c_str());
+
 		//create a netCDF-file, an existing file will be replaced
 		status = nc_create(fileName.c_str(), NC_NETCDF4, &dataFile);
 
 		//check if the netCDF-file creation constructor succeeded.
 		if (status != NC_NOERR)
-		{
+		{	
+			std::cout << "Error creating File: " << status <<  std::endl;
 			assert(false);
 			return;
 		}

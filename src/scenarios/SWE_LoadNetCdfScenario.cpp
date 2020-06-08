@@ -18,10 +18,10 @@ SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endT
                            boundaryPositions(i_boundaryPositions){
 
 
-    tools::Logger::logger.printString("Loading NetCdf: " + i_file);
     std::string file = i_file + ".nc";
+    tools::Logger::logger.printString("Loading NetCdf: " + file);
     int error = nc_open(file.c_str(), NC_NOWRITE, &dataFile);
-    tools::Logger::logger.printString(std::to_string(error));
+    tools::Logger::logger.printString("Reading Error: " + std::to_string(error));
     
     if(error != NC_NOERR){
         assert(false);
