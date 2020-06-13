@@ -95,7 +95,7 @@ void exchangeBottomTopGhostLayers( const int i_bottomNeighborRank, SWE_Block1D* 
                                    const MPI_Datatype i_mpiRow);
 
 #ifdef TEAMPI
-void createCheckpointDisk(){
+void createCheckpointDisk(std::vector<int> failed_teams){
   tools::Logger::logger.printString("Creating Checkpoint");
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -105,12 +105,21 @@ void createCheckpointDisk(){
                             l_t);
   if(rank == 0) l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
   l_writer->commitBackup();
-  MPI_Barrier(TMPI_GetWorldComm());
+
+  int send = 1;
+
+  for(const auto &i : failed_teams){
+    MPI_Send(&send, 1, MPI_INT, TMPI_TeamToWorldRank(rank, i), 0, TMPI_GetWorldComm());
+  }
+  
 }
 
 void loadCheckpointDisk(int reloadTeam){
   tools::Logger::logger.printString("Loading Checkpoint");
-  MPI_Barrier(TMPI_GetWorldComm());
+  MPI_Status status;
+  int recv, rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Recv(&recv, 1, MPI_INT,TMPI_TeamToWorldRank(rank, reloadTeam), 0, TMPI_GetWorldComm(), &status);
   if(!l_waveBlock) delete(l_waveBlock);
   if(!l_scenario) delete(l_scenario);
   l_waveBlock = nullptr;
@@ -194,7 +203,7 @@ int main( int argc, char** argv ) {
   #ifdef TEAMPI
   //! TeaMPI team number
   int l_teamNumber;
-  std::function<void(void)> create(createCheckpointDisk);
+  std::function<void(std::vector<int>)> create(createCheckpointDisk);
   std::function<void(int)> load(loadCheckpointDisk);
   TMPI_SetCreateCheckpointCallback(&create);
   TMPI_SetLoadCheckpointCallback(&load);
