@@ -1,7 +1,8 @@
 #!/bin/bash
-SWE_PATH="../build/swe-mpi"
+APPLICATION="../build/swe-mpi"
 MPI_PARAM="--mca mpi_ft_detector false"
 OUTPUT="log.txt"
+
 
 for((PROCS=2; PROCS<=8; PROCS=PROCS*2))
 do
@@ -9,10 +10,11 @@ do
     do
         for((SIZE=500; SIZE<=4000; SIZE=SIZE+500))
         do
-            echo "/opt/bin/mpiexec $MPI_PARAM -np $PROCS $SWE_PATH -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $i"
+            echo "/opt/bin/mpiexec $MPI_PARAM -np $PROCS $APPLICATION
+            -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $i"
             START=$(date +"%s")
 
-            /opt/bin/mpiexec $MPI_PARAM -np $PROCS $SWE_PATH -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $i
+            /opt/bin/mpiexec $MPI_PARAM -np $PROCS $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $i
 
             END=$(date +"%s")
             DURATION=$((END-START))

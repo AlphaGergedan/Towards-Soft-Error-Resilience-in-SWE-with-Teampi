@@ -168,10 +168,8 @@ int main( int argc, char** argv ) {
   switch (ret)
   {
   case tools::Args::Error:
-	  MPI_Abort(MPI_COMM_WORLD, -1);
-	  return 1;
+  	return 1;
   case tools::Args::Help:
-	  MPI_Finalize();
 	  return 0;
   default:
       break;
@@ -197,7 +195,7 @@ int main( int argc, char** argv ) {
   //! TeaMPI team number
   int l_teamNumber;
   std::function<void(void)> create(createCheckpointDisk);
-  std::function<void(bool)> load(loadCheckpointDisk);
+  std::function<void(int)> load(loadCheckpointDisk);
   TMPI_SetCreateCheckpointCallback(&create);
   TMPI_SetLoadCheckpointCallback(&load);
   TMPI_SetErrorHandlingStrategy(TMPI_WarmSpareErrorHandler);
