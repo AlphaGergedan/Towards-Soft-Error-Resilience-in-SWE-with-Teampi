@@ -11,10 +11,10 @@ option(ENABLE_VECTORIZATION         "Enable auto-vectorization of the block iter
 option(ENABLE_VECTORIZATION_VERBOSE "Enable verbose auto-vectorization reporting." OFF)
 option(ENABLE_TEAMPI "Enable use of TeaMPI replication" OFF)
 
-
 #todo: adapt these to supported solvers
 set(SOLVER_STRINGS "rusanov" "augRie" "fwave" "hlle")
-set(TEAMPI_PATH "/home/xile273/HPC/Code/teaMPI/lib")
+set(TEAMPI_PATH "~/HPC/Code/teaMPI/lib")
+set(ULFM_PATH "/opt")
 set(SOLVER "augRie" CACHE STRING "Default Riemann solver")
 set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVER_STRINGS})
 
@@ -36,7 +36,7 @@ find_library(TEAMPI_LIBRARY NAMES tmpi PATHS ${TEAMPI_PATH})
 add_executable(swe-single-node)
 add_library(swe)
 
-
+message(STATUS "MPI_LIB ${MPI_CXX_INCLUDE_DIRS}")
 
 if(SOLVER STREQUAL "augRie")
     target_compile_definitions(swe PUBLIC SOLVER_AUGRIE)
