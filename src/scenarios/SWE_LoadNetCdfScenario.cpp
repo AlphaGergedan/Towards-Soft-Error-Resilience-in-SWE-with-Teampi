@@ -21,9 +21,9 @@ SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endT
     std::string file = i_file + ".nc";
     tools::Logger::logger.printString("Loading NetCdf: " + file);
     int error = nc_open(file.c_str(), NC_NOWRITE, &dataFile);
-    tools::Logger::logger.printString("Reading Error: " + std::to_string(error));
     
     if(error != NC_NOERR){
+        fprintf(stderr, "Reading error: %s\n", nc_strerror(error));
         assert(false);
         return;
     }
