@@ -33,6 +33,10 @@
 #include <mpi.h>
 #endif
 
+#ifdef TEAMPI
+#include <teaMPI.h>
+#endif
+
 #include <map>
 #include <string>
 #include <iostream>
@@ -62,8 +66,12 @@ class tools::Logger {
     //remove new-line character
     humanReadableTime.erase(humanReadableTime.end() - 1);
 
+    #ifdef TEAMPI
+    return std::cout << humanReadableTime << " Team: " << TMPI_GetTeamNumber();
+    #else
     //return the stream
     return std::cout << humanReadableTime;
+    #endif
   }
 
   //! definition of the process rank (0 == master process)
