@@ -16,7 +16,7 @@
 module load slurm_setup
 module unload intel-mpi
 module load ulfm2/4.0.2u1-gcc8
-module load netcdf/4.7.2-gcc8-hdf5v1.10 
+module load netcdf-hdf5-all/4.7_hdf5-1.10-gcc8-serial   
 
 unset HOST
 unset HOSTNAME
@@ -44,7 +44,7 @@ export SPARES=$NUM_SPARES
 echo "mpiexec $MPI_PARAM -np $PROCS $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT"
 
 START=$(date +"%s")
-/opt/bin/mpiexec $MPI_PARAM -np $PROCS $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT &
+mpiexec $MPI_PARAM -np $PROCS $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT &
 sleep 20
 
 for i in $(seq 1 $FAILS); do
