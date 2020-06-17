@@ -65,4 +65,4 @@ echo "SWE terminated"
 END=$(date +"%s")
 DURATION=$((END-START))
 
-echo "SIZE: $SIZE, SPARES: $NUM_SPARES, PROCS: $PROCS, MTBF: $MTBF, FAILS: $FAILS" >> "teaMPI_log.txt"
+echo "SIZE: $SIZE, SPARES: $NUM_SPARES, PROCS: $PROCS, MTBF: $MTBF, FAILS: $FAILS, DURATION: $DURATION" >> "teaMPI_log.txt"
