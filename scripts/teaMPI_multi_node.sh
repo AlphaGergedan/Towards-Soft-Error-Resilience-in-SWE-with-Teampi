@@ -37,18 +37,19 @@ sleep 20
 
 for i in $(seq 1 $FAILS); do
   pids=($(pgrep swe-mpi))
-  num_pids=${#pids[@]}
   num_nodes=${#NODES[@]}
   if (($num_pids == 0)); then
     echo "This should not happen"
     break
   fi
 
-  fail_proc=$(( ( RANDOM % $num_pids ) ))
-  #fail_node=$(( (RANDOM % $num_nodes) ))
-  fail_node=0
+  fail_node=$(( (RANDOM % $num_nodes) ))
+  
+  while (($fail_node == 0)); then 
+    fail_node=$(( (RANDOM % $num_nodes) ))
+  done
 
-  echo "Killing proc $fail_proc of $num_pids still running procs on node ${NODES[$fail_node]}"
+  echo "Killing SWE on node ${NODES[$fail_node]}"
   if [ "$HOST" = "${NODES[$fail_node]}" ]; then
     kill -SIGKILL ${pids[$fail_proc]}
   fi
@@ -71,4 +72,6 @@ echo "SWE terminated"
 END=$(date +"%s")
 DURATION=$((END-START))
 
-echo "SIZE: $SIZE, SPARES: $NUM_SPARES, PROCS: $PROCS, MTBF: $MTBF, FAILS: $FAILS, DURATION: $DURATION" >> "teaMPI_log.txt"
+if [ "$HOST" = "${NODES[0]}" ]; then
+  echo "SIZE: $SIZE, SPARES: $NUM_SPARES, PROCS: $PROCS, MTBF: $MTBF, FAILS: $FAILS, DURATION: $DURATION" >> "teaMPI_log.txt"
+fi
