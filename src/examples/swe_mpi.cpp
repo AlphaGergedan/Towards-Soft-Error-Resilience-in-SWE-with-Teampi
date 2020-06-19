@@ -599,7 +599,7 @@ int main( int argc, char** argv ) {
     #ifdef TEAMPI
     //check for failures in teaMPI world comm
     MPI_Allreduce(nullptr, nullptr, 0, MPI_INT, MPI_MIN, MPI_COMM_SELF);
-    tools::Logger::logger.printString("returned from Heartbeat");
+    printf("Returned from heartbeat rank: %d, team %d\n", l_mpiRank, l_teamNumber);
     if(l_t >= l_endSimulation){
       l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                             l_waveBlock->getDischarge_hu(),
