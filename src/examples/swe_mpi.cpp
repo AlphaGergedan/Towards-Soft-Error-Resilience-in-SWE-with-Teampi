@@ -297,7 +297,7 @@ int main( int argc, char** argv ) {
     l_scenario = reader.getScenario();
     l_startTime = reader.getCurrentTime();
   } else{
-    l_scenario = new SWE_SplashingConeScenario();
+    l_scenario = new SWE_RadialDamBreakScenario();
   }
   #endif
 
