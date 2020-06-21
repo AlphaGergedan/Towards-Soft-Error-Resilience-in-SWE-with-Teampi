@@ -503,12 +503,16 @@ int main( int argc, char** argv ) {
  
 
   // Write zero time step
+  double outputIime = MPI_Wtime();
   if(!args.isSet("restart-basepath")){
   l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                           l_waveBlock->getDischarge_hu(),
                           l_waveBlock->getDischarge_hv(),
                           l_startTime);
   }
+  outputIime = MPI_Wtime() - outputIime;
+  tools::Logger::logger.printString("Writing zero time step took: " + std::to_string(outputIime) 
+                                  + " seconds.");
   /**
    * Simulation.
    */
