@@ -18,4 +18,5 @@ module unload intel-mpi
 module load ulfm2/4.0.2u1-gcc8
 module load netcdf-hdf5-all/4.7_hdf5-1.10-gcc8-serial  
 
-mpiexec -np $SLURM_NTASKS ./teaMPI_multi_node.sh
+#Parameters of wrapper Size, numSpares, MTBF, numFails
+mpiexec -np $SLURM_NTASKS ./teaMPI_multi_node.sh 4300 0 20 0
