@@ -1,0 +1,670 @@
+i22r03c03s02
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r06c03s02
+i22r03c03s06
+i22r03c03s07
+i22r03c03s09
+i22r03c03s08
+i22r03c03s05
+i22r06c03s01
+i22r06c02s12
+i22r03c03s03
+i22r06c02s11
+i22r06c02s10
+i22r06c02s09
+i22r03c03s04
+i22r07c04s12
+i22r07c04s11
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+../build/swe-mpi -x 4400 -y 4400 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 5488 on i22r06c03s02 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 24508 on i22r06c02s09 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 45604 on i22r06c03s01 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 54401 on i22r06c02s12 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 30916 on i22r06c02s10 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 19974 on i22r06c02s11 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 13985 on i22r03c03s07 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 33074 on i22r03c03s06 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 49615 on i22r07c04s11 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 46568 on i22r03c03s03 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 8562 on i22r03c03s05 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 5588 on i22r03c03s09 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 18207 on i22r07c04s12 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 49135 on i22r03c03s08 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 7591 on i22r03c03s02 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 13592 on i22r03c03s04 ready for attach
+Is Spare?0: 0
+Is Spare?9: 0
+Is Spare?11: 0
+Is Spare?5: 0
+Is Spare?12: 0
+Is Spare?10: 0
+Is Spare?6: 0
+Is Spare?8: 0
+Is Spare?7: 0
+Is Spare?13: 0
+Is Spare?15: 0
+Is Spare?2: 0
+Is Spare?3: 0
+Is Spare?1: 0
+Is Spare?14: 0
+Is Spare?4: 0
+------------TMPI SETTINGS------------
+Number of teams: 2
+Team size: 8
+Total ranks: 16
+
+Tshift(0->0->0) = 0
+Tshift(1->1->1) = 0.000277387
+Tshift(2->2->2) = 0.000163248
+Tshift(3->3->3) = 0.000287859
+Tshift(4->4->4) = -0.000231512
+Tshift(5->5->5) = 0.000373166
+Tshift(6->6->6) = 0.000246251
+Tshift(7->7->7) = 0.000310997
+Tshift(8->0->8) = -0.000114767
+Tshift(9->1->9) = 0.000401565
+Tshift(10->2->10) = 0.000209556
+Tshift(11->3->11) = 0.000395691
+Tshift(12->4->12) = -0.000198421
+Tshift(13->5->13) = 0.000180935
+Tshift(14->6->14) = 9.7354e-05
+Tshift(15->7->15) = 0.000223338
+---------------------------------------
+
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Inited Timing
+SWE rank 0
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+Mon Jun 22 18:03:49 2020 Team: 0	Number of MPI processes: 8
+Mon Jun 22 18:03:49 2020 Team: 0	Number of cells: 4400 * 4400 = 19360000
+Mon Jun 22 18:03:49 2020 Team: 0	Number of blocks: 4 * 2 = 8
+Mon Jun 22 18:03:49 2020 Team: 0	Cell size: 0.227273m * 0.227273m = 0.0516529 m^2
+Mon Jun 22 18:03:49 2020 Team: 0	process 0 - Number of cells: 1100 * 2200 = 2420000
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+SWE rank 3
+SWE rank 1
+SWE rank 4
+SWE rank 2
+SWE rank 6
+SWE rank 0
+
+*************************************************************
+SWE rank 5
+SWE rank 5
+SWE rank 7
+SWE rank 2
+SWE rank 3
+SWE rank 1
+SWE rank 6
+SWE rank 7
+SWE rank 4
+Mon Jun 22 18:03:49 2020 Team: 1	process 3 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 1	process 1 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 1	process 4 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 1	process 2 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 0	process 6 - Number of cells: 1100 * 2200 = 2420000
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+Mon Jun 22 18:03:49 2020 Team: 0	process 5 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 1	process 5 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 1	process 7 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 0	process 2 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 0	process 3 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 0	process 1 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 1	process 6 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 0	process 7 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 0	process 4 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 1	Number of MPI processes: 8
+Mon Jun 22 18:03:49 2020 Team: 1	Number of cells: 4400 * 4400 = 19360000
+Mon Jun 22 18:03:49 2020 Team: 1	Number of blocks: 4 * 2 = 8
+Mon Jun 22 18:03:49 2020 Team: 1	Cell size: 0.227273m * 0.227273m = 0.0516529 m^2
+Mon Jun 22 18:03:49 2020 Team: 1	process 0 - Number of cells: 1100 * 2200 = 2420000
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: 3 (left), 7 (right), 4 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: 2 (left), 6 (right), -2 (bottom), 5 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: 4 (left), -2 (right), -2 (bottom), 7 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: 3 (left), 7 (right), 4 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: 5 (left), -2 (right), 6 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: 5 (left), -2 (right), 6 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: -2 (left), 3 (right), 0 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: 0 (left), 4 (right), -2 (bottom), 3 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: 4 (left), -2 (right), -2 (bottom), 7 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	Connecting SWE blocks at left boundaries.
+Mon Jun 22 18:03:49 2020 Team: 0	Connecting SWE blocks at right boundaries.
+Mon Jun 22 18:03:49 2020 Team: 0	Connecting SWE blocks at bottom boundaries.
+Mon Jun 22 18:03:49 2020 Team: 0	Connecting SWE blocks at top boundaries.
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: 2 (left), 6 (right), -2 (bottom), 5 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: -2 (left), 2 (right), -2 (bottom), 1 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: 1 (left), 5 (right), 2 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: -2 (left), 3 (right), 0 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: 1 (left), 5 (right), 2 (bottom), -2 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	Connecting SWE blocks at left boundaries.
+Mon Jun 22 18:03:49 2020 Team: 1	Connecting SWE blocks at right boundaries.
+Mon Jun 22 18:03:49 2020 Team: 1	Connecting SWE blocks at bottom boundaries.
+Mon Jun 22 18:03:49 2020 Team: 1	Connecting SWE blocks at top boundaries.
+Mon Jun 22 18:03:49 2020 Team: 1	neighbors: -2 (left), 2 (right), -2 (bottom), 1 (top)
+Mon Jun 22 18:03:49 2020 Team: 1	Writing output file at time: 0 seconds
+Mon Jun 22 18:03:49 2020 Team: 0	neighbors: 0 (left), 4 (right), -2 (bottom), 3 (top)
+Mon Jun 22 18:03:49 2020 Team: 0	Writing output file at time: 0 seconds
+Mon Jun 22 18:03:49 2020 Team: 1	../build/backup/test1_team_1_metadata
+Mon Jun 22 18:03:49 2020 Team: 0	../build/backup/test1_team_0_metadata
+Writing zero time step took: 6.226933 seconds.
+Writing zero time step took: 6.235828 seconds.
+Writing zero time step took: 7.115431 seconds.
+Writing zero time step took: 8.822234 seconds.
+Writing zero time step took: 8.701765 seconds.
+
+------------------------------------------------------------------
+Mon Jun 22 18:03:58 2020 Team: 0	Everything is set up, starting the simulation.
+------------------------------------------------------------------
+Writing zero time step took: 9.040647 seconds.
+Writing zero time step took: 8.971008 seconds.
+Writing zero time step took: 8.857820 seconds.
+Writing zero time step took: 9.345746 seconds.
+Writing zero time step took: 9.381318 seconds.
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Errorhandler warm_spare_errh invoked on 4 of team: 1 with error: 74
+Errorhandler warm_spare_errh invoked on 3 of team: 1 with error: 76
+Errorhandler warm_spare_errh invoked on 5 of team: 1 with error: 76
+Errorhandler warm_spare_errh invoked on 2 of team: 1 with error: 76
+Errorhandler warm_spare_errh invoked on 7 of team: 1 with error: 76
+Writing zero time step took: 25.302849 seconds.
+Errorhandler warm_spare_errh invoked on 4 of team: 0 with error: 74
+Errorhandler warm_spare_errh invoked on 3 of team: 0 with error: 76
+Errorhandler warm_spare_errh invoked on 0 of team: 0 with error: 76
+Errorhandler warm_spare_errh invoked on 2 of team: 0 with error: 76
+Errorhandler warm_spare_errh invoked on 1 of team: 0 with error: 76
+Errorhandler warm_spare_errh invoked on 7 of team: 0 with error: 76
+Writing zero time step took: 28.723993 seconds.
+Writing zero time step took: 30.094037 seconds.
+Writing zero time step took: 31.827254 seconds.
+Errorhandler warm_spare_errh invoked on 1 of team: 1 with error: 76
+[i22r06c02s10:30916] [[35353,1],9] ompi_proc_mark_as_failed: I have been reported dead by someone else. This is abnormal: since the current rank is executing this code, the failure detector made a mistake. The root cause may be that this rank missed its heartbeat send deadlines, or that the observer process got very slow. One way to resolve such issues is to increase the detector timeout, or enable the threaded detector. This is abnormal; Aborting.
+[i22r06c02s10:30916] *** Process received signal ***
+[i22r06c02s10:30916] Signal: Aborted (6)
+[i22r06c02s10:30916] Signal code:  (-6)
+[i22r06c02s10:30916] [ 0] /lib64/libpthread.so.0(+0x132d0)[0x2ad5acd3a2d0]
+[i22r06c02s10:30916] [ 1] /lib64/libc.so.6(gsignal+0x110)[0x2ad5ad8b0520]
+[i22r06c02s10:30916] [ 2] /lib64/libc.so.6(abort+0x151)[0x2ad5ad8b1b01]
+[i22r06c02s10:30916] [ 3] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0x7071b)[0x2ad5ac8a271b]
+[i22r06c02s10:30916] [ 4] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0xf8a8b)[0x2ad5ac92aa8b]
+[i22r06c02s10:30916] [ 5] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0xf9a9a)[0x2ad5ac92ba9a]
+[i22r06c02s10:30916] [ 6] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0xfb2fd)[0x2ad5ac92d2fd]
+[i22r06c02s10:30916] [ 7] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(+0xb7f04)[0x2ad5ade0bf04]
+[i22r06c02s10:30916] [ 8] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(opal_libevent2022_event_base_loop+0xed6)[0x2ad5ade18cb6]
+[i22r06c02s10:30916] [ 9] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(+0x5fe93)[0x2ad5addb3e93]
+[i22r06c02s10:30916] [10] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(opal_progress+0x7b)[0x2ad5addb3fdb]
+[i22r06c02s10:30916] [11] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(mca_coll_ftagree_era_intra+0x10c)[0x2ad5ac92f1bc]
+[i22r06c02s10:30916] [12] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(ompi_comm_shrink_internal+0xbb)[0x2ad5ac899a0b]
+[i22r06c02s10:30916] [13] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(PMPIX_Comm_shrink+0x60)[0x2ad5aca4fc80]
+[i22r06c02s10:30916] [14] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(_Z25warm_spare_recreate_worldb+0x60)[0x2ad5ac67a998]
+[i22r06c02s10:30916] [15] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(_Z15warm_spare_errhPP19ompi_communicator_tPiz+0x1ce)[0x2ad5ac67a6b0]
+[i22r06c02s10:30916] [16] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(ompi_errhandler_invoke+0x115)[0x2ad5ac8a29d5]
+[i22r06c02s10:30916] [17] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(PMPI_Sendrecv+0x4b9)[0x2ad5ac8f2179]
+[i22r06c02s10:30916] [18] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(MPI_Sendrecv+0x94)[0x2ad5ac66d212]
+[i22r06c02s10:30916] [19] ../build/swe-mpi[0x412864]
+[i22r06c02s10:30916] [20] ../build/swe-mpi[0x41154f]
+[i22r06c02s10:30916] [21] /lib64/libc.so.6(__libc_start_main+0xea)[0x2ad5ad89b34a]
+[i22r06c02s10:30916] [22] ../build/swe-mpi[0x40f11a]
+[i22r06c02s10:30916] *** End of error message ***
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:14 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 2
+Team: 1 Failed: 3
+Reload Team: 2
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 3 in communicator MPI COMMUNICATOR 5 SPLIT FROM 0
+with errorcode 17.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+Errorhandler warm_spare_errh invoked on 6 of team: 0 with error: 74
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+./teaMPI_multi_node.sh: line 65: 30916 Aborted                 (core dumped) $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT
+[i22r03c03s02:07563] 10 more processes have sent help message help-mpi-api.txt / mpi-abort
+[i22r03c03s02:07563] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
