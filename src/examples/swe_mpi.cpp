@@ -511,8 +511,8 @@ int main( int argc, char** argv ) {
                           l_startTime);
   }
   outputIime = MPI_Wtime() - outputIime;
-  tools::Logger::logger.printString("Writing zero time step took: " + std::to_string(outputIime) 
-                                  + " seconds.");
+  std::cout << "Writing zero time step took: " << std::to_string(outputIime) 
+                                  << " seconds." << std::endl;
   /**
    * Simulation.
    */
