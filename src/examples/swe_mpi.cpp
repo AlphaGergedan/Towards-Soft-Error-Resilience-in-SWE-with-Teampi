@@ -99,13 +99,16 @@ void createCheckpointDisk(std::vector<int> failed_teams){
   tools::Logger::logger.printString("Creating Checkpoint");
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  double startBackup = MPI_Wtime();
   l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                             l_waveBlock->getDischarge_hu(),
                             l_waveBlock->getDischarge_hv(),
                             l_t);
   if(rank == 0) l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
   l_writer->commitBackup();
+  double dur = MPI_Wtime() - startBackup;
 
+  std::cout << "Rank: " << rank << " writing checkpoint took: " << dur << " seconds"
   int send = 1;
 
   for(const auto &i : failed_teams){
