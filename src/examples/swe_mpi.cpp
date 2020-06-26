@@ -108,7 +108,7 @@ void createCheckpointDisk(std::vector<int> failed_teams){
   l_writer->commitBackup();
   double dur = MPI_Wtime() - startBackup;
 
-  std::cout << "Rank: " << rank << " writing checkpoint took: " << dur << " seconds"
+  std::cout << "Rank: " << rank << " writing checkpoint took: " << dur << " seconds";
   int send = 1;
 
   for(const auto &i : failed_teams){
