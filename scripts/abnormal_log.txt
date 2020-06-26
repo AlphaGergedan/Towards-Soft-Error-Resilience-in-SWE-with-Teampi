@@ -1,0 +1,901 @@
+i22r02c04s05
+
+i22r02c04s05: knows i22r02c04s05
+i22r02c04s05: knows i22r02c04s06
+i22r02c04s05: knows i22r02c04s07
+i22r02c04s05: knows i22r02c04s08
+i22r02c04s05: knows i22r02c04s09
+i22r02c04s05: knows i22r02c04s10
+i22r02c04s05: knows i22r02c04s11
+i22r02c04s05: knows i22r02c04s12
+i22r02c04s05: knows i22r02c05s01
+i22r02c04s05: knows i22r02c05s02
+i22r02c04s05: knows i22r06c05s10
+i22r02c04s05: knows i22r06c05s11
+i22r02c04s05: knows i22r06c05s12
+i22r02c04s05: knows i22r07c02s11
+i22r02c04s05: knows i22r07c02s12
+i22r02c04s05: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r02c04s11
+i22r02c04s12
+i22r07c02s11
+i22r02c04s06
+i22r02c05s02
+i22r02c04s09
+i22r02c04s10
+i22r06c05s12
+i22r02c04s08
+i22r06c05s11
+i22r07c04s07
+i22r06c05s10
+i22r02c04s07
+i22r07c02s12
+i22r02c05s01
+
+i22r02c04s11: knows i22r02c04s05
+i22r02c04s11: knows i22r02c04s06
+i22r02c04s11: knows i22r02c04s07
+i22r02c04s11: knows i22r02c04s08
+i22r02c04s11: knows i22r02c04s09
+i22r02c04s11: knows i22r02c04s10
+i22r02c04s11: knows i22r02c04s11
+i22r02c04s11: knows i22r02c04s12
+i22r02c04s11: knows i22r02c05s01
+i22r02c04s11: knows i22r02c05s02
+i22r02c04s11: knows i22r06c05s10
+i22r02c04s11: knows i22r06c05s11
+i22r02c04s11: knows i22r06c05s12
+i22r02c04s11: knows i22r07c02s11
+i22r02c04s11: knows i22r07c02s12
+i22r02c04s11: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+i22r02c04s12: knows i22r02c04s05
+i22r02c04s12: knows i22r02c04s06
+i22r02c04s12: knows i22r02c04s07
+i22r02c04s12: knows i22r02c04s08
+i22r02c04s12: knows i22r02c04s09
+i22r02c04s12: knows i22r02c04s10
+i22r02c04s12: knows i22r02c04s11
+i22r02c04s12: knows i22r02c04s12
+i22r02c04s12: knows i22r02c05s01
+i22r02c04s12: knows i22r02c05s02
+i22r02c04s12: knows i22r06c05s10
+i22r02c04s12: knows i22r06c05s11
+i22r02c04s12: knows i22r06c05s12
+i22r02c04s12: knows i22r07c02s11
+i22r02c04s12: knows i22r07c02s12
+i22r02c04s12: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+i22r07c02s11: knows i22r02c04s05
+i22r07c02s11: knows i22r02c04s06
+i22r07c02s11: knows i22r02c04s07
+i22r07c02s11: knows i22r02c04s08
+i22r07c02s11: knows i22r02c04s09
+i22r07c02s11: knows i22r02c04s10
+i22r07c02s11: knows i22r02c04s11
+i22r07c02s11: knows i22r02c04s12
+i22r07c02s11: knows i22r02c05s01
+i22r07c02s11: knows i22r02c05s02
+i22r07c02s11: knows i22r06c05s10
+i22r07c02s11: knows i22r06c05s11
+i22r07c02s11: knows i22r06c05s12
+i22r07c02s11: knows i22r07c02s11
+i22r07c02s11: knows i22r07c02s12
+i22r07c02s11: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+i22r02c04s06: knows i22r02c04s05
+i22r02c04s06: knows i22r02c04s06
+i22r02c04s06: knows i22r02c04s07
+i22r02c04s06: knows i22r02c04s08
+i22r02c04s06: knows i22r02c04s09
+i22r02c04s06: knows i22r02c04s10
+i22r02c04s06: knows i22r02c04s11
+i22r02c04s06: knows i22r02c04s12
+i22r02c04s06: knows i22r02c05s01
+i22r02c04s06: knows i22r02c05s02
+i22r02c04s06: knows i22r06c05s10
+i22r02c04s06: knows i22r06c05s11
+i22r02c04s06: knows i22r06c05s12
+i22r02c04s06: knows i22r07c02s11
+i22r02c04s06: knows i22r07c02s12
+i22r02c04s06: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+
+i22r02c04s09: knows i22r02c04s05
+i22r02c04s09: knows i22r02c04s06
+i22r02c04s09: knows i22r02c04s07
+i22r02c04s09: knows i22r02c04s08
+i22r02c04s09: knows i22r02c04s09
+i22r02c04s09: knows i22r02c04s10
+i22r02c04s09: knows i22r02c04s11
+i22r02c04s09: knows i22r02c04s12
+i22r02c04s09: knows i22r02c05s01
+i22r02c04s09: knows i22r02c05s02
+i22r02c04s09: knows i22r06c05s10
+i22r02c04s09: knows i22r06c05s11
+i22r02c04s09: knows i22r06c05s12
+i22r02c04s09: knows i22r07c02s11
+i22r02c04s09: knows i22r07c02s12
+i22r02c04s09: knows i22r07c04s07
+i22r02c05s02: knows i22r02c04s05
+i22r02c05s02: knows i22r02c04s06
+i22r02c05s02: knows i22r02c04s07
+i22r02c05s02: knows i22r02c04s08
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r02c05s02: knows i22r02c04s09
+i22r02c05s02: knows i22r02c04s10
+i22r02c05s02: knows i22r02c04s11
+i22r02c05s02: knows i22r02c04s12
+i22r02c05s02: knows i22r02c05s01
+
+i22r02c04s10: knows i22r02c04s05
+i22r02c04s10: knows i22r02c04s06
+
+i22r06c05s12: knows i22r02c04s05
+i22r06c05s12: knows i22r02c04s06
+i22r06c05s12: knows i22r02c04s07
+i22r06c05s12: knows i22r02c04s08
+i22r06c05s12: knows i22r02c04s09
+i22r02c05s02: knows i22r02c05s02
+i22r02c05s02: knows i22r06c05s10
+i22r02c05s02: knows i22r06c05s11
+
+
+i22r06c05s11: knows i22r02c04s05
+i22r06c05s11: knows i22r02c04s06
+i22r06c05s11: knows i22r02c04s07
+i22r06c05s11: knows i22r02c04s08
+i22r02c04s10: knows i22r02c04s07
+i22r02c04s10: knows i22r02c04s08
+i22r02c04s10: knows i22r02c04s09
+i22r02c04s10: knows i22r02c04s10
+i22r02c04s10: knows i22r02c04s11
+i22r02c04s10: knows i22r02c04s12
+i22r02c04s10: knows i22r02c05s01
+i22r02c04s10: knows i22r02c05s02
+i22r02c04s10: knows i22r06c05s10
+i22r02c04s10: knows i22r06c05s11
+i22r02c04s10: knows i22r06c05s12
+i22r02c04s10: knows i22r07c02s11
+i22r02c04s10: knows i22r07c02s12
+i22r06c05s12: knows i22r02c04s10
+i22r06c05s12: knows i22r02c04s11
+i22r06c05s12: knows i22r02c04s12
+i22r06c05s12: knows i22r02c05s01
+i22r06c05s12: knows i22r02c05s02
+i22r06c05s12: knows i22r06c05s10
+i22r06c05s12: knows i22r06c05s11
+i22r06c05s12: knows i22r06c05s12
+i22r06c05s12: knows i22r07c02s11
+i22r06c05s12: knows i22r07c02s12
+i22r02c05s02: knows i22r06c05s12
+i22r02c05s02: knows i22r07c02s11
+i22r07c04s07: knows i22r02c04s05
+i22r06c05s11: knows i22r02c04s09
+i22r06c05s11: knows i22r02c04s10
+i22r06c05s11: knows i22r02c04s11
+i22r06c05s11: knows i22r02c04s12
+i22r06c05s11: knows i22r02c05s01
+i22r06c05s11: knows i22r02c05s02
+i22r06c05s11: knows i22r06c05s10
+i22r06c05s11: knows i22r06c05s11
+i22r02c04s10: knows i22r07c04s07
+i22r06c05s12: knows i22r07c04s07
+i22r02c05s02: knows i22r07c02s12
+i22r07c04s07: knows i22r02c04s06
+i22r06c05s11: knows i22r06c05s12
+i22r06c05s11: knows i22r07c02s11
+i22r06c05s11: knows i22r07c02s12
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+i22r06c05s10: knows i22r02c04s05
+i22r06c05s10: knows i22r02c04s06
+i22r06c05s10: knows i22r02c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+i22r02c05s02: knows i22r07c04s07
+i22r07c04s07: knows i22r02c04s07
+i22r07c04s07: knows i22r02c04s08
+i22r06c05s11: knows i22r07c04s07
+i22r06c05s10: knows i22r02c04s08
+i22r06c05s10: knows i22r02c04s09
+i22r06c05s10: knows i22r02c04s10
+i22r06c05s10: knows i22r02c04s11
+i22r06c05s10: knows i22r02c04s12
+i22r06c05s10: knows i22r02c05s01
+i22r06c05s10: knows i22r02c05s02
+i22r06c05s10: knows i22r06c05s10
+i22r06c05s10: knows i22r06c05s11
+i22r06c05s10: knows i22r06c05s12
+i22r06c05s10: knows i22r07c02s11
+i22r02c04s07: knows i22r02c04s05
+i22r02c04s07: knows i22r02c04s06
+i22r02c04s07: knows i22r02c04s07
+i22r02c04s07: knows i22r02c04s08
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r07c04s07: knows i22r02c04s09
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r06c05s10: knows i22r07c02s12
+i22r06c05s10: knows i22r07c04s07
+i22r02c04s07: knows i22r02c04s09
+i22r02c04s07: knows i22r02c04s10
+i22r02c04s07: knows i22r02c04s11
+i22r07c04s07: knows i22r02c04s10
+i22r07c04s07: knows i22r02c04s11
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r02c04s07: knows i22r02c04s12
+i22r02c04s07: knows i22r02c05s01
+i22r07c04s07: knows i22r02c04s12
+i22r07c04s07: knows i22r02c05s01
+i22r02c04s07: knows i22r02c05s02
+i22r02c04s07: knows i22r06c05s10
+i22r02c04s07: knows i22r06c05s11
+i22r07c04s07: knows i22r02c05s02
+i22r02c04s07: knows i22r06c05s12
+i22r02c04s07: knows i22r07c02s11
+i22r07c04s07: knows i22r06c05s10
+i22r07c04s07: knows i22r06c05s11
+i22r02c04s07: knows i22r07c02s12
+i22r07c04s07: knows i22r06c05s12
+i22r07c04s07: knows i22r07c02s11
+
+i22r07c02s12: knows i22r02c04s05
+i22r07c02s12: knows i22r02c04s06
+i22r07c02s12: knows i22r02c04s07
+i22r07c02s12: knows i22r02c04s08
+i22r02c04s07: knows i22r07c04s07
+i22r07c04s07: knows i22r07c02s12
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r07c04s07: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+i22r07c02s12: knows i22r02c04s09
+i22r07c02s12: knows i22r02c04s10
+i22r07c02s12: knows i22r02c04s11
+i22r07c02s12: knows i22r02c04s12
+i22r07c02s12: knows i22r02c05s01
+i22r07c02s12: knows i22r02c05s02
+i22r07c02s12: knows i22r06c05s10
+i22r07c02s12: knows i22r06c05s11
+i22r07c02s12: knows i22r06c05s12
+i22r07c02s12: knows i22r07c02s11
+i22r07c02s12: knows i22r07c02s12
+i22r07c02s12: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+i22r02c05s01: knows i22r02c04s05
+i22r02c05s01: knows i22r02c04s06
+i22r02c05s01: knows i22r02c04s07
+i22r02c05s01: knows i22r02c04s08
+i22r02c05s01: knows i22r02c04s09
+i22r02c05s01: knows i22r02c04s10
+i22r02c05s01: knows i22r02c04s11
+i22r02c05s01: knows i22r02c04s12
+i22r02c05s01: knows i22r02c05s01
+i22r02c05s01: knows i22r02c05s02
+i22r02c05s01: knows i22r06c05s10
+i22r02c05s01: knows i22r06c05s11
+i22r02c05s01: knows i22r06c05s12
+i22r02c05s01: knows i22r07c02s11
+i22r02c05s01: knows i22r07c02s12
+i22r02c05s01: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+i22r02c04s08: knows i22r02c04s05
+i22r02c04s08: knows i22r02c04s06
+i22r02c04s08: knows i22r02c04s07
+i22r02c04s08: knows i22r02c04s08
+i22r02c04s08: knows i22r02c04s09
+i22r02c04s08: knows i22r02c04s10
+i22r02c04s08: knows i22r02c04s11
+i22r02c04s08: knows i22r02c04s12
+i22r02c04s08: knows i22r02c05s01
+i22r02c04s08: knows i22r02c05s02
+i22r02c04s08: knows i22r06c05s10
+i22r02c04s08: knows i22r06c05s11
+i22r02c04s08: knows i22r06c05s12
+i22r02c04s08: knows i22r07c02s11
+i22r02c04s08: knows i22r07c02s12
+i22r02c04s08: knows i22r07c04s07
+../build/swe-mpi -x 5000 -y 5000 -o ../build/output/test1 -b ../build/backup/test1 -i 5
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 3230 on i22r02c04s05 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 28534 on i22r02c04s11 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 56789 on i22r02c04s12 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 34243 on i22r07c02s11 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 38375 on i22r06c05s12 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 54249 on i22r02c04s10 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 37662 on i22r02c04s06 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 51884 on i22r02c05s02 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 22563 on i22r07c02s12 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 53721 on i22r06c05s11 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 21205 on i22r02c04s09 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 41118 on i22r02c04s07 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 48566 on i22r06c05s10 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 24874 on i22r07c04s07 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 6546 on i22r02c04s08 ready for attach
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 21337 on i22r02c05s01 ready for attach
+Is Spare?0: 0
+Is Spare?8: 0
+Is Spare?14: 0
+Is Spare?4: 0
+Is Spare?11: 0
+Is Spare?3: 0
+Is Spare?10: 0
+Is Spare?6: 0
+Is Spare?7: 0
+Is Spare?15: 0
+Is Spare?13: 0
+Is Spare?1: 0
+Is Spare?5: 0
+Is Spare?2: 0
+Is Spare?9: 0
+Is Spare?12: 0
+------------TMPI SETTINGS------------
+Number of teams: 2
+Team size: 8
+Total ranks: 16
+
+Tshift(0->0->0) = 0
+Tshift(1->1->1) = 0.000334602
+Tshift(2->2->2) = -8.009e-06
+Tshift(3->3->3) = 0.000247976
+Tshift(4->4->4) = -0.00024566
+Tshift(5->5->5) = 0.000232484
+Tshift(6->6->6) = -3.2795e-05
+Tshift(7->7->7) = 0.00015817
+Tshift(8->0->8) = -0.000148658
+Tshift(9->1->9) = 0.000225232
+Tshift(10->2->10) = 2.062e-05
+Tshift(11->3->11) = 0.000141841
+Tshift(12->4->12) = -0.000379377
+Tshift(13->5->13) = 0.00019054
+Tshift(14->6->14) = 3.0983e-05
+Tshift(15->7->15) = 0.000139237
+---------------------------------------
+
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Inited Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Started init Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+Inited Timing
+SWE rank 0
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+Sat Jun 20 18:35:12 2020 Team: 0	Number of MPI processes: 8
+Sat Jun 20 18:35:12 2020 Team: 0	Number of cells: 5000 * 5000 = 25000000
+Sat Jun 20 18:35:12 2020 Team: 0	Number of blocks: 4 * 2 = 8
+Sat Jun 20 18:35:12 2020 Team: 0	Cell size: 0.2m * 0.2m = 0.04 m^2
+Sat Jun 20 18:35:12 2020 Team: 0	process 0 - Number of cells: 1250 * 2500 = 3125000
+SWE rank 3
+Inited Timing
+SWE rank 4
+SWE rank 4
+SWE rank 7
+Inited Timing
+SWE rank 7
+SWE rank 3
+SWE rank 1
+SWE rank 6
+Sat Jun 20 18:35:12 2020 Team: 0	process 3 - Number of cells: 1250 * 2500 = 3125000
+SWE rank 5
+SWE rank 0
+
+*************************************************************
+SWE rank 2
+SWE rank 6
+Sat Jun 20 18:35:12 2020 Team: 1	process 4 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 0	process 4 - Number of cells: 1250 * 2500 = 3125000
+SWE rank 2
+Sat Jun 20 18:35:12 2020 Team: 0	process 7 - Number of cells: 1250 * 2500 = 3125000
+SWE rank 1
+Sat Jun 20 18:35:12 2020 Team: 1	process 7 - Number of cells: 1250 * 2500 = 3125000
+SWE rank 5
+Sat Jun 20 18:35:12 2020 Team: 1	process 3 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 0	process 1 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 1	process 6 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 0	process 5 - Number of cells: 1250 * 2500 = 3125000
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+Sat Jun 20 18:35:12 2020 Team: 1	process 2 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 0	process 6 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 0	process 2 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 1	process 1 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 1	process 5 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 1	Number of MPI processes: 8
+Sat Jun 20 18:35:12 2020 Team: 1	Number of cells: 5000 * 5000 = 25000000
+Sat Jun 20 18:35:12 2020 Team: 1	Number of blocks: 4 * 2 = 8
+Sat Jun 20 18:35:12 2020 Team: 1	Cell size: 0.2m * 0.2m = 0.04 m^2
+Sat Jun 20 18:35:12 2020 Team: 1	process 0 - Number of cells: 1250 * 2500 = 3125000
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: 4 (left), -2 (right), -2 (bottom), 7 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: 3 (left), 7 (right), 4 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: 5 (left), -2 (right), 6 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: 0 (left), 4 (right), -2 (bottom), 3 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: 1 (left), 5 (right), 2 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: 5 (left), -2 (right), 6 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: 1 (left), 5 (right), 2 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: 0 (left), 4 (right), -2 (bottom), 3 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: 2 (left), 6 (right), -2 (bottom), 5 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	Connecting SWE blocks at left boundaries.
+Sat Jun 20 18:35:12 2020 Team: 0	Connecting SWE blocks at right boundaries.
+Sat Jun 20 18:35:12 2020 Team: 0	Connecting SWE blocks at bottom boundaries.
+Sat Jun 20 18:35:12 2020 Team: 0	Connecting SWE blocks at top boundaries.
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: -2 (left), 2 (right), -2 (bottom), 1 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: -2 (left), 3 (right), 0 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	Connecting SWE blocks at left boundaries.
+Sat Jun 20 18:35:12 2020 Team: 1	Connecting SWE blocks at right boundaries.
+Sat Jun 20 18:35:12 2020 Team: 1	Connecting SWE blocks at bottom boundaries.
+Sat Jun 20 18:35:12 2020 Team: 1	Connecting SWE blocks at top boundaries.
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: -2 (left), 2 (right), -2 (bottom), 1 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: 3 (left), 7 (right), 4 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: 2 (left), 6 (right), -2 (bottom), 5 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	neighbors: -2 (left), 3 (right), 0 (bottom), -2 (top)
+Sat Jun 20 18:35:12 2020 Team: 1	Writing output file at time: 0 seconds
+Sat Jun 20 18:35:12 2020 Team: 0	neighbors: 4 (left), -2 (right), -2 (bottom), 7 (top)
+Sat Jun 20 18:35:12 2020 Team: 0	Writing output file at time: 0 seconds
+Sat Jun 20 18:35:12 2020 Team: 1	../build/backup/test1_team_1_metadata
+Sat Jun 20 18:35:12 2020 Team: 0	../build/backup/test1_team_0_metadata
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+Waiting until SWE terminates
+
+------------------------------------------------------------------
+Sat Jun 20 18:35:59 2020 Team: 0	Everything is set up, starting the simulation.
+------------------------------------------------------------------
+Errorhandler warm_spare_errh invoked on 1 of team: 0 with error: 74
+Errorhandler warm_spare_errh invoked on 7 of team: 0 with error: 76
+Errorhandler warm_spare_errh invoked on 0 of team: 0 with error: 76
+Errorhandler warm_spare_errh invoked on 4 of team: 0 with error: 76
+Errorhandler warm_spare_errh invoked on 5 of team: 1 with error: 74
+Errorhandler warm_spare_errh invoked on 3 of team: 1 with error: 76
+Errorhandler warm_spare_errh invoked on 6 of team: 1 with error: 76
+Errorhandler warm_spare_errh invoked on 1 of team: 1 with error: 76
+[i22r02c05s02:51884] [[9008,1],9] ompi_proc_mark_as_failed: I have been reported dead by someone else. This is abnormal: since the current rank is executing this code, the failure detector made a mistake. The root cause may be that this rank missed its heartbeat send deadlines, or that the observer process got very slow. One way to resolve such issues is to increase the detector timeout, or enable the threaded detector. This is abnormal; Aborting.
+[i22r02c05s02:51884] *** Process received signal ***
+[i22r02c05s02:51884] Signal: Aborted (6)
+[i22r02c05s02:51884] Signal code:  (-6)
+[i22r02c05s02:51884] [ 0] /lib64/libpthread.so.0(+0x132d0)[0x2b8eb047e2d0]
+[i22r02c05s02:51884] [ 1] /lib64/libc.so.6(gsignal+0x110)[0x2b8eb0ff4520]
+[i22r02c05s02:51884] [ 2] /lib64/libc.so.6(abort+0x151)[0x2b8eb0ff5b01]
+[i22r02c05s02:51884] [ 3] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0x7071b)[0x2b8eaffe671b]
+[i22r02c05s02:51884] [ 4] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0xf8a8b)[0x2b8eb006ea8b]
+[i22r02c05s02:51884] [ 5] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0xf9a9a)[0x2b8eb006fa9a]
+[i22r02c05s02:51884] [ 6] Failed Rank:0 failed Team 0
+Failed Rank:2 failed Team 0
+Failed Rank:3 failed Team 0
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:0 failed Team 0
+Failed Rank:2 failed Team 0
+Failed Rank:3 failed Team 0
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:10 failed Team 1
+Failed Rank:11 failed Team 1
+Failed Rank:12 failed Team 1
+Failed Rank:13 failed Team 1
+Failed Rank:14 failed Team 1
+Failed Rank:15 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 5
+Team: 1 Failed: 8
+Reload Team: 2
+/dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(+0xfb2fd)[0x2b8eb00712fd]
+[i22r02c05s02:51884] [ 7] Failed Rank:0 failed Team 0
+Failed Rank:2 failed Team 0
+Failed Rank:3 failed Team 0
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:10 failed Team 1
+Failed Rank:11 failed Team 1
+Failed Rank:12 failed Team 1
+Failed Rank:13 failed Team 1
+Failed Rank:14 failed Team 1
+Failed Rank:15 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 5
+Team: 1 Failed: 8
+Reload Team: 2
+/dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(+0xb7f04)[0x2b8eb154ff04]
+[i22r02c05s02:51884] [ 8] Failed Rank:10 failed Team 1
+Failed Rank:11 failed Team 1
+Failed Rank:12 failed Team 1
+Failed Rank:13 failed Team 1
+Failed Rank:14 failed Team 1
+Failed Rank:15 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 5
+Team: 1 Failed: 8
+Reload Team: 2
+/dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(opal_libevent2022_event_base_loop+0xed6)[0x2b8eb155ccb6]
+[i22r02c05s02:51884] [ 9] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(+0x5fe93)[0x2b8eb14f7e93]
+[i22r02c05s02:51884] [10] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libopen-pal.so.40(opal_progress+0x7b)[0x2b8eb14f7fdb]
+[i22r02c05s02:51884] [11] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(mca_coll_ftagree_era_intra+0x10c)[0x2b8eb00731bc]
+[i22r02c05s02:51884] [12] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(ompi_comm_shrink_internal+0xbb)[0x2b8eaffdda0b]
+[i22r02c05s02:51884] [13] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(PMPIX_Comm_shrink+0x60)[0x2b8eb0193c80]
+[i22r02c05s02:51884] [14] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(_Z25warm_spare_recreate_worldb+0x60)[0x2b8eafdb9998]
+[i22r02c05s02:51884] [15] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(_Z15warm_spare_errhPP19ompi_communicator_tPiz+0x1ce)[0x2b8eafdb96b0]
+[i22r02c05s02:51884] [16] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(ompi_errhandler_invoke+0x115)[0x2b8eaffe69d5]
+[i22r02c05s02:51884] [17] /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ulfm2/4.0.2u1-gcc-d5bhdcy/lib/libmpi.so.40(PMPI_Sendrecv+0x4b9)[0x2b8eb0036179]
+[i22r02c05s02:51884] [18] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(MPI_Sendrecv+0x94)[0x2b8eafdac212]
+[i22r02c05s02:51884] [19] ../build/swe-mpi[0x4127b5]
+[i22r02c05s02:51884] [20] ../build/swe-mpi[0x4114b7]
+[i22r02c05s02:51884] [21] /lib64/libc.so.6(__libc_start_main+0xea)[0x2b8eb0fdf34a]
+[i22r02c05s02:51884] [22] ../build/swe-mpi[0x40f11a]
+[i22r02c05s02:51884] *** End of error message ***
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 7 in communicator MPI COMMUNICATOR 5 SPLIT FROM 0
+with errorcode 17.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+./teaMPI_multi_node.sh: line 69: 51884 Aborted                 (core dumped) $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT
+SWE terminated
+Failed Rank:0 failed Team 0
+Failed Rank:1 failed Team 0
+Failed Rank:2 failed Team 0
+Failed Rank:3 failed Team 0
+Failed Rank:4 failed Team 0
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:7 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:10 failed Team 1
+Failed Rank:12 failed Team 1
+Failed Rank:13 failed Team 1
+Failed Rank:14 failed Team 1
+Failed Rank:15 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 8
+Team: 1 Failed: 7
+Reload Team: 2
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+SWE terminated
+[i22r02c04s05:03201] 3 more processes have sent help message help-mpi-api.txt / mpi-abort
+[i22r02c04s05:03201] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
+SWE terminated
+SWE terminated
+
+------------------------------------------------------------------
+Sat Jun 20 18:36:45 2020 Team: 1	Everything is set up, starting the simulation.
+------------------------------------------------------------------
+Failed Rank:1 failed Team 0
+Failed Rank:2 failed Team 0
+Failed Rank:3 failed Team 0
+Failed Rank:4 failed Team 0
+Failed Rank:5 failed Team 0
+Failed Rank:6 failed Team 0
+Failed Rank:7 failed Team 0
+Failed Rank:8 failed Team 1
+Failed Rank:9 failed Team 1
+Failed Rank:10 failed Team 1
+Failed Rank:11 failed Team 1
+Failed Rank:12 failed Team 1
+Failed Rank:13 failed Team 1
+Failed Rank:14 failed Team 1
+Failed Rank:15 failed Team 1
+Team: 2 Failed: 0
+Team: 0 Failed: 7
+Team: 1 Failed: 8
+Reload Team: 2
+SWE terminated
+SWE terminated
+[i22r02c04s05:03201] 1 more process has sent help message help-mpi-api.txt / mpi-abort
+SWE terminated

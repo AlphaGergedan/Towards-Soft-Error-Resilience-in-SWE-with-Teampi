@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 unset HOST
 unset HOSTNAME
@@ -23,13 +23,13 @@ NUM_SPARES=${2:-0}
 PROCS=$SLURM_NTASKS
 MTBF=${3:-30}
 HEARTBEAT=5
-FAILS=${3:-0}
+FAILS=${4:-0}
 RANDOM=0
 
 export SPARES=$NUM_SPARES
-export OMP_NUM_THREADS=7
+export OMP_NUM_THREADS=28
 
-echo "$APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT"
+echo "SIZE: $SIZE, SPARES: $SPARES, MTBF: $MTBF, FAILS: $FAILS"
 
 START=$(date +"%s")
 $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT &
@@ -45,7 +45,7 @@ for i in $(seq 1 $FAILS); do
 
   fail_node=$(( (RANDOM % $num_nodes) ))
   
-  while (($fail_node == 0)); then 
+  while (($fail_node == 0)); do 
     fail_node=$(( (RANDOM % $num_nodes) ))
   done
 

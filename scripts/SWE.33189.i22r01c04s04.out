@@ -1,0 +1,261 @@
+srun: Warning: can't run 1 processes on 16 nodes, setting nnodes to 1
+i22r01c04s04
+
+i22r01c04s04: knows i22r01c04s04
+i22r01c04s04: knows i22r01c04s05
+i22r01c04s04: knows i22r01c04s06
+i22r01c04s04: knows i22r01c04s07
+i22r01c04s04: knows i22r01c04s08
+i22r01c04s04: knows i22r01c04s09
+i22r01c04s04: knows i22r01c04s10
+i22r01c04s04: knows i22r01c04s11
+i22r01c04s04: knows i22r01c04s12
+i22r01c04s04: knows i22r01c05s01
+i22r01c04s04: knows i22r01c05s02
+i22r01c04s04: knows i22r01c05s03
+i22r01c04s04: knows i22r01c05s04
+i22r01c04s04: knows i22r01c05s05
+i22r01c04s04: knows i22r01c05s06
+i22r01c04s04: knows i22r01c05s07
+SIZE: 4200, SPARES: 0, MTBF: 30, FAILS: 0
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 39360 on i22r01c04s04 ready for attach
+[i22r01c04s04:39360:0:39360] Caught signal 8 (Floating point exception: integer divide by zero)
+==== backtrace ====
+    0  /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ucx/1.6.0-intel-pdnsahp/lib/libucs.so.0(+0x252db) [0x2aea569fb2db]
+    1  /dss/dsshome1/lrz/sys/spack/staging/20.1.1/opt/haswell/ucx/1.6.0-intel-pdnsahp/lib/libucs.so.0(+0x24ed6) [0x2aea569faed6]
+    2  /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(_Z14initialiseTMPIPiPPPc+0x3af) [0x2aea54b7633f]
+    3  /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(MPI_Init+0x39) [0x2aea54b6a97e]
+    4  ../build/swe-mpi() [0x4100de]
+    5  /lib64/libc.so.6(__libc_start_main+0xea) [0x2aea55d9e34a]
+    6  ../build/swe-mpi() [0x40f11a]
+===================
+/dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/SWE/scripts/./teaMPI_multi_node.sh: line 36: 39360 Floating point exception(core dumped) $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT
+Waiting until SWE terminates
+SWE terminated
+srun: Warning: can't run 1 processes on 16 nodes, setting nnodes to 1
+i22r01c04s04
+
+i22r01c04s04: knows i22r01c04s04
+i22r01c04s04: knows i22r01c04s05
+i22r01c04s04: knows i22r01c04s06
+i22r01c04s04: knows i22r01c04s07
+i22r01c04s04: knows i22r01c04s08
+i22r01c04s04: knows i22r01c04s09
+i22r01c04s04: knows i22r01c04s10
+i22r01c04s04: knows i22r01c04s11
+i22r01c04s04: knows i22r01c04s12
+i22r01c04s04: knows i22r01c05s01
+i22r01c04s04: knows i22r01c05s02
+i22r01c04s04: knows i22r01c05s03
+i22r01c04s04: knows i22r01c05s04
+i22r01c04s04: knows i22r01c05s05
+i22r01c04s04: knows i22r01c05s06
+i22r01c04s04: knows i22r01c05s07
+SIZE: 4200, SPARES: 2, MTBF: 30, FAILS: 0
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 39537 on i22r01c04s04 ready for attach
+Is Spare?0: 1
+Wrong choice of world size and number of teams!
+Number of teams: 2
+Total ranks no spare ranks: -1
+swe-mpi: Rank.cpp:286: void outputEnvironment(): Assertion `worldSizeNoSpares % numTeams == 0' failed.
+[i22r01c04s04:39537] *** Process received signal ***
+[i22r01c04s04:39537] Signal: Aborted (6)
+[i22r01c04s04:39537] Signal code:  (-6)
+[i22r01c04s04:39537] [ 0] /lib64/libpthread.so.0(+0x132d0)[0x2b67aed472d0]
+[i22r01c04s04:39537] [ 1] /lib64/libc.so.6(gsignal+0x110)[0x2b67af8bd520]
+[i22r01c04s04:39537] [ 2] /lib64/libc.so.6(abort+0x151)[0x2b67af8beb01]
+[i22r01c04s04:39537] [ 3] /lib64/libc.so.6(+0x31b1a)[0x2b67af8b5b1a]
+[i22r01c04s04:39537] [ 4] /lib64/libc.so.6(+0x31b92)[0x2b67af8b5b92]
+[i22r01c04s04:39537] [ 5] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(_Z17outputEnvironmentv+0xea)[0x2b67ae6808a6]
+[i22r01c04s04:39537] [ 6] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(_Z14initialiseTMPIPiPPPc+0x5e0)[0x2b67ae680570]
+[i22r01c04s04:39537] [ 7] /dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib/libtmpi.so(MPI_Init+0x39)[0x2b67ae67497e]
+[i22r01c04s04:39537] [ 8] ../build/swe-mpi[0x4100de]
+[i22r01c04s04:39537] [ 9] /lib64/libc.so.6(__libc_start_main+0xea)[0x2b67af8a834a]
+[i22r01c04s04:39537] [10] ../build/swe-mpi[0x40f11a]
+[i22r01c04s04:39537] *** End of error message ***
+/dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/SWE/scripts/./teaMPI_multi_node.sh: line 36: 39537 Aborted                 (core dumped) $APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT
+Waiting until SWE terminates
+SWE terminated
+srun: Warning: can't run 1 processes on 16 nodes, setting nnodes to 1
+i22r01c04s04
+
+i22r01c04s04: knows i22r01c04s04
+i22r01c04s04: knows i22r01c04s05
+i22r01c04s04: knows i22r01c04s06
+i22r01c04s04: knows i22r01c04s07
+i22r01c04s04: knows i22r01c04s08
+i22r01c04s04: knows i22r01c04s09
+i22r01c04s04: knows i22r01c04s10
+i22r01c04s04: knows i22r01c04s11
+i22r01c04s04: knows i22r01c04s12
+i22r01c04s04: knows i22r01c05s01
+i22r01c04s04: knows i22r01c05s02
+i22r01c04s04: knows i22r01c05s03
+i22r01c04s04: knows i22r01c05s04
+i22r01c04s04: knows i22r01c05s05
+i22r01c04s04: knows i22r01c05s06
+i22r01c04s04: knows i22r01c05s07
+SIZE: 4200, SPARES: 4, MTBF: 30, FAILS: 0
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 39588 on i22r01c04s04 ready for attach
+Is Spare?0: 1
+[i22r01c04s04:39588] *** An error occurred in MPI_Comm_split
+[i22r01c04s04:39588] *** reported by process [2175074306,0]
+[i22r01c04s04:39588] *** on communicator MPI_COMM_WORLD
+[i22r01c04s04:39588] *** MPI_ERR_ARG: invalid argument of some other kind
+[i22r01c04s04:39588] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[i22r01c04s04:39588] ***    and potentially your MPI job)
+In: PMI_Abort(13, N/A)
+
+*************************************************************
+SWE finished successfully.
+*************************************************************
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 33189.2 ON i22r01c04s04 CANCELLED AT 2020-06-23T03:30:08 ***
+srun: error: i22r01c04s04: task 0: Killed
+srun: Warning: can't run 1 processes on 16 nodes, setting nnodes to 1
+i22r01c04s04
+
+i22r01c04s04: knows i22r01c04s04
+i22r01c04s04: knows i22r01c04s05
+i22r01c04s04: knows i22r01c04s06
+i22r01c04s04: knows i22r01c04s07
+i22r01c04s04: knows i22r01c04s08
+i22r01c04s04: knows i22r01c04s09
+i22r01c04s04: knows i22r01c04s10
+i22r01c04s04: knows i22r01c04s11
+i22r01c04s04: knows i22r01c04s12
+i22r01c04s04: knows i22r01c05s01
+i22r01c04s04: knows i22r01c05s02
+i22r01c04s04: knows i22r01c05s03
+i22r01c04s04: knows i22r01c05s04
+i22r01c04s04: knows i22r01c05s05
+i22r01c04s04: knows i22r01c05s06
+i22r01c04s04: knows i22r01c05s07
+SIZE: 4200, SPARES: 6, MTBF: 30, FAILS: 0
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 39622 on i22r01c04s04 ready for attach
+Is Spare?0: 1
+[i22r01c04s04:39622] *** An error occurred in MPI_Comm_split
+[i22r01c04s04:39622] *** reported by process [2175074307,0]
+[i22r01c04s04:39622] *** on communicator MPI_COMM_WORLD
+[i22r01c04s04:39622] *** MPI_ERR_ARG: invalid argument of some other kind
+[i22r01c04s04:39622] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[i22r01c04s04:39622] ***    and potentially your MPI job)
+In: PMI_Abort(13, N/A)
+
+*************************************************************
+SWE finished successfully.
+*************************************************************
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 33189.3 ON i22r01c04s04 CANCELLED AT 2020-06-23T03:30:11 ***
+srun: error: i22r01c04s04: task 0: Killed
+srun: Warning: can't run 1 processes on 16 nodes, setting nnodes to 1
+i22r01c04s04
+
+i22r01c04s04: knows i22r01c04s04
+i22r01c04s04: knows i22r01c04s05
+i22r01c04s04: knows i22r01c04s06
+i22r01c04s04: knows i22r01c04s07
+i22r01c04s04: knows i22r01c04s08
+i22r01c04s04: knows i22r01c04s09
+i22r01c04s04: knows i22r01c04s10
+i22r01c04s04: knows i22r01c04s11
+i22r01c04s04: knows i22r01c04s12
+i22r01c04s04: knows i22r01c05s01
+i22r01c04s04: knows i22r01c05s02
+i22r01c04s04: knows i22r01c05s03
+i22r01c04s04: knows i22r01c05s04
+i22r01c04s04: knows i22r01c05s05
+i22r01c04s04: knows i22r01c05s06
+i22r01c04s04: knows i22r01c05s07
+SIZE: 4200, SPARES: 8, MTBF: 30, FAILS: 0
+
+*************************************************************
+Welcome to SWE
+
+SWE Copyright (C) 2012-2020
+  Technische Universitaet Muenchen
+  Department of Informatics
+  Chair of Scientific Computing
+  http://www5.in.tum.de/SWE
+
+SWE comes with ABSOLUTELY NO WARRANTY.
+SWE is free software, and you are welcome to redistribute it
+under certain conditions.
+Details can be found in the file 'gpl.txt'.
+*************************************************************
+PID 39655 on i22r01c04s04 ready for attach
+Is Spare?0: 1
+[i22r01c04s04:39655] *** An error occurred in MPI_Comm_split
+[i22r01c04s04:39655] *** reported by process [2175074308,0]
+[i22r01c04s04:39655] *** on communicator MPI_COMM_WORLD
+[i22r01c04s04:39655] *** MPI_ERR_ARG: invalid argument of some other kind
+[i22r01c04s04:39655] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[i22r01c04s04:39655] ***    and potentially your MPI job)
+In: PMI_Abort(13, N/A)
+
+*************************************************************
+SWE finished successfully.
+*************************************************************
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 33189.4 ON i22r01c04s04 CANCELLED AT 2020-06-23T03:30:15 ***
+srun: error: i22r01c04s04: task 0: Killed
