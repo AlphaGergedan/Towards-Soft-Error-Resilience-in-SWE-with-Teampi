@@ -23,17 +23,11 @@ export OMPI_MCA_mpi_ft_detector_timeout=60
 
 export OMP_NUM_THREADS=$((28 / $SLURM_NTASKS_PER_NODE))
 
+NUM_FAILURES=0
 
-#Parameters of wrapper Size, numSpares, MTBF, numFails, cp/hearbeat int
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 2 60 1
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 2 60 2 
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 4 30 1 
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 4 60 2 
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 4 60 3 
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 4 60 4
-for i in {1..1}; do 
-	srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./checkpoint_test.sh 3500 30 $i 30
+for i in $(seq 0 $NUM_FAILURES); do 
+	FAIL=$(( i <= $NUM_FAILURES ))
+	INIT_RUN=$(( i == 0 )) 
+	srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./checkpoint_test.sh 3500 30 $FAIL 30 $INIT_RUN
 done
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 4 30 0 
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 6 30 0 
-#srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./teaMPI_multi_node.sh 3500 8 30 0 
+

@@ -1,39 +1,33 @@
 #!/bin/bash
-unset HOST
-unset HOSTNAME
-
-HOST=$(hostname)
-echo $HOST
-
-NODES=$(scontrol show hostnames ${SLURM_JOB_NODELIST})
-NODES=(${NODES})
-echo $HOSTNAME
-
 APPLICATION="../build_noteam/swe-mpi"
-MPI_PARAM=""
-OUTPUT="log.txt"
 
 PROCS=$SLURM_NTASKS
 SIZE=${1:-4000}
-MTBF=${2:-30}
-FAILS=${3:-0}
+WAIT_TIME=${2:-30}
+FAIL=${3:-0}
 HEARTBEAT=${4:-30}
+INIT_RUN=${5:-1}
 RANDOM=0
 
-export SPARES=$NUM_SPARES
+echo "SIZE: $SIZE, SPARES: $SPARES, WAIT_TIME: $WAIT_TIME, FAILS: $FAILS"
 
-echo "SIZE: $SIZE, SPARES: $SPARES, MTBF: $MTBF, FAILS: $FAILS"
+#Start SWE either as fresh run or by loading from checkpoint
+if [ $INIT_RUN ]; then
+    $APPLICATION -x $SIZE -y $SIZE -o $SCRATCH/output/test1 -b $SCRATCH/backup/test1 -i $HEARTBEAT &
+    sleep $WAIT_TIME
+else
+    $APPLICATION -x $SIZE -y $SIZE -o $SCRATCH/output/test1 -b $SCRATCH/backup/test1 -i $HEARTBEAT -r $SCRATCH/backup/test1 &
+    sleep $WAIT_TIME
+fi
 
-START=$(date +"%s")
-$APPLICATION -x $SIZE -y $SIZE -o $SCRATCH/output/test1 -b $SCRATCH/backup/test1 -i $HEARTBEAT &
-sleep $MTBF
+#If necessary inject failure
+if [ $FAIL ]; then
 
-for i in $(seq 1 $FAILS); do
     pids=($(pgrep swe-mpi))
     num_nodes=${#NODES[@]}
     num_pids=${#pids[@]}
 
-    if (($num_pids == 0)); then
+    if (( $num_pids == 0 )); then
         echo "This should not happen"
         break
     fi
@@ -46,30 +40,7 @@ for i in $(seq 1 $FAILS); do
         pids=($(pgrep swe-mpi))
         num_pids=${#pids[@]}
         if (($num_pids == 0)); then
-       	   break
-   	fi
-    done 
-
-    $APPLICATION -x $SIZE -y $SIZE -o $SCRATCH/output/test1 -b $SCRATCH/backup/test1 -i $HEARTBEAT -r $SCRATCH/backup/test1 & 
-    sleep $MTBF
-
-done
-
-echo "Waiting until SWE terminates"
-
-while true; do
-    sleep 1
-    pids=($(pgrep swe-mpi))
-    num_pids=${#pids[@]}
-    if (($num_pids == 0)); then
-        break
-    fi
-done
-
-echo "SWE terminated"
-END=$(date +"%s")
-DURATION=$((END - START))
-
-if [ "$SLURM_PROCID" = "0" ]; then
-    echo "SIZE: $SIZE, SPARES: $NUM_SPARES, PROCS: $PROCS, MTBF: $MTBF, FAILS: $FAILS, DURATION: $DURATION, CP_INT: $HEARTBEAT" >>"teaMPI_log_cr.txt"
+            break
+        fi
+    done
 fi
