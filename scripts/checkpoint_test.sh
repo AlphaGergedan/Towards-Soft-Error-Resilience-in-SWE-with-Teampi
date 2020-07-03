@@ -12,7 +12,7 @@ RANDOM=0
 echo "SIZE: $SIZE, WAIT_TIME: $WAIT_TIME, FAIL: $FAIL, HEARBEAT: $HEARTBEAT; INIT_RUN: $INIT_RUN"
 
 #Start SWE either as fresh run or by loading from checkpoint
-if [ $INIT_RUN ]; then
+if (( $INIT_RUN )); then
     $APPLICATION -x $SIZE -y $SIZE -o $SCRATCH/output/test1 -b $SCRATCH/backup/test1 -i $HEARTBEAT &
     sleep $WAIT_TIME
 else
