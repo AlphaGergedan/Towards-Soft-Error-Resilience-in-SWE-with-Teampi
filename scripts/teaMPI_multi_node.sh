@@ -10,10 +10,6 @@ NODES=$(scontrol show hostnames ${SLURM_JOB_NODELIST})
 NODES=(${NODES})
 echo $HOSTNAME
 
-for ELEMENT in ${NODES[@]}; do
-    echo "$HOST: knows $ELEMENT"
-done
-
 APPLICATION="../build/swe-mpi"
 MPI_PARAM=""
 OUTPUT="log.txt"
@@ -27,30 +23,30 @@ FAILS=${4:-0}
 RANDOM=0
 
 export SPARES=$NUM_SPARES
-export OMP_NUM_THREADS=28
+
 
 echo "SIZE: $SIZE, SPARES: $SPARES, MTBF: $MTBF, FAILS: $FAILS"
 
 START=$(date +"%s")
-$APPLICATION -x $SIZE -y $SIZE -o ../build/output/test1 -b ../build/backup/test1 -i $HEARTBEAT &
+$APPLICATION -x $SIZE -y $SIZE -o $SCRATCH/output/test1 -b $SCRATCH/backup/test1 -i $HEARTBEAT &
 sleep 20
 
 for i in $(seq 1 $FAILS); do
   pids=($(pgrep swe-mpi))
   num_nodes=${#NODES[@]}
-  if (($num_pids == 0)); then
+  num_pids=${#pids[@]}
+
+  if (( $num_pids == 0 )); then
     echo "This should not happen"
     break
   fi
 
-  fail_node=$(( (RANDOM % $num_nodes) ))
-  
-  while (($fail_node == 0)); do 
-    fail_node=$(( (RANDOM % $num_nodes) ))
-  done
+  fail_node=1 
+  fail_proc=$(( $RANDOM%$num_pids ))
 
-  echo "Killing SWE on node ${NODES[$fail_node]}"
-  if [ "$HOST" = "${NODES[$fail_node]}" ]; then
+  echo "localid: $SLURM_LOCALID"
+  if [[ "$HOST" = "${NODES[$fail_node]}" && "$SLURM_LOCALID" = "0" ]]; then
+    echo "Killing SWE on node ${NODES[$fail_node]} Proc: $fail_proc "
     kill -SIGKILL ${pids[$fail_proc]}
   fi
   sleep $MTBF

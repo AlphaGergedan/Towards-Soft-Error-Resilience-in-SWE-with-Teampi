@@ -1,3 +1,4 @@
+#!/bin/bash
 unset HOST
 unset HOSTNAME
 
@@ -12,16 +13,14 @@ APPLICATION="../build_noteam/swe-mpi"
 MPI_PARAM=""
 OUTPUT="log.txt"
 
-SIZE=${1:-4000}
-NUM_SPARES=${2:-0}
 PROCS=$SLURM_NTASKS
-MTBF=${3:-30}
-HEARTBEAT=5
-FAILS=${4:-0}
+SIZE=${1:-4000}
+MTBF=${2:-30}
+FAILS=${3:-0}
+HEARTBEAT=${4:-30}
 RANDOM=0
 
 export SPARES=$NUM_SPARES
-export OMP_NUM_THREADS=28
 
 echo "SIZE: $SIZE, SPARES: $SPARES, MTBF: $MTBF, FAILS: $FAILS"
 
@@ -39,15 +38,16 @@ for i in $(seq 1 $FAILS); do
         break
     fi
 
+    echo "Killing SWE with pid ${pids[0]}"
     kill -SIGKILL ${pids[0]}
 
     while true; do
-    sleep 1
-    pids=($(pgrep swe-mpi))
-    num_pids=${#pids[@]}
-    if (($num_pids == 0)); then
-        break
-    fi
+        sleep 1
+        pids=($(pgrep swe-mpi))
+        num_pids=${#pids[@]}
+        if (($num_pids == 0)); then
+       	   break
+   	fi
     done 
 
     $APPLICATION -x $SIZE -y $SIZE -o $SCRATCH/output/test1 -b $SCRATCH/backup/test1 -i $HEARTBEAT -r $SCRATCH/backup/test1 & 
@@ -70,6 +70,6 @@ echo "SWE terminated"
 END=$(date +"%s")
 DURATION=$((END - START))
 
-if [ "$HOST" = "${NODES[0]}" ]; then
-    echo "SIZE: $SIZE, SPARES: $NUM_SPARES, PROCS: $PROCS, MTBF: $MTBF, FAILS: $FAILS, DURATION: $DURATION" >>"teaMPI_log.txt"
+if [ "$SLURM_PROCID" = "0" ]; then
+    echo "SIZE: $SIZE, SPARES: $NUM_SPARES, PROCS: $PROCS, MTBF: $MTBF, FAILS: $FAILS, DURATION: $DURATION, CP_INT: $HEARTBEAT" >>"teaMPI_log_cr.txt"
 fi

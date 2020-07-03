@@ -605,15 +605,24 @@ int main( int argc, char** argv ) {
 
     #ifdef TEAMPI
     //check for failures in teaMPI world comm
+    std::cout << "Heartbeat Rank: " << l_mpiRank << " Team: " << l_teamNumber << std::endl;
     MPI_Allreduce(nullptr, nullptr, 0, MPI_INT, MPI_MIN, MPI_COMM_SELF);
-    printf("Returned from heartbeat rank: %d, team %d\n", l_mpiRank, l_teamNumber);
+    //printf("Returned from heartbeat rank: %d, team %d\n", l_mpiRank, l_teamNumber);
     if(l_t >= l_endSimulation){
+      std::cout << "writing time-step " << l_mpiRank << " team: " << l_teamNumber << std::endl;
       l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                             l_waveBlock->getDischarge_hu(),
                             l_waveBlock->getDischarge_hv(),
                             l_t);
-      if(l_mpiRank == 0) l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
+      if(l_mpiRank == 0){
+	      std::cout << "writing Metadata" << l_teamNumber << std::endl;
+	      l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
+	      
+      }
+      std::cout << "Commiting:  " << l_mpiRank << " team: " << l_teamNumber << std::endl;
       l_writer->commitBackup();
+      std::cout << "Finished outputting:  " << l_mpiRank << " team: " << l_teamNumber << std::endl;
+
     }
     #else
     // write output
@@ -661,9 +670,10 @@ int main( int argc, char** argv ) {
   delete l_waveBlock;
   delete l_scenario;
 
-  std::cout << l_mpiRank << std::endl;
+  //std::cout << l_mpiRank << std::endl;
   // finalize MPI execution
   MPI_Finalize();
+  std::cout << l_mpiRank << std::endl;
 
   return 0;
 }
