@@ -9,7 +9,7 @@ HEARTBEAT=${4:-30}
 INIT_RUN=${5:-1}
 RANDOM=0
 
-echo "SIZE: $SIZE, SPARES: $SPARES, WAIT_TIME: $WAIT_TIME, FAILS: $FAILS"
+echo "SIZE: $SIZE, WAIT_TIME: $WAIT_TIME, FAIL: $FAIL, HEARBEAT: $HEARTBEAT; INIT_RUN: $INIT_RUN"
 
 #Start SWE either as fresh run or by loading from checkpoint
 if [ $INIT_RUN ]; then
