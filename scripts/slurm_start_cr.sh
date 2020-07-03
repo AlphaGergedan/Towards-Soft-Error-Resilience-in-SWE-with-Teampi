@@ -27,7 +27,7 @@ NUM_FAILURES=0
 
 START=$(date +"%s")
 for i in $(seq 0 $NUM_FAILURES); do 
-	FAIL=$(( i <= $NUM_FAILURES ))
+	FAIL=$(( i < $NUM_FAILURES ))
 	INIT_RUN=$(( i == 0 )) 
 	srun -N $SLURM_JOB_NUM_NODES --ntasks-per-node $SLURM_NTASKS_PER_NODE ./checkpoint_test.sh 3500 30 $FAIL 30 $INIT_RUN
 done
