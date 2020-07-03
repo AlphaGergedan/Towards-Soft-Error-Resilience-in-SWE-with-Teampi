@@ -21,7 +21,7 @@ else
 fi
 
 #If necessary inject failure
-if [ $FAIL ]; then
+if (( $FAIL )); then
 
     pids=($(pgrep swe-mpi))
     num_nodes=${#NODES[@]}
