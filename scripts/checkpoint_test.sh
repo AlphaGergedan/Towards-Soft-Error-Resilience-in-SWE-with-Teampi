@@ -35,12 +35,15 @@ if (( $FAIL )); then
     echo "Killing SWE with pid ${pids[0]}"
     kill -SIGKILL ${pids[0]}
 
-    while true; do
-        sleep 1
-        pids=($(pgrep swe-mpi))
-        num_pids=${#pids[@]}
-        if (($num_pids == 0)); then
-            break
-        fi
-    done
 fi
+
+while true; do
+   sleep 1
+   pids=($(pgrep swe-mpi))
+   num_pids=${#pids[@]}
+   if (($num_pids == 0)); then
+    break
+   fi
+done
+
+echo "SWE terminated"
