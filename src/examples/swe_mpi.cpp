@@ -673,6 +673,14 @@ int main( int argc, char** argv ) {
   delete l_waveBlock;
   delete l_scenario;
 
+  #ifndef TEAMPI
+  if(l_mpiRank == 0){
+    std::ofstream l_timingFile;
+    l_timingFile.open("swe_timing.txt");
+    l_timingFile << ", NUM_CHECKPOINTS: " << l_numCheckpoints << ", TIME_CP:" << tools::Logger::logger.getTime("Checkpoint");
+    l_timingFile.close();
+  }
+  #endif
   //std::cout << l_mpiRank << std::endl;
   // finalize MPI execution
   MPI_Finalize();
