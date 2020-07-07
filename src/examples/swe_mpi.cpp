@@ -529,7 +529,7 @@ int main( int argc, char** argv ) {
   progressBar.update(l_t);
 
   unsigned int l_iterations = 0;
-  
+  unsigned int l_numCheckpoints = 0;
   // loop over checkpoints
   while(l_t <= l_endSimulation) {
     double start = MPI_Wtime();
@@ -626,13 +626,16 @@ int main( int argc, char** argv ) {
     }
     #else
     // write output
+    ++l_numCheckpoints;
     double startBackup = MPI_Wtime();
+    tools::Logger::logger.resetClockToCurrentTime("Checkpoint");
     l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                             l_waveBlock->getDischarge_hu(),
                             l_waveBlock->getDischarge_hv(),
                             l_t);
     if(l_mpiRank == 0) l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
     l_writer->commitBackup();
+    tools::Logger::logger.updateTime("Checkpoint");
     double dur = MPI_Wtime() - startBackup;
     tools::Logger::logger.printString("Checkpoint took: " + std::to_string(dur) + " seconds");
     #endif
