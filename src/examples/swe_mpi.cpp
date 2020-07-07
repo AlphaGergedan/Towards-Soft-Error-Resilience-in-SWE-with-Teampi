@@ -677,7 +677,8 @@ int main( int argc, char** argv ) {
   if(l_mpiRank == 0){
     std::ofstream l_timingFile;
     l_timingFile.open("swe_timing.txt");
-    l_timingFile << ", NUM_CHECKPOINTS: " << l_numCheckpoints << ", TIME_CP:" << tools::Logger::logger.getTime("Checkpoint");
+    l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
+    l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
     l_timingFile.close();
   }
   #endif
