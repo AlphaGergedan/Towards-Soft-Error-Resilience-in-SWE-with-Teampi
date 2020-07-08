@@ -140,7 +140,9 @@ void loadCheckpointDisk(int reloadTeam){
 #endif
 
 void killSWE( int signum ) { 
-    if(l_mpiRank == 0){
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if(rank == 0){
       std::ofstream l_timingFile;
       l_timingFile.open("swe_timing.txt");
       l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
