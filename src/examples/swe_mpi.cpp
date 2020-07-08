@@ -64,6 +64,9 @@ std::string l_restartBase = "";
 std::string l_backupMetadataName, l_baseName, l_backupBase;
 std::string l_baseNameInput, l_backupBaseInput;
 
+unsigned int l_numCheckpoints = 0;
+
+
 float l_t;
 SWE_Block* l_waveBlock = nullptr;
 SWE_Scenario *l_scenario = nullptr;
@@ -134,12 +137,24 @@ void loadCheckpointDisk(int reloadTeam){
 }
 #endif
 
+void killSWE( int signum ) { 
+    if(l_mpiRank == 0){
+      std::ofstream l_timingFile;
+      l_timingFile.open("swe_timing.txt");
+      l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
+      l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
+      l_timingFile.close();
+    }
+    raise(SIGKILL);
+}
 /**
  * Main program for the simulation on a single SWE_WavePropagationBlock or SWE_WaveAccumulationBlock.
  */
 int main( int argc, char** argv ) {
    //Just to let me attach gdb
-    {
+  signal(SIGUSR1, killSWE);
+
+  {
     volatile int i = 1;
     char hostname[256];
     gethostname(hostname, sizeof(hostname));
@@ -147,7 +162,7 @@ int main( int argc, char** argv ) {
     fflush(stdout);
     while (0 == i)
         sleep(5);
-    }
+  }
   /**
    * Initialization.
    */
@@ -529,7 +544,7 @@ int main( int argc, char** argv ) {
   progressBar.update(l_t);
 
   unsigned int l_iterations = 0;
-  unsigned int l_numCheckpoints = 0;
+  l_numCheckpoints = 0;
   // loop over checkpoints
   while(l_t <= l_endSimulation) {
     double start = MPI_Wtime();
@@ -639,13 +654,7 @@ int main( int argc, char** argv ) {
     double dur = MPI_Wtime() - startBackup;
     tools::Logger::logger.printString("Checkpoint took: " + std::to_string(dur) + " seconds");
 
-    if(l_mpiRank == 0){
-      std::ofstream l_timingFile;
-      l_timingFile.open("swe_timing.txt");
-      l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
-      l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
-      l_timingFile.close();
-    }
+   
     #endif
   }  
 
@@ -676,6 +685,14 @@ int main( int argc, char** argv ) {
 
   // print the finish message
   tools::Logger::logger.printFinishMessage();
+
+  if(l_mpiRank == 0){
+    std::ofstream l_timingFile;
+    l_timingFile.open("swe_timing.txt");
+    l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
+    l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
+    l_timingFile.close();
+  }
 
   // Dispose of the SWE block!
   delete l_waveBlock;
