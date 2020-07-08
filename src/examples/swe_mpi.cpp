@@ -36,6 +36,8 @@
 #include <vector>
 #include <ctime>
 #include <csetjmp>
+#include <csignal>
+
 
 #include "blocks/SWE_Block.hh"
 
