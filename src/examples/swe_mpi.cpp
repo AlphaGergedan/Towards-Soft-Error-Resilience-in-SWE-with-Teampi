@@ -146,7 +146,11 @@ void killSWE( int signum ) {
       std::ofstream l_timingFile;
       l_timingFile.open("swe_timing.txt");
       l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
-      l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
+      if(l_numCheckpoints >= 1){
+        l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
+      } else{
+        l_timingFile << "TIME_CP=0.0" << std::endl;
+      }
       l_timingFile.close();
     }
     raise(SIGKILL);
