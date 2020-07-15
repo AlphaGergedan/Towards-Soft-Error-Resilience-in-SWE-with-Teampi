@@ -655,6 +655,7 @@ int main( int argc, char** argv ) {
                             l_t);
     if(l_mpiRank == 0) l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
     l_writer->commitBackup();
+    MPI_Barrier(MPI_COMM_WORLD);
     tools::Logger::logger.updateTime("Checkpoint");
     double dur = MPI_Wtime() - startBackup;
     tools::Logger::logger.printString("Checkpoint took: " + std::to_string(dur) + " seconds");
