@@ -58,6 +58,8 @@ class SWE_Scenario {
     virtual float getWaterHeight(float x, float y) { return 10.0f; };
     virtual float getVeloc_u(float x, float y) { return 0.0f; };
     virtual float getVeloc_v(float x, float y) { return 0.0f; };
+    virtual float getMomentum_u(float x, float y){return 0.0f;};
+    virtual float getMomentum_v(float x, float y){return 0.0f;};
     virtual float getBathymetry(float x, float y) { return 0.0f; };
     
     virtual float waterHeightAtRest() { return 10.0f; };

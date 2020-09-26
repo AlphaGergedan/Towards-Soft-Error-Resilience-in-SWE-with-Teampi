@@ -27,10 +27,12 @@
  */
 
 #include "NetCdfWriter.hh"
+#include "../tools/Logger.hh"
 #include <string>
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include <fstream>
 
 /**
  * Create a netCdf-file
@@ -44,83 +46,111 @@
  * @param i_originX
  * @param i_originY
  * @param i_flush If > 0, flush data to disk every i_flush write operation
- * @param i_dynamicBathymetry
+ * @param i_dynamicBa thymetry
  */
-io::NetCdfWriter::NetCdfWriter( const std::string &i_baseName,
-		const Float2D &i_b,
-		const BoundarySize &i_boundarySize,
-		int i_nX, int i_nY,
-		float i_dX, float i_dY,
-		float i_originX, float i_originY,
-		unsigned int i_flush) :
-		//const bool  &i_dynamicBathymetry) : //!TODO
-  io::Writer(i_baseName + ".nc", i_b, i_boundarySize, i_nX, i_nY),
-  flush(i_flush)
+io::NetCdfWriter::NetCdfWriter(const std::string &i_baseName, const std::string &i_backupName,
+							   const Float2D &i_b,
+							   const BoundarySize &i_boundarySize,
+							   int i_nX, int i_nY,
+							   float i_dX, float i_dY, bool i_existingFile,
+							   float i_originX, float i_originY,
+							   unsigned int i_flush) : //const bool  &i_dynamicBathymetry) : //!TODO
+													   io::Writer(i_baseName + ".nc", i_backupName, i_b, i_boundarySize, i_nX, i_nY, i_existingFile),
+													   flush(i_flush)
 {
 	int status;
+	if (i_existingFile)
+	{	
+		tools::Logger::logger.printString(fileName);
+		int timeDim;
+		
+		status = nc_open(fileName.c_str(), NC_WRITE, &dataFile);
+		if (status != NC_NOERR)
+		{
+			assert(false);
+			return;
+		}
+		nc_inq_varid(dataFile, "time", &timeVar); 
+    	nc_inq_varid(dataFile, "h", &hVar);
+    	nc_inq_varid(dataFile, "hu", &huVar);
+    	nc_inq_varid(dataFile, "hv", &hvVar);
+    	nc_inq_varid(dataFile, "b", &bVar);
 
-	//create a netCDF-file, an existing file will be replaced
-	status = nc_create(fileName.c_str(), NC_NETCDF4, &dataFile);
+	    nc_inq_dimid(dataFile, "time", &timeDim);
+		nc_inq_dimlen(dataFile, timeDim, &timeStep);
 
-  //check if the netCDF-file creation constructor succeeded.
-	if (status != NC_NOERR) {
-		assert(false);
-		return;
 	}
+	else
+	{	
+		remove(fileName.c_str());
 
-#ifdef PRINT_NETCDFWRITER_INFORMATION
-	std::cout << "   *** io::NetCdfWriter::createNetCdfFile" << std::endl;
-	std::cout << "     created/replaced: " << fileName << std::endl;
-	std::cout << "     dimensions(nx, ny): " << nX << ", " << nY << std::endl;
-	std::cout << "     cell width(dx,dy): " << i_dX << ", " << i_dY << std::endl;
-	std::cout << "     origin(x,y): " << i_originX << ", " << i_originY << std::endl;
-#endif
+		//create a netCDF-file, an existing file will be replaced
+		status = nc_create(fileName.c_str(), NC_NETCDF4, &dataFile);
 
-	//dimensions
-	int l_timeDim, l_xDim, l_yDim;
-	nc_def_dim(dataFile, "time", NC_UNLIMITED, &l_timeDim);
-	nc_def_dim(dataFile, "x", nX, &l_xDim);
-	nc_def_dim(dataFile, "y", nY, &l_yDim);
+		//check if the netCDF-file creation constructor succeeded.
+		if (status != NC_NOERR)
+		{	
+			std::cout << "Error creating File: " << status <<  std::endl;
+			assert(false);
+			return;
+		}
 
-	//variables (TODO: add rest of CF-1.5)
-	int l_xVar, l_yVar;
+	#ifdef PRINT_NETCDFWRITER_INFORMATION
+		std::cout << "   *** io::NetCdfWriter::createNetCdfFile" << std::endl;
+		std::cout << "     created/replaced: " << fileName << std::endl;
+		std::cout << "     dimensions(nx, ny): " << nX << ", " << nY << std::endl;
+		std::cout << "     cell width(dx,dy): " << i_dX << ", " << i_dY << std::endl;
+		std::cout << "     origin(x,y): " << i_originX << ", " << i_originY << std::endl;
+	#endif
 
-	nc_def_var(dataFile, "time", NC_FLOAT, 1, &l_timeDim, &timeVar);
-	ncPutAttText(timeVar, "long_name", "Time");
-	ncPutAttText(timeVar, "units", "seconds since simulation start"); // the word "since" is important for the paraview reader
+		//dimensions
+		int l_timeDim, l_xDim, l_yDim;
+		nc_def_dim(dataFile, "time", NC_UNLIMITED, &l_timeDim);
+		nc_def_dim(dataFile, "x", nX, &l_xDim);
+		nc_def_dim(dataFile, "y", nY, &l_yDim);
 
-	nc_def_var(dataFile, "x", NC_FLOAT, 1, &l_xDim, &l_xVar);
-	nc_def_var(dataFile, "y", NC_FLOAT, 1, &l_yDim, &l_yVar);
+		//variables (TODO: add rest of CF-1.5)
+		int l_xVar, l_yVar;
 
-	//variables, fastest changing index is on the right (C syntax), will be mirrored by the library
-	int dims[] = {l_timeDim, l_yDim, l_xDim};
-	nc_def_var(dataFile, "h",  NC_FLOAT, 3, dims, &hVar);
-	nc_def_var(dataFile, "hu", NC_FLOAT, 3, dims, &huVar);
-	nc_def_var(dataFile, "hv", NC_FLOAT, 3, dims, &hvVar);
-	nc_def_var(dataFile, "b",  NC_FLOAT, 2, &dims[1], &bVar);
+		nc_def_var(dataFile, "time", NC_FLOAT, 1, &l_timeDim, &timeVar);
+		ncPutAttText(timeVar, "long_name", "Time");
+		ncPutAttText(timeVar, "units", "seconds since simulation start"); // the word "since" is important for the paraview reader
 
-	//set attributes to match CF-1.5 convention
-	ncPutAttText(NC_GLOBAL, "Conventions", "CF-1.5");
-	ncPutAttText(NC_GLOBAL, "title", "Computed tsunami solution");
-	ncPutAttText(NC_GLOBAL, "history", "SWE");
-	ncPutAttText(NC_GLOBAL, "institution", "Technische Universitaet Muenchen, Department of Informatics, Chair of Scientific Computing");
-	ncPutAttText(NC_GLOBAL, "source", "Bathymetry and displacement data.");
-	ncPutAttText(NC_GLOBAL, "references", "http://www5.in.tum.de/SWE");
-	ncPutAttText(NC_GLOBAL, "comment", "SWE is free software and licensed under the GNU General Public License. Remark: In general this does not hold for the used input data.");
+		nc_def_var(dataFile, "x", NC_FLOAT, 1, &l_xDim, &l_xVar);
+		nc_def_var(dataFile, "y", NC_FLOAT, 1, &l_yDim, &l_yVar);
 
-	//setup grid size
-	float gridPosition = i_originX + (float).5 * i_dX;
-	for(size_t i = 0; i < nX; i++) {
-		nc_put_var1_float(dataFile, l_xVar, &i, &gridPosition);
+		//variables, fastest changing index is on the right (C syntax), will be mirrored by the library
+		int dims[] = {l_timeDim, l_yDim, l_xDim};
+		nc_def_var(dataFile, "h", NC_FLOAT, 3, dims, &hVar);
+		nc_def_var(dataFile, "hu", NC_FLOAT, 3, dims, &huVar);
+		nc_def_var(dataFile, "hv", NC_FLOAT, 3, dims, &hvVar);
+		nc_def_var(dataFile, "b", NC_FLOAT, 2, &dims[1], &bVar);
 
-		gridPosition += i_dX;
-	}
+		//set attributes to match CF-1.5 convention
+		ncPutAttText(NC_GLOBAL, "Conventions", "CF-1.5");
+		ncPutAttText(NC_GLOBAL, "title", "Computed tsunami solution");
+		ncPutAttText(NC_GLOBAL, "history", "SWE");
+		ncPutAttText(NC_GLOBAL, "institution", "Technische Universitaet Muenchen, Department of Informatics, Chair of Scientific Computing");
+		ncPutAttText(NC_GLOBAL, "source", "Bathymetry and displacement data.");
+		ncPutAttText(NC_GLOBAL, "references", "http://www5.in.tum.de/SWE");
+		ncPutAttText(NC_GLOBAL, "comment", "SWE is free software and licensed under the GNU General Public License. Remark: In general this does not hold for the used input data.");
 
-	gridPosition = i_originY + (float).5 * i_dY;
-	for(size_t j = 0; j < nY; j++) {
-		nc_put_var1_float(dataFile, l_yVar, &j, &gridPosition);
+		//setup grid size
+		float gridPosition = i_originX + (float).5 * i_dX;
+		for (size_t i = 0; i < nX; i++)
+		{
+			nc_put_var1_float(dataFile, l_xVar, &i, &gridPosition);
 
-    	gridPosition += i_dY;
+			gridPosition += i_dX;
+		}
+
+		gridPosition = i_originY + (float).5 * i_dY;
+		for (size_t j = 0; j < nY; j++)
+		{
+			nc_put_var1_float(dataFile, l_yVar, &j, &gridPosition);
+
+			gridPosition += i_dY;
+		}
 	}
 }
 
@@ -222,4 +252,17 @@ void io::NetCdfWriter::writeTimeStep( const Float2D &i_h,
 
 	if (flush > 0 && timeStep % flush == 0)
 		nc_sync(dataFile);
+}
+
+//Copies the data from the current output-file to the backup-file 
+void io::NetCdfWriter::commitBackup(){
+	nc_close(dataFile);
+	std::ifstream src(fileName, std::ios::binary);
+	std::ofstream out(backupName + "_temp", std::ios::binary);
+	out << src.rdbuf();
+	std::remove(backupName.c_str());
+	std::rename((backupName + "_temp").c_str(), (backupName + ".nc").c_str());
+	out.close();
+	nc_open(fileName.c_str(), NC_WRITE, &dataFile);
+	//nc_sync(dataFile);
 }

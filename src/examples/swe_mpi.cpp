@@ -34,15 +34,25 @@
 #include <mpi.h>
 #include <string>
 #include <vector>
+#include <ctime>
+#include <csetjmp>
+#include <csignal>
+
 
 #include "blocks/SWE_Block.hh"
 
 #include "writer/Writer.hh"
+#include "reader/Reader.hh"
 
 #ifdef ASAGI
 #include "scenarios/SWE_AsagiScenario.hh"
 #else
 #include "scenarios/SWE_simple_scenarios.hh"
+#include "scenarios/SWE_LoadNetCdfScenario.hh"
+#endif
+
+#ifdef TEAMPI
+#include <teaMPI.h>
 #endif
 
 #include "tools/args.hh"
@@ -50,6 +60,18 @@
 #include "tools/Logger.hh"
 #include "tools/ProgressBar.hh"
 
+jmp_buf jumpBuffer;
+std::shared_ptr<io::Writer> l_writer;
+std::string l_restartBase = "";
+std::string l_backupMetadataName, l_baseName, l_backupBase;
+std::string l_baseNameInput, l_backupBaseInput;
+
+unsigned int l_numCheckpoints = 0;
+
+
+float l_t;
+SWE_Block* l_waveBlock = nullptr;
+SWE_Scenario *l_scenario = nullptr;
 /**
  * Compute the number of block rows from the total number of processes.
  *
@@ -77,10 +99,79 @@ void exchangeBottomTopGhostLayers( const int i_bottomNeighborRank, SWE_Block1D* 
                                    const int i_topNeighborRank,    SWE_Block1D* o_topNeighborInflow,    SWE_Block1D* i_topNeighborOutflow,
                                    const MPI_Datatype i_mpiRow);
 
+#ifdef TEAMPI
+//Callbacks that are called to safe/load checkpoint to/from disk when failure is detected
+void createCheckpointDisk(std::vector<int> failed_teams){
+  tools::Logger::logger.printString("Creating Checkpoint");
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  double startBackup = MPI_Wtime();
+  l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
+                            l_waveBlock->getDischarge_hu(),
+                            l_waveBlock->getDischarge_hv(),
+                            l_t);
+  if(rank == 0) l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
+  l_writer->commitBackup();
+  double dur = MPI_Wtime() - startBackup;
+
+  std::cout << "Rank: " << rank << " writing checkpoint took: " << dur << " seconds";
+  int send = 1;
+
+  for(const auto &i : failed_teams){
+    MPI_Send(&send, 1, MPI_INT, TMPI_TeamToWorldRank(rank, i), 0, TMPI_GetWorldComm());
+  }
+  
+}
+
+void loadCheckpointDisk(int reloadTeam){
+  tools::Logger::logger.printString("Loading Checkpoint");
+  MPI_Status status;
+  int recv, rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Recv(&recv, 1, MPI_INT,TMPI_TeamToWorldRank(rank, reloadTeam), 0, TMPI_GetWorldComm(), &status);
+  if(!l_waveBlock) delete(l_waveBlock);
+  if(!l_scenario) delete(l_scenario);
+  l_waveBlock = nullptr;
+  l_scenario = nullptr;
+  l_restartBase = l_backupBaseInput + "_team_" + std::to_string(reloadTeam);
+  std::cout << l_restartBase << std::endl;
+
+  longjmp(jumpBuffer, 1);
+}
+#endif
+
+//Signal Handler called when SIGUSR1 is sent to SWE-Process
+//Writes log files for evaluation and kills Processes
+void killSWE( int signum ) { 
+    std::ofstream l_timingFile;
+    l_timingFile.open("swe_timing.txt");
+    l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
+    if(l_numCheckpoints >= 1){
+      l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
+    } else{
+      l_timingFile << "TIME_CP=0.0" << std::endl;
+    }
+    l_timingFile.close();
+    std::cout << "Finished CPs: " << l_numCheckpoints << std::endl;
+    raise(SIGKILL);
+}
 /**
  * Main program for the simulation on a single SWE_WavePropagationBlock or SWE_WaveAccumulationBlock.
  */
 int main( int argc, char** argv ) {
+   //Just to let me attach gdb
+  signal(SIGUSR1, killSWE);
+
+  //Simple trick found on OpenMPI website to attach gdb to process for debugging purposes
+  {
+    volatile int i = 1;
+    char hostname[256];
+    gethostname(hostname, sizeof(hostname));
+    printf("PID %d on %s ready for attach\n", getpid(), hostname);
+    fflush(stdout);
+    while (0 == i)
+        sleep(5);
+  }
   /**
    * Initialization.
    */
@@ -89,13 +180,83 @@ int main( int argc, char** argv ) {
   //! number of MPI processes.
   int l_numberOfProcesses;
 
-  // initialize MPI
-  if ( MPI_Init(&argc,&argv) != MPI_SUCCESS ) {
-    std::cerr << "MPI_Init failed." << std::endl;
+    // check if the necessary command line input parameters are given
+  tools::Args args;
+  
+  args.addOption("grid-size-x", 'x', "Number of cell in x direction");
+  args.addOption("grid-size-y", 'y', "Number of cell in y direction");
+  //Place where normal output-files are written
+  args.addOption("output-basepath", 'o', "Output base file name");
+  args.addOption("backup-basepath", 'b', "Path of the checkpoint file and metadata used to restart in case of failure");
+  args.addOption("restart-basepath", 'r', "Path of the Backup that will be loaded when restarting", tools::Args::Argument::Required, false);
+  args.addOption("checkpoint-interval", 'i', "Interval to write checkpoints");
+#ifdef ASAGI
+  args.addOption("bathymetry-file", 'b', "File containing the bathymetry");
+  args.addOption("displacement-file", 'd', "File containing the displacement");
+  args.addOption("simul-area-min-x", 0, "Simulation area");
+  args.addOption("simul-area-max-x", 0, "Simulation area");
+  args.addOption("simul-area-min-y", 0, "Simulation area");
+  args.addOption("simul-area-max-y", 0, "Simulation area");
+  args.addOption("simul-duration", 0, "Simulation time in seconds");
+  #endif
+
+   tools::Args::Result ret = args.parse(argc, argv, true);
+
+  switch (ret)
+  {
+  case tools::Args::Error:
+  	return 1;
+  case tools::Args::Help:
+	  return 0;
+  default:
+      break;
   }
+
+  //! total number of grid cell in x- and y-direction.
+  int l_nX, l_nY;
+  
+  clock_t l_checkpointInt;
+
+  // read command line parameters
+  l_nX = args.getArgument<int>("grid-size-x");
+  l_nY = args.getArgument<int>("grid-size-y");
+  l_baseNameInput = args.getArgument<std::string>("output-basepath");
+  l_backupBaseInput = args.getArgument<std::string>("backup-basepath");
+  l_checkpointInt = args.getArgument<clock_t>("checkpoint-interval");
+  if(args.isSet("restart-basepath")){
+    l_restartBase = args.getArgument<std::string>("restart-basepath");
+  }
+
+
+  #ifdef TEAMPI
+  //! TeaMPI team number
+  int l_teamNumber;
+  std::function<void(std::vector<int>)> create(createCheckpointDisk);
+  std::function<void(int)> load(loadCheckpointDisk);
+  TMPI_SetCreateCheckpointCallback(&create);
+  TMPI_SetLoadCheckpointCallback(&load);
+  TMPI_SetErrorHandlingStrategy(TMPI_WarmSpareErrorHandler);
+  #endif
+
+  // initialize MPI
+  if(setjmp(jumpBuffer) == 0){
+    if ( MPI_Init(&argc,&argv) != MPI_SUCCESS ) {
+      std::cerr << "MPI_Init failed." << std::endl;
+    }
+  } 
+
+  #ifdef TEAMPI
+  l_teamNumber = TMPI_GetTeamNumber();
+  l_baseName = l_baseNameInput + "_team_" + std::to_string(l_teamNumber);
+  l_backupBase = l_backupBaseInput + "_team_" + std::to_string(l_teamNumber);
+  #else
+  l_backupBase = l_backupBaseInput;
+  l_baseName = l_baseNameInput;
+  #endif
 
   // determine local MPI rank
   MPI_Comm_rank(MPI_COMM_WORLD,&l_mpiRank);
+  printf("SWE rank %d\n", l_mpiRank);
   // determine total number of processes
   MPI_Comm_size(MPI_COMM_WORLD,&l_numberOfProcesses);
 
@@ -109,49 +270,6 @@ int main( int argc, char** argv ) {
   tools::Logger::logger.initWallClockTime( MPI_Wtime() );
   //print the number of processes
   tools::Logger::logger.printNumberOfProcesses(l_numberOfProcesses);
-
-  // check if the necessary command line input parameters are given
-  tools::Args args;
-  
-  args.addOption("grid-size-x", 'x', "Number of cell in x direction");
-  args.addOption("grid-size-y", 'y', "Number of cell in y direction");
-  args.addOption("output-basepath", 'o', "Output base file name");
-  args.addOption("output-steps-count", 'c', "Number of output time steps");
-  
-#ifdef ASAGI
-  args.addOption("bathymetry-file", 'b', "File containing the bathymetry");
-  args.addOption("displacement-file", 'd', "File containing the displacement");
-  args.addOption("simul-area-min-x", 0, "Simulation area");
-  args.addOption("simul-area-max-x", 0, "Simulation area");
-  args.addOption("simul-area-min-y", 0, "Simulation area");
-  args.addOption("simul-area-max-y", 0, "Simulation area");
-  args.addOption("simul-duration", 0, "Simulation time in seconds");
-  #endif
-
-  tools::Args::Result ret = args.parse(argc, argv, l_mpiRank == 0);
-
-  switch (ret)
-  {
-  case tools::Args::Error:
-	  MPI_Abort(MPI_COMM_WORLD, -1);
-	  return 1;
-  case tools::Args::Help:
-	  MPI_Finalize();
-	  return 0;
-  default:
-      break;
-  }
-
-  //! total number of grid cell in x- and y-direction.
-  int l_nX, l_nY;
-
-  //! l_baseName of the plots.
-  std::string l_baseName;
-
-  // read command line parameters
-  l_nX = args.getArgument<int>("grid-size-x");
-  l_nY = args.getArgument<int>("grid-size-y");
-  l_baseName = args.getArgument<std::string>("output-basepath");
 
   //! number of SWE_Blocks in x- and y-direction.
   int l_blocksX, l_blocksY;
@@ -171,6 +289,9 @@ int main( int argc, char** argv ) {
   // determine local block coordinates of each SWE_Block
   l_blockPositionX = l_mpiRank / l_blocksY;
   l_blockPositionY = l_mpiRank % l_blocksY;
+
+  float l_startTime = 0.0f;
+
 
   #ifdef ASAGI
   /*
@@ -196,11 +317,17 @@ int main( int argc, char** argv ) {
                                simulationDuration, simulationArea);
   #else
   // create a simple artificial scenario
-  SWE_SplashingConeScenario l_scenario;
+  if(l_restartBase != ""){
+    tools::Logger::logger.printString("Reading");
+    io::Reader reader(l_restartBase, l_baseName,l_mpiRank, l_numberOfProcesses, l_blockPositionX, l_blockPositionY);
+    l_nX = reader.getGridSizeX();
+    l_nY = reader.getGridSizeY();
+    l_scenario = reader.getScenario();
+    l_startTime = reader.getCurrentTime();
+  } else{
+    l_scenario = new SWE_RadialDamBreakScenario();
+  }
   #endif
-
-  //! number of checkpoints for visualization (at each checkpoint in time, an output file is written).
-  int l_numberOfCheckPoints = args.getArgument<int>("output-steps-count");
 
   //! number of grid cells in x- and y-direction per process.
   int l_nXLocal, l_nYLocal;
@@ -209,6 +336,18 @@ int main( int argc, char** argv ) {
   //! size of a single cell in x- and y-direction
   float l_dX, l_dY;
 
+  //boundary types and position of the scenario used to init Checkpoint Metadata
+  std::vector<BoundaryType> l_boundaryTypes(4);
+  std::vector<float> l_boundaryPositions(4);
+
+  for(int i=0; i <= 3; i++){
+    l_boundaryTypes[i] = l_scenario->getBoundaryType(static_cast<BoundaryEdge>(i));
+    l_boundaryPositions[i] = l_scenario->getBoundaryPos(static_cast<BoundaryEdge>(i));
+    
+  }
+
+  //end time of the scenario used to init checkpoint metadata
+  float l_totalTime = l_scenario->endSimulation();
   // compute local number of cells for each SWE_Block
   l_nXLocal = (l_blockPositionX < l_blocksX-1) ? l_nX/l_blocksX : l_nX - (l_blocksX-1)*(l_nX/l_blocksX);
   l_nYLocal = (l_blockPositionY < l_blocksY-1) ? l_nY/l_blocksY : l_nY - (l_blocksY-1)*(l_nY/l_blocksY);
@@ -217,8 +356,8 @@ int main( int argc, char** argv ) {
 
 
   // compute the size of a single cell
-  l_dX = (l_scenario.getBoundaryPos(BND_RIGHT) - l_scenario.getBoundaryPos(BND_LEFT) )/l_nX;
-  l_dY = (l_scenario.getBoundaryPos(BND_TOP) - l_scenario.getBoundaryPos(BND_BOTTOM) )/l_nY;
+  l_dX = (l_scenario->getBoundaryPos(BND_RIGHT) - l_scenario->getBoundaryPos(BND_LEFT) )/l_nX;
+  l_dY = (l_scenario->getBoundaryPos(BND_TOP) - l_scenario->getBoundaryPos(BND_BOTTOM) )/l_nY;
 
   // print information about the cell size and local number of cells
   tools::Logger::logger.printCellSize(l_dX, l_dY);
@@ -228,26 +367,26 @@ int main( int argc, char** argv ) {
   float l_originX, l_originY;
 
   // get the origin from the scenario
-  l_originX = l_scenario.getBoundaryPos(BND_LEFT) + l_blockPositionX*l_nXNormal*l_dX;;
-  l_originY = l_scenario.getBoundaryPos(BND_BOTTOM) + l_blockPositionY*l_nYNormal*l_dY;
+  l_originX = l_scenario->getBoundaryPos(BND_LEFT) + l_blockPositionX*l_nXLocal*l_dX;;
+  l_originY = l_scenario->getBoundaryPos(BND_BOTTOM) + l_blockPositionY*l_nYLocal*l_dY;
 
   // create a single wave propagation block
-  auto l_waveBlock = SWE_Block::getBlockInstance(l_nXLocal, l_nYLocal, l_dX, l_dY);
+  l_waveBlock = SWE_Block::getBlockInstance(l_nXLocal, l_nYLocal, l_dX, l_dY);
+  
   
   // initialize the wave propgation block
-  l_waveBlock->initScenario(l_originX, l_originY, l_scenario, true);
-
-  //! time when the simulation ends.
-  float l_endSimulation = l_scenario.endSimulation();
-
-  //! checkpoints when output files are written.
-  float* l_checkPoints = new float[l_numberOfCheckPoints+1];
-
-  // compute the checkpoints in time
-  for(int cp = 0; cp <= l_numberOfCheckPoints; cp++) {
-     l_checkPoints[cp] = cp*(l_endSimulation/l_numberOfCheckPoints);
-     tools::Logger::logger.printString(std::to_string(l_checkPoints[cp]));
+  if(l_restartBase != ""){
+    l_waveBlock->initScenario(l_originX, l_originY, *l_scenario, true, true);
+  } else{
+     l_waveBlock->initScenario(l_originX, l_originY, *l_scenario, false, true);
   }
+  
+  //! time when the simulation ends.
+  float l_endSimulation = l_scenario->endSimulation();
+
+
+
+  
 
   /*
    * Connect SWE blocks at boundaries
@@ -354,6 +493,9 @@ int main( int argc, char** argv ) {
   progressBar.update(0.);
 
   std::string l_fileName = generateBaseFileName(l_baseName,l_blockPositionX,l_blockPositionY);
+  std::string l_backupName = generateBaseFileName(l_backupBase, l_blockPositionX, l_blockPositionY);
+  l_backupMetadataName = l_backupBase + "_metadata";
+
   //boundary size of the ghost layers
   io::BoundarySize l_boundarySize = {{1, 1, 1, 1}};
   /*
@@ -375,21 +517,34 @@ int main( int argc, char** argv ) {
 		  l_blockPositionX*l_nXLocal, l_blockPositionY*l_nYLocal );
 #endif
   */
-  auto l_writer = io::Writer::createWriterInstance(
+  l_writer = io::Writer::createWriterInstance(
           l_fileName,
+          l_backupName,
           l_waveBlock->getBathymetry(),
           l_boundarySize,
           l_nXLocal, l_nYLocal,
           l_dX, l_dY,
           l_blockPositionX*l_nXLocal, l_blockPositionY*l_nYLocal,
           l_originX, l_originY,
-          0);
-  //
+          0, (args.isSet("restart-basepath"))? true : false); 
+      
+  tools::Logger::logger.printString(l_backupMetadataName);
+  if(l_mpiRank == 0){  
+    l_writer->initMetadataFile(l_backupMetadataName,l_totalTime, l_numberOfProcesses, l_nX, l_nY, 0, l_boundaryTypes, l_boundaryPositions);
+  }
+ 
+
   // Write zero time step
+  double outputIime = MPI_Wtime();
+  if(!args.isSet("restart-basepath")){
   l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                           l_waveBlock->getDischarge_hu(),
                           l_waveBlock->getDischarge_hv(),
-                          (float) 0.);
+                          l_startTime);
+  }
+  outputIime = MPI_Wtime() - outputIime;
+  std::cout << "Writing zero time step took: " << std::to_string(outputIime) 
+                                  << " seconds." << std::endl;
   /**
    * Simulation.
    */
@@ -399,18 +554,22 @@ int main( int argc, char** argv ) {
   tools::Logger::logger.initWallClockTime(time(NULL));
 
   //! simulation time.
-  float l_t = 0.0;
+  l_t = l_startTime;
   progressBar.update(l_t);
 
   unsigned int l_iterations = 0;
-
+  l_numCheckpoints = 0;
   // loop over checkpoints
-  for(int c=1; c<=l_numberOfCheckPoints; c++) {
-
+  while(l_t <= l_endSimulation) {
+    double start = MPI_Wtime();
+    double elapsed = 0.0;
+    
     // do time steps until next checkpoint is reached
-    while( l_t < l_checkPoints[c] ) {
+    while( elapsed < l_checkpointInt) {
       //reset CPU-Communication clock
+      if(l_t >= l_endSimulation) break;
       tools::Logger::logger.resetClockToCurrentTime("CpuCommunication");
+      tools::Logger::logger.resetClockToCurrentTime("Checkpoint");
 
       // exchange ghost and copy layers
       exchangeLeftRightGhostLayers( l_leftNeighborRank,  l_leftInflow,  l_leftOutflow,
@@ -432,7 +591,7 @@ int main( int argc, char** argv ) {
 
       //! maximum allowed time step width within a block.
       float l_maxTimeStepWidth = l_waveBlock->getMaxTimestep();
-
+      
       // update the cpu time in the logger
       tools::Logger::logger.updateTime("Cpu");
 
@@ -449,8 +608,10 @@ int main( int argc, char** argv ) {
       l_waveBlock->updateUnknowns(l_maxTimeStepWidthGlobal);
 
       // update the cpu and CPU-communication time in the logger
+      
       tools::Logger::logger.updateTime("Cpu");
       tools::Logger::logger.updateTime("CpuCommunication");
+
 
       // update simulation time with time step width.
       l_t += l_maxTimeStepWidthGlobal;
@@ -461,6 +622,10 @@ int main( int argc, char** argv ) {
       tools::Logger::logger.printString("maxTimeStepWdth: " + std::to_string(l_maxTimeStepWidthGlobal));
       tools::Logger::logger.printSimulationTime(l_t);
       progressBar.update(l_t);
+
+      elapsed = MPI_Wtime() - start;
+      MPI_Bcast(&elapsed, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+      
     }
 
     // print current simulation time
@@ -468,12 +633,47 @@ int main( int argc, char** argv ) {
     tools::Logger::logger.printOutputTime(l_t);
     progressBar.update(l_t);
 
+    #ifdef TEAMPI
+    //check for failures in teaMPI world comm
+    std::cout << "Heartbeat Rank: " << l_mpiRank << " Team: " << l_teamNumber << std::endl;
+    MPI_Allreduce(nullptr, nullptr, 0, MPI_INT, MPI_MIN, MPI_COMM_SELF);
+    //printf("Returned from heartbeat rank: %d, team %d\n", l_mpiRank, l_teamNumber);
+    //Only write timestep when simluation has finished
+    if(l_t >= l_endSimulation){
+      std::cout << "writing time-step " << l_mpiRank << " team: " << l_teamNumber << std::endl;
+      l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
+                            l_waveBlock->getDischarge_hu(),
+                            l_waveBlock->getDischarge_hv(),
+                            l_t);
+      if(l_mpiRank == 0){
+	      std::cout << "writing Metadata" << l_teamNumber << std::endl;
+	      l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
+	      
+      }
+      std::cout << "Commiting:  " << l_mpiRank << " team: " << l_teamNumber << std::endl;
+      l_writer->commitBackup();
+      std::cout << "Finished outputting:  " << l_mpiRank << " team: " << l_teamNumber << std::endl;
+
+    }
+    #else
     // write output
+    ++l_numCheckpoints;
+    double startBackup = MPI_Wtime();
+    tools::Logger::logger.resetClockToCurrentTime("Checkpoint");
     l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),
                             l_waveBlock->getDischarge_hu(),
                             l_waveBlock->getDischarge_hv(),
                             l_t);
-  }
+    if(l_mpiRank == 0) l_writer->updateMetadataFile(l_backupMetadataName, l_t, 0);
+    l_writer->commitBackup();
+    MPI_Barrier(MPI_COMM_WORLD);
+    tools::Logger::logger.updateTime("Checkpoint");
+    double dur = MPI_Wtime() - startBackup;
+    tools::Logger::logger.printString("Checkpoint took: " + std::to_string(dur) + " seconds");
+
+   
+    #endif
+  }  
 
   /**
    * Finalize.
@@ -503,11 +703,22 @@ int main( int argc, char** argv ) {
   // print the finish message
   tools::Logger::logger.printFinishMessage();
 
+  if(l_mpiRank == 0){
+    std::ofstream l_timingFile;
+    l_timingFile.open("swe_timing.txt");
+    l_timingFile << "NUM_CHECKPOINTS=" << l_numCheckpoints << std::endl;
+    l_timingFile << "TIME_CP=" << tools::Logger::logger.getTime("Checkpoint") << std::endl;
+    l_timingFile.close();
+  }
+
   // Dispose of the SWE block!
   delete l_waveBlock;
+  delete l_scenario;
 
+  //std::cout << l_mpiRank << std::endl;
   // finalize MPI execution
   MPI_Finalize();
+  std::cout << l_mpiRank << std::endl;
 
   return 0;
 }

@@ -267,6 +267,59 @@ inline std::string generateContainerFileName(std::string baseName, int timeStep)
 	return FileName.str();
 }
 
+inline int replaceConfigureFileValue(std::string filename,std::string key, std::string newValue){
+  std::string tempName = filename + "_temp";
+  std::ifstream fileIn;
+  std::ofstream fileOut;
+  int found = 0;
+
+  fileIn.open(filename);
+  fileOut.open(tempName);
+  while(!fileIn.eof()){
+    std::string line;
+    std::string currentKey;
+    size_t pos;
+
+    std::getline(fileIn, line);
+    pos = line.find("=");
+    if(pos == std::string::npos){
+      fileOut << line;
+      continue;
+    } 
+    currentKey = line.substr(0, pos);
+    if(key == currentKey){
+      found++;
+      fileOut << currentKey << "=" << newValue <<"\n";
+    } else{
+      fileOut << line << "\n";
+    }
+  }
+
+  std::remove(filename.c_str());
+  std::rename(tempName.c_str(), filename.c_str());
+  return found;
+}
+
+inline std::string readConfigureFileValue(const std::string &filename, const std::string &key){
+  std::ifstream fileIn;
+  fileIn.open(filename);
+  while(!fileIn.eof()){
+    std::string line;
+    std::string currentKey;
+    size_t pos;
+
+    std::getline(fileIn, line);
+    pos = line.find("=");
+
+    if(pos == std::string::npos) continue;
+
+    currentKey = line.substr(0, pos);
+    if(key == currentKey){
+      return line.substr(pos+1);
+    } 
+  }
+  return "";
+}
 
 #endif
 

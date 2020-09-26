@@ -11,10 +11,12 @@ option(ENABLE_VECTORIZATION         "Enable auto-vectorization of the block iter
 option(ENABLE_VECTORIZATION_VERBOSE "Enable verbose auto-vectorization reporting." OFF)
 option(ENABLE_TEAMPI "Enable use of TeaMPI replication" OFF)
 
-
 #todo: adapt these to supported solvers
 set(SOLVER_STRINGS "rusanov" "augRie" "fwave" "hlle")
-
+#Path to teaMPI lib
+set(TEAMPI_PATH "/dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib")
+#Path to ULFM
+set(ULFM_PATH "/opt")
 set(SOLVER "augRie" CACHE STRING "Default Riemann solver")
 set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVER_STRINGS})
 
@@ -31,12 +33,12 @@ message(STATUS "Using riemann solver ${SOLVER}")
 find_package(NetCDF)
 find_package(OpenMP)
 find_package(MPI)
-find_library(TEAMPI_LIBRARY NAMES tmpi PATHS /home/xile273/HPC/Code/teaMPI/lib)
+find_library(TEAMPI_LIBRARY NAMES tmpi PATHS ${TEAMPI_PATH})
 
 add_executable(swe-single-node)
 add_library(swe)
 
-
+message(STATUS "MPI_LIB ${MPI_CXX_INCLUDE_DIRS}")
 
 if(SOLVER STREQUAL "augRie")
     target_compile_definitions(swe PUBLIC SOLVER_AUGRIE)
@@ -53,7 +55,7 @@ add_subdirectory(src/blocks/rusanov)
 add_subdirectory(src/scenarios)
 add_subdirectory(src/tools)
 add_subdirectory(src/writer)
-add_subdirectory(src/solvers)
+add_subdirectory(src/reader)
 
 if (ENABLE_CUDA)
     target_compile_definitions(swe PUBLIC CUDA)
@@ -78,6 +80,10 @@ if (MPI_FOUND)
             message(FATAL_ERROR "teaMPI is enabled bit teaMPI Library was not found")
         endif()
         message(STATUS "Enabled TeaMPI")
+        target_compile_definitions(swe-mpi PRIVATE TEAMPI)
+        target_include_directories(swe-mpi PRIVATE ${TEAMPI_PATH})
+        target_sources(swe-mpi PRIVATE ${TEAMPI_PATH}/teaMPI.h)
+	message(STATUS "Linking to ${TEAMPI_LIBRARY}")
         target_link_libraries(swe-mpi PUBLIC ${TEAMPI_LIBRARY})
     endif()
     target_link_libraries(swe-mpi PUBLIC swe)
@@ -125,9 +131,11 @@ target_include_directories(swe-single-node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/s
 
 if (ENABLE_NETCDF AND NETCDF_FOUND)
     message(STATUS "Enabled NetCDF writer")
+    message(${NETCDF_INCLUDE_DIRS})
     target_compile_definitions(swe PRIVATE WRITENETCDF)
     target_include_directories(swe PRIVATE ${NETCDF_INCLUDE_DIRS})
     target_link_libraries(swe PRIVATE ${NETCDF_LIBRARIES})
+    target_include_directories(swe-mpi PRIVATE ${NETCDF_INCLUDE_DIRS})
 else ()
     message(WARNING "Enabled VTK IO (Slow, fall-back, as NetCDF is unavailable)")
 endif()

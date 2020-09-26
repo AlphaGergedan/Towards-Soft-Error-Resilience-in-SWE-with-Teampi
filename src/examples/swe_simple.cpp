@@ -62,6 +62,7 @@ int main( int argc, char** argv ) {
   args.addOption("grid-size-x", 'x', "Number of cells in x direction");
   args.addOption("grid-size-y", 'y', "Number of cells in y direction");
   args.addOption("output-basepath", 'o', "Output base file name");
+  args.addOption("backup-name", 'b', "Backup name");
 
   tools::Args::Result ret = args.parse(argc, argv);
 
@@ -79,12 +80,13 @@ int main( int argc, char** argv ) {
   int l_nX, l_nY;
 
   //! l_baseName of the plots.
-  std::string l_baseName;
+  std::string l_baseName, l_backupName;
 
   // read command line parameters
   l_nX = args.getArgument<int>("grid-size-x");
   l_nY = args.getArgument<int>("grid-size-y");
   l_baseName = args.getArgument<std::string>("output-basepath");
+  l_backupName = args.getArgument<std::string>("backup-name");
 
   #ifdef ASAGI
   /* Information about the example bathymetry grid (tohoku_gebco_ucsb3_500m_hawaii_bath.nc):
@@ -110,7 +112,7 @@ int main( int argc, char** argv ) {
                                 (float) 28800., simulationArea);
   #else
   // create a simple artificial scenario
-  SWE_RadialDamBreakScenario l_scenario;
+  SWE_SplashingConeScenario l_scenario;
   #endif
 
   //! number of checkpoints for visualization (at each checkpoint in time, an output file is written).
@@ -177,6 +179,7 @@ int main( int argc, char** argv ) {
   */
   auto l_writer = io::Writer::createWriterInstance(
           l_fileName,
+          l_backupName,
           l_waveBlock->getBathymetry(),
           l_boundarySize,
           l_nX, l_nY,

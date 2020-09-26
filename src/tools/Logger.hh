@@ -33,10 +33,15 @@
 #include <mpi.h>
 #endif
 
+#ifdef TEAMPI
+#include <teaMPI.h>
+#endif
+
 #include <map>
 #include <string>
 #include <iostream>
 #include <ctime>
+#include <iomanip>
 
 namespace tools {
   class Logger;
@@ -61,8 +66,12 @@ class tools::Logger {
     //remove new-line character
     humanReadableTime.erase(humanReadableTime.end() - 1);
 
+    #ifdef TEAMPI
+    return std::cout << humanReadableTime << " Team: " << TMPI_GetTeamNumber();
+    #else
     //return the stream
     return std::cout << humanReadableTime;
+    #endif
   }
 
   //! definition of the process rank (0 == master process)
@@ -240,8 +249,8 @@ class tools::Logger {
      */
     void printString(const std::string i_string) {
       if (processRank == 0 )
-      timeCout() << indentation
-                << i_string << std::endl;
+      timeCout() << indentation << 
+                 i_string << std::endl;
     }
 
     /**
@@ -429,6 +438,9 @@ class tools::Logger {
     	clocks[i_name] = clock();
     }
 
+    void resetTimer(const std::string &i_name){
+      timer[i_name] = 0;
+    }
     /**
      * Initialize the wall clock time.
      *

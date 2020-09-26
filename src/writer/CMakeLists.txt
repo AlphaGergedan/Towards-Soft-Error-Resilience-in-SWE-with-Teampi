@@ -11,7 +11,8 @@ target_sources(swe
     PUBLIC
     ${SELECTED_WRITER_HEADER}
     Writer.hh
- 
+    
+    
     PRIVATE
     ${SELECTED_WRITER_COMPILATION_UNIT}
     Writer.cpp
