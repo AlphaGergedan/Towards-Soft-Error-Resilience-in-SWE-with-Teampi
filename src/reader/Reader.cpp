@@ -4,6 +4,8 @@
 #include <fstream>
 
 //Netcdf file extension hardcoded
+//Reads corresponding files and creates new scenatrio from it
+
 io::Reader::Reader(std::string i_backupFilename, std::string i_outputFilename, int i_rank, int i_mpiSizeCurrent, int i_blockPosX, int i_blockPosY):
                     backupFilename(i_backupFilename), outputFilename(i_outputFilename),
                     rank(i_rank), mpiCurrentSize(i_mpiSizeCurrent),
@@ -27,7 +29,8 @@ io::Reader::~Reader(){
     
 }
 
-//TODO implement real parser for those files
+//Todo Errorhandling when file not found, sorry :(
+//Reads the Metadata file and sets corresponding values
 void io::Reader::readMetadataFile(std::string filename){
     mpiExpectedSize = std::stoi(readConfigureFileValue(filename, "ranks"));
     sizeX = std::stoi(readConfigureFileValue(filename, "grid_size_x"));

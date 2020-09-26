@@ -10,7 +10,11 @@
 #include "tools/Logger.hh"
 
 
-
+//Reads the netCDF files and creates scenario from it
+/*TODO the values in the outer ghost-layer are not stored in the files
+*but are needed for creating the scenario. I just use the adjacent values although that is not 100%
+*correct. See last function and comment.
+*/
 SWE_LoadNetCdfScenario::SWE_LoadNetCdfScenario(std::string &i_file, float i_endTime, 
                            std::vector<BoundaryType> &i_boundaryTypes,
                            std::vector<float> &i_boundaryPositions):endTime(i_endTime),

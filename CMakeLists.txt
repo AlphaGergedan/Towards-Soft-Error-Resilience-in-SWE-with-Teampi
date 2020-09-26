@@ -13,7 +13,9 @@ option(ENABLE_TEAMPI "Enable use of TeaMPI replication" OFF)
 
 #todo: adapt these to supported solvers
 set(SOLVER_STRINGS "rusanov" "augRie" "fwave" "hlle")
+#Path to teaMPI lib
 set(TEAMPI_PATH "/dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib")
+#Path to ULFM
 set(ULFM_PATH "/opt")
 set(SOLVER "augRie" CACHE STRING "Default Riemann solver")
 set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVER_STRINGS})

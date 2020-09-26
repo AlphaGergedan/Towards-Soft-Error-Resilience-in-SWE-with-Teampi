@@ -6,6 +6,8 @@
 
 #include "scenarios/SWE_LoadNetCdfScenario.hh"
 
+//Reader reads Metadatafile and creates a scenario from stored netCDF files that can be used to restart
+
 namespace io{
     class Reader;
 }

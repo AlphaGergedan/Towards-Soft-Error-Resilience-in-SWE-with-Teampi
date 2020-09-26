@@ -100,6 +100,7 @@ void exchangeBottomTopGhostLayers( const int i_bottomNeighborRank, SWE_Block1D* 
                                    const MPI_Datatype i_mpiRow);
 
 #ifdef TEAMPI
+//Callbacks that are called to safe/load checkpoint to/from disk when failure is detected
 void createCheckpointDisk(std::vector<int> failed_teams){
   tools::Logger::logger.printString("Creating Checkpoint");
   int rank;
@@ -139,6 +140,8 @@ void loadCheckpointDisk(int reloadTeam){
 }
 #endif
 
+//Signal Handler called when SIGUSR1 is sent to SWE-Process
+//Writes log files for evaluation and kills Processes
 void killSWE( int signum ) { 
     std::ofstream l_timingFile;
     l_timingFile.open("swe_timing.txt");
@@ -159,6 +162,7 @@ int main( int argc, char** argv ) {
    //Just to let me attach gdb
   signal(SIGUSR1, killSWE);
 
+  //Simple trick found on OpenMPI website to attach gdb to process for debugging purposes
   {
     volatile int i = 1;
     char hostname[256];
@@ -181,6 +185,7 @@ int main( int argc, char** argv ) {
   
   args.addOption("grid-size-x", 'x', "Number of cell in x direction");
   args.addOption("grid-size-y", 'y', "Number of cell in y direction");
+  //Place where normal output-files are written
   args.addOption("output-basepath", 'o', "Output base file name");
   args.addOption("backup-basepath", 'b', "Path of the checkpoint file and metadata used to restart in case of failure");
   args.addOption("restart-basepath", 'r', "Path of the Backup that will be loaded when restarting", tools::Args::Argument::Required, false);
@@ -628,6 +633,7 @@ int main( int argc, char** argv ) {
     std::cout << "Heartbeat Rank: " << l_mpiRank << " Team: " << l_teamNumber << std::endl;
     MPI_Allreduce(nullptr, nullptr, 0, MPI_INT, MPI_MIN, MPI_COMM_SELF);
     //printf("Returned from heartbeat rank: %d, team %d\n", l_mpiRank, l_teamNumber);
+    //Only write timestep when simluation has finished
     if(l_t >= l_endSimulation){
       std::cout << "writing time-step " << l_mpiRank << " team: " << l_teamNumber << std::endl;
       l_writer->writeTimeStep( l_waveBlock->getWaterHeight(),

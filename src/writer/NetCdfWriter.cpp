@@ -254,6 +254,7 @@ void io::NetCdfWriter::writeTimeStep( const Float2D &i_h,
 		nc_sync(dataFile);
 }
 
+//Copies the data from the current output-file to the backup-file 
 void io::NetCdfWriter::commitBackup(){
 	nc_close(dataFile);
 	std::ifstream src(fileName, std::ios::binary);
