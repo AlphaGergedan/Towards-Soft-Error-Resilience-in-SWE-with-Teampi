@@ -1,160 +1,48 @@
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.0)
 
-project(SWE LANGUAGES CXX)
+project(swe CXX)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(ENABLE_CUDA                  "Enable CUDA-accelerated SWE_Blocks" OFF)
-option(ENABLE_NETCDF                "Enable Output using NetCDF" ON)
-option(ENABLE_OPENMP                "Enable shared-memory parallelization of intra-block iterations using OpenMP" ON)
-option(ENABLE_VECTORIZATION         "Enable auto-vectorization of the block iteration on the CPU (only supported solvers), and in Release Mode." OFF)
-option(ENABLE_VECTORIZATION_VERBOSE "Enable verbose auto-vectorization reporting." OFF)
-option(ENABLE_TEAMPI "Enable use of TeaMPI replication" OFF)
+# There is only one solver, but having the option is nice
+set(SOLVER "hlle" CACHE STRING "Riemann solver")
+# This displays a combo box in CMake GUIs
+set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVERS})
 
-#todo: adapt these to supported solvers
-set(SOLVER_STRINGS "rusanov" "augRie" "fwave" "hlle")
-#Path to teaMPI lib
-set(TEAMPI_PATH "/dss/dsshome1/lxc09/ga84nus2/Bachelorarbeit/teaMPI/lib")
-#Path to ULFM
-set(ULFM_PATH "/opt")
-set(SOLVER "augRie" CACHE STRING "Default Riemann solver")
-set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVER_STRINGS})
+add_executable(swe src/main.cpp)
 
-if (ENABLE_CUDA)
-    enable_language(CUDA)
-endif()
+target_sources(swe PRIVATE src/constants.hpp)
 
-if( NOT SOLVER IN_LIST SOLVER_STRINGS)
-    message(FATAL_ERROR "solver must be one of ${SOLVER_STRINGS}")
-endif()
+target_include_directories(swe PRIVATE src)
 
-message(STATUS "Using riemann solver ${SOLVER}")
-
-find_package(NetCDF)
-find_package(OpenMP)
-find_package(MPI)
-find_library(TEAMPI_LIBRARY NAMES tmpi PATHS ${TEAMPI_PATH})
-
-add_executable(swe-single-node)
-add_library(swe)
-
-message(STATUS "MPI_LIB ${MPI_CXX_INCLUDE_DIRS}")
-
-if(SOLVER STREQUAL "augRie")
-    target_compile_definitions(swe PUBLIC SOLVER_AUGRIE)
-elseif(SOLVER STREQUAL "hlle")
-    target_compile_definitions(swe PUBLIC SOLVER_HLLE)
-elseif(SOLVER STREQUAL "fwave")
-    target_compile_definitions(swe PUBLIC SOLVER_FWAVE)
-elseif(SOLVER STREQUAL "rusanov")
-    target_compile_definitions(swe PUBLIC SOLVER_RUSANOV)
-endif()
-
-add_subdirectory(src/blocks)
-add_subdirectory(src/blocks/rusanov)
-add_subdirectory(src/scenarios)
+add_subdirectory(src/types)
 add_subdirectory(src/tools)
-add_subdirectory(src/writer)
-add_subdirectory(src/reader)
+add_subdirectory(src/io)
+add_subdirectory(src/scenarios)
+add_subdirectory(src/solvers)
+add_subdirectory(src/blocks)
 
-if (ENABLE_CUDA)
-    target_compile_definitions(swe PUBLIC CUDA)
-    add_subdirectory(src/blocks/cuda)
+# NetCDF
+include(FindNetCDF.cmake)
+if(NOT NETCDF_FOUND)
+  message(FATAL_ERROR "NetCDF could not be found!")
 endif()
+target_include_directories(swe SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+target_link_libraries(swe PRIVATE ${NETCDF_LIBRARIES})
 
-target_sources(swe-single-node 
-    PRIVATE
-    src/examples/swe_simple.cpp
-)
-    
-target_link_libraries(swe-single-node PUBLIC swe)
+# ULFM
+# Set this to the directory, that contains the "bin" folder which contains ULFM's MPI executables
+# set(MPI_HOME "/home/username/opt" CACHE PATH "Base directory for MPI" FORCE)
+find_package(MPI REQUIRED)
+target_link_libraries(swe PUBLIC MPI::MPI_CXX)
 
-if (MPI_FOUND)
-    add_executable(swe-mpi)
-    target_sources(swe-mpi 
-        PRIVATE
-        src/examples/swe_mpi.cpp
-    )
-    if(ENABLE_TEAMPI)
-        if(NOT TEAMPI_LIBRARY)
-            message(FATAL_ERROR "teaMPI is enabled bit teaMPI Library was not found")
-        endif()
-        message(STATUS "Enabled TeaMPI")
-        target_compile_definitions(swe-mpi PRIVATE TEAMPI)
-        target_include_directories(swe-mpi PRIVATE ${TEAMPI_PATH})
-        target_sources(swe-mpi PRIVATE ${TEAMPI_PATH}/teaMPI.h)
-	message(STATUS "Linking to ${TEAMPI_LIBRARY}")
-        target_link_libraries(swe-mpi PUBLIC ${TEAMPI_LIBRARY})
-    endif()
-    target_link_libraries(swe-mpi PUBLIC swe)
-    target_link_libraries(swe-mpi PRIVATE ${MPI_CXX_LIBRARIES})
-    target_include_directories(swe-mpi PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_include_directories(swe-mpi PRIVATE ${MPI_CXX_INCLUDE_DIRS})
+# teaMPI
+# Set this to the directory containing libtmpi
+target_include_directories(swe SYSTEM PRIVATE ../teaMPI/lib)
+find_library(teaMPI tmpi HINTS ../teaMPI/lib)
+if(NOT teaMPI)
+  message(FATAL_ERROR "teaMPI could not be found!")
 endif()
-
-if (OpenMP_FOUND AND ENABLE_OPENMP)
-    target_compile_definitions(swe PUBLIC LOOP_OPENMP)
-    target_link_libraries(swe PRIVATE OpenMP::OpenMP_CXX)
-    message(STATUS "OpenMP supported loop parallelization is enabled.")
-else()
-    message(STATUS "OpenMP loop parallelization is disabled.")
-endif()
-
-if (OpenMP_FOUND AND ENABLE_VECTORIZATION)
-    #target_compile_definitions(swe PUBLIC $<$<CONFIG:Release>:VECTORIZE NDEBUG>)
-    target_compile_definitions(swe PUBLIC VECTORIZE NDEBUG)
-    target_link_libraries(swe PRIVATE OpenMP::OpenMP_CXX)
-    target_compile_options(swe PRIVATE 
-        $<$<CXX_COMPILER_ID:Clang>: -march=native -fno-math-errno>
-        $<$<CXX_COMPILER_ID:AppleClang>: -march=native -fno-math-errno>
-        $<$<CXX_COMPILER_ID:Intel>: -xHost>
-        $<$<CXX_COMPILER_ID:GNU>: -march=native -ffast-math -fassociative-math>
-    )
-    if(ENABLE_VECTORIZATION_VERBOSE)
-        target_compile_options(swe PRIVATE
-            $<$<CXX_COMPILER_ID:AppleClang>: -Rpass-analysis=loop-vectorize>
-            $<$<CXX_COMPILER_ID:Clang>: -Rpass-analysis=loop-vectorize>
-            $<$<CXX_COMPILER_ID:Intel>: -qopt-report-phase=vec -qopt-report=2>
-            $<$<CXX_COMPILER_ID:GNU>: -ftree-vectorizer-verbose=4 -fopt-info-all-vec>
-        )
-    endif()
-    message(STATUS "OpenMP vectorization is enabled (Only for Release Mode).")
-
-elseif(OpenMP_NOTFOUND AND ENABLE_VECTORIZATION)
-    message(FATAL_ERROR "OpenMP is required to use Vectorization.")
-else()
-    message(STATUS "OpenMP vectorization is disabled.")
-endif()
-
-target_include_directories(swe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(swe-single-node PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-if (ENABLE_NETCDF AND NETCDF_FOUND)
-    message(STATUS "Enabled NetCDF writer")
-    message(${NETCDF_INCLUDE_DIRS})
-    target_compile_definitions(swe PRIVATE WRITENETCDF)
-    target_include_directories(swe PRIVATE ${NETCDF_INCLUDE_DIRS})
-    target_link_libraries(swe PRIVATE ${NETCDF_LIBRARIES})
-    target_include_directories(swe-mpi PRIVATE ${NETCDF_INCLUDE_DIRS})
-else ()
-    message(WARNING "Enabled VTK IO (Slow, fall-back, as NetCDF is unavailable)")
-endif()
-
-
-# Warnings
-
-target_compile_options(swe PUBLIC 
-    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
-    $<$<COMPILE_LANGUAGE:CUDA>:-g>
-)
-
-#target_compile_options(swe PUBLIC <$<$ >:-g>) # -Wextra -pedantic)
-
-#C++ Standard
-set_property(TARGET swe PROPERTY CXX_STANDARD 11)
-set_property(TARGET swe PROPERTY CUDA_STANDARD 11)
-set_property(TARGET swe-mpi PROPERTY CXX_STANDARD 11)
-set_property(TARGET swe-single-node PROPERTY CXX_STANDARD 11)
-
-# Export compiler commands for use in YouCompleteMe
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+target_link_libraries(swe PRIVATE ${teaMPI})
