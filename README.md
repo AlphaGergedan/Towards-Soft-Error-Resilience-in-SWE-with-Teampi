@@ -33,15 +33,23 @@ steps does not work, read the `HACKING.md`, or try to build using the master
 branch of Open MPI itself: https://github.com/open-mpi/ompi
 - run `./autogen.pl`
 - make sure to have recent versions of GUN Autoconf, Automake, and Libtool
-- now run `./configure --prefix=/where/to/install --with-ft` to enable ULFM
-- finally run `make all install`
+- now run `./configure --prefix=/ulfm/installation/path --with-ft` to enable
+ULFM and to install it in the specified `/ulfm/installation/path` directory.
+- finally run `make all install` to finish installation.
 
-Then we should setup teaMPI
-- TODO
+Also make sure that you have NetCDF library installed.
 
 ### Compiling ###
 
-TODO
+Follow the following steps to compile the project:
+- go to the root `/` directory of the project
+- make sure you have teaMPI by running: `git submodule update --init --recursive`
+- run `cmake -DMPI_HOME=/ulfm/installation/path -B build/directory -S .`
+- now prepend the include directory of the installed Open MPI with ULFM (for
+example by running `export CPATH=/ulfm/installation/path/include:$CPATH`)
+- finally run `make -C build/directory`
+
+Now you should see the executables in the specified build/directory.
 
 ### Running ###
 
