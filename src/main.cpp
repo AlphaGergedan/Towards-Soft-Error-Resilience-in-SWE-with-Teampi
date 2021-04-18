@@ -7,6 +7,7 @@
 #include <csetjmp>
 #include <fstream>
 #include <iostream>
+#include <ostream>
 #include <sstream>
 #include <thread>
 
@@ -178,6 +179,7 @@ int main(int argc, char** argv)
 
     float simulationStart{0.0f};
 
+    // if not loading from a checkpoint
     if (restartNameInput == "")
     {
         scenario = new SWE_RadialBathymetryDamBreakScenario{};
@@ -290,7 +292,7 @@ int main(int argc, char** argv)
                          simulationBlocks[currentBlockNr - startPoint]->dy});
         }
     }
-    else
+    else /* loading from a checkpoint */
     {
         std::vector<SWE_Scenario*> scenarios{};
         for (int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++)
@@ -732,22 +734,51 @@ int main(int argc, char** argv)
             {
                 // return 1;
             }
+
+            // End Heartbeat
+            std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
+            MPI_Sendrecv(MPI_IN_PLACE,
+                         0,
+                         MPI_BYTE,
+                         MPI_PROC_NULL,
+                         -1,
+                         MPI_IN_PLACE,
+                         0,
+                         MPI_BYTE,
+                         MPI_PROC_NULL,
+                         0,
+                         MPI_COMM_SELF,
+                         MPI_STATUS_IGNORE);
+
+            // printf("Returned from heartbeat rank: %d, team %d\n",
+            // l_mpiRank, l_teamNumber); Only write timestep when simluation
+            // has finished
+
+            //std::printf("Rank %i of Team %i writing output on timestep %f\n", myRankInTeam, myTeam, t);
+            std::cout << "\n-------------------------------------------------"
+                      << "Rank " << myRankInTeam << " from TEAM " << myTeam
+                      << " writing output at t = " << t << std::endl;
+            for (int i = 0; i < (int) simulationBlocks.size(); i++) {
+                simulationBlocks[i]->writeTimestep(t);
+                //simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
+            }
+
         }
 
-        // End Heartbeat
-        std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
-        MPI_Sendrecv(MPI_IN_PLACE,
-                     0,
-                     MPI_BYTE,
-                     MPI_PROC_NULL,
-                     -1,
-                     MPI_IN_PLACE,
-                     0,
-                     MPI_BYTE,
-                     MPI_PROC_NULL,
-                     0,
-                     MPI_COMM_SELF,
-                     MPI_STATUS_IGNORE);
+        //// End Heartbeat
+        //std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
+        //MPI_Sendrecv(MPI_IN_PLACE,
+                     //0,
+                     //MPI_BYTE,
+                     //MPI_PROC_NULL,
+                     //-1,
+                     //MPI_IN_PLACE,
+                     //0,
+                     //MPI_BYTE,
+                     //MPI_PROC_NULL,
+                     //0,
+                     //MPI_COMM_SELF,
+                     //MPI_STATUS_IGNORE);
 
         // printf("Returned from heartbeat rank: %d, team %d\n",
         // l_mpiRank, l_teamNumber); Only write timestep when simluation
