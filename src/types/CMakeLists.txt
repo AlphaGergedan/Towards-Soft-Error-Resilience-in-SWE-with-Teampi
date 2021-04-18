@@ -1,4 +1,4 @@
-target_sources(swe PRIVATE
+target_sources(swe-fault-resilience PRIVATE
   Boundary.hpp
   Float2D.hpp
   Float2DNative.hpp

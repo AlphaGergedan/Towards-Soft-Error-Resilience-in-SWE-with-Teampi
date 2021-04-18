@@ -1,4 +1,4 @@
-target_sources(swe PRIVATE
+target_sources(swe-fault-resilience PRIVATE
   Scenario.hpp
   simple_scenarios.hpp
   LoadNetCDFScenario.cpp
