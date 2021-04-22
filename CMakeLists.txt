@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(swe-fault-resilience
-    DESCRIPTION "SWE with different fault tolerance techniques."
+project(swe_with_teaMPI_and_fault_tolerance
+    DESCRIPTION "SWE with teaMPI with different fault tolerance techniques."
     LANGUAGES CXX
     )
 
@@ -21,10 +21,20 @@ set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVERS})
 # sources
 
 # More executables can be added for other failure mitigation methods
-add_executable(swe-fault-resilience)
+add_executable(swe_hardRes_wTaskSharing)                # --> old version
 
-target_sources(swe-fault-resilience PRIVATE src/main.cpp)
-target_sources(swe-fault-resilience PRIVATE src/constants.hpp)
+add_executable(swe_softRes_and_hardRes_woutTaskSharing) # --> new naive version
+add_executable(swe_checkpointRestart)                   # --> baseline version
+#add_executable(swe_softRes_and_hardRes_wTaskSharing) TODO
+
+target_sources(swe_hardRes_wTaskSharing PRIVATE src/main.cpp)
+target_sources(swe_hardRes_wTaskSharing PRIVATE src/constants.hpp)
+
+target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE src/swe_softRes_and_hardRes_woutTaskSharing.cpp)
+target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE src/constants.hpp)
+
+target_sources(swe_checkpointRestart PRIVATE src/swe_checkpointRestart.cpp)
+target_sources(swe_checkpointRestart PRIVATE src/constants.hpp)
 
 # Each subdirectory has it's own CMakeLists.txt to target their sources
 add_subdirectory(src/types)
@@ -35,7 +45,12 @@ add_subdirectory(src/solvers)
 add_subdirectory(src/blocks)
 
 # Include the src directory
-target_include_directories(swe-fault-resilience PRIVATE src)
+target_include_directories(swe_hardRes_wTaskSharing PRIVATE src)
+
+target_include_directories(swe_softRes_and_hardRes_woutTaskSharing PRIVATE src)
+
+target_include_directories(swe_checkpointRestart PRIVATE src)
+
 
 #*******************************************************************************
 # libraries
@@ -45,27 +60,35 @@ include(cmake/FindNetCDF.cmake)
 if(NOT NETCDF_FOUND)
   message(FATAL_ERROR "NetCDF could not be found!")
 endif()
-target_include_directories(swe-fault-resilience SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
-target_link_libraries(swe-fault-resilience PRIVATE ${NETCDF_LIBRARIES})
+target_include_directories(swe_hardRes_wTaskSharing SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+target_link_libraries(swe_hardRes_wTaskSharing PRIVATE ${NETCDF_LIBRARIES})
+
+target_include_directories(swe_softRes_and_hardRes_woutTaskSharing SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+target_link_libraries(swe_softRes_and_hardRes_woutTaskSharing PRIVATE ${NETCDF_LIBRARIES})
+
+target_include_directories(swe_checkpointRestart SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+target_link_libraries(swe_checkpointRestart PRIVATE ${NETCDF_LIBRARIES})
 
 # ULFM
 # Set this to the directory, that contains the "bin" folder which contains ULFM's MPI executables
 #set(MPI_HOME "/home/${USERNAME}/ssd/lib/ULFM/ulfm2/build/bin" CACHE PATH "Base directory for MPI" FORCE)
 find_package(MPI REQUIRED)
 if (MPI_FOUND)
-    target_link_libraries(swe-fault-resilience PUBLIC MPI::MPI_CXX)
+    target_link_libraries(swe_hardRes_wTaskSharing PUBLIC MPI::MPI_CXX)
+    target_link_libraries(swe_softRes_and_hardRes_woutTaskSharing PUBLIC MPI::MPI_CXX)
+    target_link_libraries(swe_checkpointRestart PUBLIC MPI::MPI_CXX) # TODO checkpointing doesn't need ulfm !
 else()
     message(FATAL_ERROR "MPI not found!")
 endif()
 
 # teaMPI: TODO delete this section after you configured teaMPI submodule
 # Set this to the directory containing libtmpi
-#target_include_directories(swe-fault-resilience SYSTEM PRIVATE teampi-soft-error-resilience/lib)
+#target_include_directories(swe_hardRes_wTaskSharing SYSTEM PRIVATE teampi-soft-error-resilience/lib)
 #find_library(teaMPI tmpi HINTS teampi-soft-error-resilience/lib)
 #if(NOT teaMPI)
 #  message(FATAL_ERROR "teaMPI could not be found!")
 #endif()
-#target_link_libraries(swe-fault-resilience PRIVATE ${teaMPI})
+#target_link_libraries(swe_hardRes_wTaskSharing PRIVATE ${teaMPI})
 
 #*******************************************************************************
 # teaMPI library
@@ -88,25 +111,37 @@ add_library(tmpi SHARED
 #    PUBLIC_HEADER DESTINATION teampi-soft-error-resilience/include
 #    )
 
-# Link tmpi
-target_link_libraries(swe-fault-resilience PRIVATE tmpi)
+# Link tmpi, swe_checkpointRestart does not need it
+target_link_libraries(swe_hardRes_wTaskSharing PRIVATE tmpi)
+target_link_libraries(swe_softRes_and_hardRes_woutTaskSharing PRIVATE tmpi)
 
-# include path
-target_include_directories(swe-fault-resilience PRIVATE teampi-soft-error-resilience/include)
+# include path, swe_checkpointRestart does not need it
+target_include_directories(swe_hardRes_wTaskSharing PRIVATE teampi-soft-error-resilience/include)
+target_include_directories(swe_softRes_and_hardRes_woutTaskSharing PRIVATE teampi-soft-error-resilience/include)
 
 
 #*******************************************************************************
 # Warnings
+# TODO add debug and release options to activate debugging flags
 
-#target_compile_options(tmpi PUBLIC
-#$<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>)
+# TODO you can flags to teampi here
+target_compile_options(tmpi PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+)
 
-target_compile_options(swe-fault-resilience PUBLIC
-$<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+target_compile_options(swe_hardRes_wTaskSharing PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+)
+
+target_compile_options(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+)
+
+target_compile_options(swe_checkpointRestart PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
 )
 
 #*******************************************************************************
 
 # Export compiler commands for use in YouCompleteMe
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-

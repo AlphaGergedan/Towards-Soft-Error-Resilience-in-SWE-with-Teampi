@@ -1,3 +1,12 @@
-target_sources(swe-fault-resilience PRIVATE
+target_sources(swe_hardRes_wTaskSharing PRIVATE
+  help.hpp
+  Args.hpp)
+
+target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
+  help.hpp
+  Args.hpp
+  sha1.hpp)
+
+target_sources(swe_checkpointRestart PRIVATE
   help.hpp
   Args.hpp)
