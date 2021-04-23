@@ -17,7 +17,20 @@ Keep in mind:
 
 ### First Method: Comparing Hashes Using Heartbeats ###
 
-TODO
+Two possible hashing methods:
+  1. SHA-1 hash (20 bytes)
+  2. std::hash (size\_t bytes == 8 bytes)
+
+This is a naive soft error resilience technique, where we compute one block per
+rank in team. So we divide the domain into 'number of ranks in a team' blocks.
+Each rank computes it's own block and issues heartbeats in each `heartbeat-interval`
+wall-clock seconds sending the hashes of the computed updates to their replicas.
+teaMPI handles the comparison of the hashes, and therefore detection of a silent
+data corruption is possible. (See [running examples](#running))
+
+Theoretically, correction of the data is possible in case of a soft error by
+running 3 teams at least, and by deploying a voting mechanism like in
+[redMPI](https://www.christian-engelmann.info/?page_id=1873).
 
 ### Second Method: ###
 
@@ -49,9 +62,39 @@ Follow the following steps to compile the project:
 example by running `export CPATH=/ulfm/installation/path/include:$CPATH`)
 - finally run `make -C build/directory`
 
-Now you should see the executables in the specified build/directory.
+Now you should see the executables in the specified 'build/directory'.
 
 ### Running ###
 
-TODO
+You should read the 'README.md' on the submodule before running the simulation.
+
+Also read the 'help' outputs of the each executables before executing them by
+running `./executable -h`
+
+An example run for naive soft error detection and hard erpo:
+  - `export TEAMS=2` running 2 teams is enough for soft error detection
+  - `export SPARES=1` at least one spare process for the hard failure mitigation
+  - then run
+  ```
+  mpirun --oversubscribe -np 2 buid/directory/swe_softRes_and_hardRes_woutTaskSharing -t 10 -x 1000 -y 1000 -i 2 -m 1 -o out/directory/outputName -b out/directory/backupName
+  ```
+
+  TODO testing the mitigation methods
+
+
+```
+TODO: add the environment variables to the README on teampi submodule, list:
+      SPARES=0                          number of spare processes (warm)
+      TEAMS=2                           number of teams
+      TMPI_STATS_FILE                   tmpi stats will be written to this file
+      TMPI_STATS_OUTPUT_PATH            on this path
+
+      TMPI_FILE
+      TMPI_OUTPUT_PATH
+
+
+ LOGINFO                           enables extra logging information on stdout
+                                   but needs to be enabled at compile time and
+                                   doesn't compile. Fix this TODO
+```
 

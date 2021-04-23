@@ -1,5 +1,5 @@
 /**
- * @file src/naiv.cpp
+ * @file src/swe_softRes_and_hardRes_woutTaskSharing.cpp
  *
  * @brief hard error resiliency without task sharing and no soft error resilience
  *
@@ -271,7 +271,8 @@ int main(int argc, char** argv)
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
 
-    std::printf("Rank %i of Team %i spawned at %s\n", myRankInTeam, myTeam, hostname);
+    std::printf("PID %d, Rank %i of Team %i spawned at %s\n", getpid(), myRankInTeam, myTeam, hostname);
+    fflush(stdout);
 
     int totalBlocks = blocksPerRank * ranksPerTeam;
 
@@ -566,6 +567,9 @@ int main(int argc, char** argv)
 
     myBlockOrder.push_back(0); /* We have only one block,
                                   but this is conventionally same as main.cpp */
+
+    /* We should have only one block */
+    assert(simulationBlocks.size() == 1);
 
 //------------------------------------------------------------------------------
 
