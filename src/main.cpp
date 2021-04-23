@@ -1,4 +1,23 @@
+/**
+ * @file src/main.cpp
+ * @brief hard failure mitigation with task sharing
+ *
+ * TODO
+ *   - description
+ *
+ *   - change the name to match with the executable
+ *
+ *   - currently supports classical checkpointing, it should be enabled by the
+ *     user.
+ *
+ *
+ */
+
+
+
+
 #include <mpi.h>
+#include <string>
 #include <teaMPI.h>
 #include <unistd.h>
 
@@ -137,6 +156,7 @@ int main(int argc, char** argv)
     if (args.isSet("restart-basepath"))
     {
         restartNameInput = args.getArgument<std::string>("restart-basepath");
+
     }
 
     // init teaMPI
@@ -162,6 +182,11 @@ int main(int argc, char** argv)
     unsigned int blocksPerRank = numTeams * decompFactor;
     outputTeamName = outputNameInput + "_t" + std::to_string(myTeam);
     backupTeamName = backupNameInput + "_t" + std::to_string(myTeam);
+
+    /* also add team to the restart name */
+    if (args.isSet("restart-basepath")) {
+        restartNameInput = restartNameInput + "_t" + std::to_string(myTeam);
+    }
 
     // Print status
     char hostname[HOST_NAME_MAX];
@@ -488,10 +513,21 @@ int main(int argc, char** argv)
 
         double timeOfLastHeartbeat{MPI_Wtime()};
         double timeSinceLastHeartbeat{0.0};
+        std::cout << "\n\t+++++++++++++++++++++++++++++++++++++++++++++++\n\t"
+                  << "  - HEARTBEAT started:\n\t\t"
+                  << "at MPI_Wtime() : " << timeOfLastHeartbeat << std::endl;
+
         // simulate until the checkpoint is reached
         while (timeSinceLastHeartbeat < checkpointInterval && t < simulationDuration)
         {
-            std::cout << "Team " << myTeam << ": Begin iteration at time " << t << '\n';
+            std::cout << "\n"
+                      << "--------------- while (timeSinceLastHeartbeat="
+                      << timeSinceLastHeartbeat << " < checkpointInterval="
+                      << checkpointInterval << " && t="
+                      << t << " < simulationDuration="
+                      << simulationDuration << ")---------------"
+                      << "TEAM " << myTeam << ": \t\tBegin iteration at time " << t
+                      << std::endl;
             // exchange boundaries between blocks
             for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
             for (auto& currentBlock : simulationBlocks) { currentBlock->receiveGhostLayer(); }
@@ -540,6 +576,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 1]);
                             // MPI_Request_free(&req);
+
+                            /* h netupdates Left */
                             MPI_Isend(currentBlock.hNetUpdatesLeft.getRawPointer(),
                                       fieldSizeX,
                                       MPI_FLOAT,
@@ -548,6 +586,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 2]);
                             // MPI_Request_free(&req);
+
+                            /* h netupdates Right */
                             MPI_Isend(currentBlock.hNetUpdatesRight.getRawPointer(),
                                       fieldSizeX,
                                       MPI_FLOAT,
@@ -556,6 +596,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 3]);
                             // MPI_Request_free(&req);
+
+                            /* hu netupdates Left */
                             MPI_Isend(currentBlock.huNetUpdatesLeft.getRawPointer(),
                                       fieldSizeX,
                                       MPI_FLOAT,
@@ -564,6 +606,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 4]);
                             // MPI_Request_free(&req);
+
+                            /* hu netupdates Right*/
                             MPI_Isend(currentBlock.huNetUpdatesRight.getRawPointer(),
                                       fieldSizeX,
                                       MPI_FLOAT,
@@ -572,6 +616,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 5]);
                             // MPI_Request_free(&req);
+
+                            /* h netupdates below */
                             MPI_Isend(currentBlock.hNetUpdatesBelow.getRawPointer(),
                                       fieldSizeY,
                                       MPI_FLOAT,
@@ -580,6 +626,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 6]);
                             // MPI_Request_free(&req);
+
+                            /* h netupdates above */
                             MPI_Isend(currentBlock.hNetUpdatesAbove.getRawPointer(),
                                       fieldSizeY,
                                       MPI_FLOAT,
@@ -588,6 +636,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 7]);
                             // MPI_Request_free(&req);
+
+                            /* hv netupdates below */
                             MPI_Isend(currentBlock.hvNetUpdatesBelow.getRawPointer(),
                                       fieldSizeY,
                                       MPI_FLOAT,
@@ -596,6 +646,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 8]);
                             // MPI_Request_free(&req);
+
+                            /* hv netupdates above */
                             MPI_Isend(currentBlock.hvNetUpdatesAbove.getRawPointer(),
                                       fieldSizeY,
                                       MPI_FLOAT,
@@ -604,6 +656,8 @@ int main(int argc, char** argv)
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 9]);
                             // MPI_Request_free(&req);
+
+                            /* max time step */
                             MPI_Isend(&(currentBlock.maxTimestep),
                                       1,
                                       MPI_FLOAT,
@@ -727,6 +781,9 @@ int main(int argc, char** argv)
             for (auto& block : simulationBlocks) { block->updateUnknowns(timestep); }
             t += timestep;
 
+            /* write output */
+            for (auto& block : simulationBlocks) {block->writeTimestep(t);}
+
             timeSinceLastHeartbeat = MPI_Wtime() - timeOfLastHeartbeat;
             MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             // MPI_Barrier(TMPI_GetInterTeamComm());
@@ -735,60 +792,42 @@ int main(int argc, char** argv)
                 // return 1;
             }
 
-            // End Heartbeat
-            std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
-            MPI_Sendrecv(MPI_IN_PLACE,
-                         0,
-                         MPI_BYTE,
-                         MPI_PROC_NULL,
-                         -1,
-                         MPI_IN_PLACE,
-                         0,
-                         MPI_BYTE,
-                         MPI_PROC_NULL,
-                         0,
-                         MPI_COMM_SELF,
-                         MPI_STATUS_IGNORE);
-
-            // printf("Returned from heartbeat rank: %d, team %d\n",
-            // l_mpiRank, l_teamNumber); Only write timestep when simluation
-            // has finished
-
-            //std::printf("Rank %i of Team %i writing output on timestep %f\n", myRankInTeam, myTeam, t);
-            std::cout << "\n-------------------------------------------------"
-                      << "Rank " << myRankInTeam << " from TEAM " << myTeam
-                      << " writing output at t = " << t << std::endl;
-            for (int i = 0; i < (int) simulationBlocks.size(); i++) {
-                simulationBlocks[i]->writeTimestep(t);
-                //simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
-            }
-
         }
 
-        //// End Heartbeat
-        //std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
-        //MPI_Sendrecv(MPI_IN_PLACE,
-                     //0,
-                     //MPI_BYTE,
-                     //MPI_PROC_NULL,
-                     //-1,
-                     //MPI_IN_PLACE,
-                     //0,
-                     //MPI_BYTE,
-                     //MPI_PROC_NULL,
-                     //0,
-                     //MPI_COMM_SELF,
-                     //MPI_STATUS_IGNORE);
+
+        /* write checkpoint */
+        for (int i = 0; i < simulationBlocks.size(); i++) {
+            simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
+        }
+
+
+
+        // End Heartbeat
+        std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
+        MPI_Sendrecv(MPI_IN_PLACE,
+                     0,
+                     MPI_BYTE,
+                     MPI_PROC_NULL,
+                     -1,
+                     MPI_IN_PLACE,
+                     0,
+                     MPI_BYTE,
+                     MPI_PROC_NULL,
+                     0,
+                     MPI_COMM_SELF,
+                     MPI_STATUS_IGNORE);
 
         // printf("Returned from heartbeat rank: %d, team %d\n",
         // l_mpiRank, l_teamNumber); Only write timestep when simluation
         // has finished
-        /* if (t >= simulationDuration) {
+        /*
+        if (t >= simulationDuration) {
             std::printf("Rank %i of Team %i writing final checkpoint\n", myRankInTeam, myTeam);
             for (int i = 0; i < simulationBlocks.size(); i++) {
                 simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
             }
-        } */
+        }
+        */
     }
 
     for (auto& block : simulationBlocks) { block->freeMpiType(); }
