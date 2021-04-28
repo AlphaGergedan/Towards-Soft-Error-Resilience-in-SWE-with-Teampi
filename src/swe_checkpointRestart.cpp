@@ -57,19 +57,8 @@ std::vector<std::string> backupMetadataNames{};
 std::string backupMetadataName;
 //------------------------------------------------------------------------------
 
-float t(0.0F);
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-std::vector<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>> simulationBlocks{};
 
-/* Since we are doing the first option naively, we will not share any
-* blocks. Which means it is best that we have only one block per replica,
-* so using only one variable makes more sense TODO*/
 
-std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp> simulationBlock; /* needs to be global
-                                                                         * for checkpointcallbacks
-                                                                         * below, which will be
-                                                                         * passed to teaMPI
-                                                                         **/
 //------------------------------------------------------------------------------
 SWE_Scenario* scenario{nullptr};
 bool hasRecovered{false};
@@ -106,6 +95,7 @@ int main(int argc, char** argv)
     args.addOption("restart-basepath", 'r', "Restart base file name", tools::Args::Required, false);
 
     /* TODO add write option*/
+    args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
 
     // Parse command line arguments
     tools::Args::Result ret = args.parse(argc, argv);
@@ -139,10 +129,14 @@ int main(int argc, char** argv)
     std::string outputTeamName{""};
     std::string backupTeamName{""};
 
+    /* whether to write output */
+    bool writeOutput = false;
+
     // Read in command line arguments
     simulationDuration = args.getArgument<float>("simulation-duration");
     numberOfCheckpoints = args.getArgument<int>("checkpoint-count");
-    assert(numberOfCheckpoints > 0);
+    assert(numberOfCheckpoints >= 0);
+    if (numberOfCheckpoints == 0) numberOfCheckpoints = 1;
 
     nxRequested = args.getArgument<int>("resolution-x");
     nyRequested = args.getArgument<int>("resolution-y");
@@ -151,13 +145,20 @@ int main(int argc, char** argv)
     if (args.isSet("restart-basepath")) {
         restartNameInput = args.getArgument<std::string>("restart-basepath");
     }
+    writeOutput = args.isSet("write-output");
+
+
+    /* one block per rank */
+    std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp> simulationBlock;
+
+    /* Simulation time */
+    float t = 0.f;
+
 
     /* init MPI */
     int ranksPerTeam = 1;
     int myRankInTeam;
-    if (setjmp(jumpBuffer) == 0) {
-        MPI_Init(&argc, &argv);
-    }
+    MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &ranksPerTeam);
     MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
     const int myTeam = 0;
@@ -171,6 +172,8 @@ int main(int argc, char** argv)
     /* also add team to the restart name TODO fix when file not found */
     if (args.isSet("restart-basepath")) {
         restartNameInput = restartNameInput + "_t" + std::to_string(myTeam);
+        /* needs to be same as backup path */
+        assert(backupTeamName.compare(restartNameInput) == 0);
     }
 
     // Print status
@@ -191,7 +194,7 @@ int main(int argc, char** argv)
 
     /* We have only one team, meaning blocksPerRank equals to 1*/
     /* int startPoint = myRankInTeam * blocksPerRank; */
-    int startPoint = myRankInTeam;
+    int startPoint = myRankInTeam; // TODO remove this !!
 
     float simulationStart = 0.f;
 
@@ -207,60 +210,54 @@ int main(int argc, char** argv)
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 /* TODO on this naiv soft error checking we have only one simulationBlock ! */
         /* Loop over the rank's block number in its team. */
-        for (int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++)
-        {
-            int localBlockPositionX = currentBlockNr / blockCountY;
-            int localBlockPositionY = currentBlockNr % blockCountY;
 
-            // compute local number of cells for each SWE_Block w.r.t. the
-            // simulation domain (particularly not the original scenario
-            // domain, which might be finer in resolution) (blocks at the
-            // domain boundary are assigned the "remainder" of cells)
+        int localBlockPositionX = startPoint / blockCountY;
+        int localBlockPositionY = startPoint % blockCountY;
 
-            int nxBlockSimulation = (nxRequested) / blockCountX;
-            int nxRemainderSimulation = nxRequested - (blockCountX - 1) * nxBlockSimulation;
-            int nyBlockSimulation = nyRequested / blockCountY;
-            int nyRemainderSimulation = nyRequested - (blockCountY - 1) * nyBlockSimulation;
+        // compute local number of cells for each SWE_Block w.r.t. the
+        // simulation domain (particularly not the original scenario
+        // domain, which might be finer in resolution) (blocks at the
+        // domain boundary are assigned the "remainder" of cells)
 
-            int nxLocal = (localBlockPositionX < blockCountX - 1) ? nxBlockSimulation : nxRemainderSimulation;
-            int nyLocal = (localBlockPositionY < blockCountY - 1) ? nyBlockSimulation : nyRemainderSimulation;
+        int nxBlockSimulation = (nxRequested) / blockCountX;
+        int nxRemainderSimulation = nxRequested - (blockCountX - 1) * nxBlockSimulation;
+        int nyBlockSimulation = nyRequested / blockCountY;
+        int nyRemainderSimulation = nyRequested - (blockCountY - 1) * nyBlockSimulation;
 
-            // Compute the origin of the local simulation block w.r.t. the
-            // original scenario domain.
-            float localOriginX =
-                scenario->getBoundaryPos(BND_LEFT) + localBlockPositionX * dxSimulation * nxBlockSimulation;
-            float localOriginY =
-                scenario->getBoundaryPos(BND_BOTTOM) + localBlockPositionY * dySimulation * nyBlockSimulation;
+        int nxLocal = (localBlockPositionX < blockCountX - 1) ? nxBlockSimulation : nxRemainderSimulation;
+        int nyLocal = (localBlockPositionY < blockCountY - 1) ? nyBlockSimulation : nyRemainderSimulation;
 
-            std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
-            std::string backupTeamPosName = genTeamPosName(backupTeamName, localBlockPositionX, localBlockPositionY);
+        // Compute the origin of the local simulation block w.r.t. the
+        // original scenario domain.
+        float localOriginX =
+            scenario->getBoundaryPos(BND_LEFT) + localBlockPositionX * dxSimulation * nxBlockSimulation;
+        float localOriginY =
+            scenario->getBoundaryPos(BND_BOTTOM) + localBlockPositionY * dySimulation * nyBlockSimulation;
 
-            backupMetadataNames.push_back(backupTeamPosName + "_metadata");
+        std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
+        std::string backupTeamPosName = genTeamPosName(backupTeamName, localBlockPositionX, localBlockPositionY);
 
-            /* Add the block to be calculated by this rank. */
-            simulationBlocks.push_back(std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
-                new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
-                                                          nyLocal,
-                                                          dxSimulation,
-                                                          dySimulation,
-                                                          localOriginX,
-                                                          localOriginY,
-                                                          0,
-                                                          outputTeamPosName,
-                                                          backupTeamPosName,
-                                                          true,
-                                                          false)));
-        }
-//------------------------------------------------------------------------------
+        /* TODO : there is only one metadata per rank */
+        backupMetadataNames.push_back(backupTeamPosName + "_metadata");
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-/* TODO on this naiv soft error checking we have only one simulationBlock ! */
-        for (int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++)
-        {
-            int localBlockPositionX = currentBlockNr / blockCountY;
-            int localBlockPositionY = currentBlockNr % blockCountY;
+
+        simulationBlock = std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
+            new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
+                                                      nyLocal,
+                                                      dxSimulation,
+                                                      dySimulation,
+                                                      localOriginX,
+                                                      localOriginY,
+                                                      0,
+                                                      outputTeamPosName,
+                                                      backupTeamPosName,
+                                                      true, // always write for checkpointing
+                                                      false));
+
+
             std::array<int, 4> myNeighbours =
-                getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, currentBlockNr);
+                getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, startPoint);
+
 
             int refinedNeighbours[4];
             int realNeighbours[4];
@@ -268,13 +265,13 @@ int main(int argc, char** argv)
             std::array<BoundaryType, 4> boundaries;
 
             /* For all my neighbours. */
-            for (int j = 0; j < 4; j++)
-            {
+            for (int j = 0; j < 4; j++) {
                 if (myNeighbours[j] >= startPoint && myNeighbours[j] < (startPoint + blocksPerRank))
                 {
                     refinedNeighbours[j] = -2;
                     realNeighbours[j] = myNeighbours[j];
-                    neighbourBlocks[j] = simulationBlocks[myNeighbours[j] - startPoint];
+                    // neighbourBlocks[j] = simulationBlocks[myNeighbours[j] - startPoint];
+                    neighbourBlocks[j] = simulationBlock;
                     boundaries[j] = CONNECT_WITHIN_RANK;
                 }
                 else if (myNeighbours[j] == -1)
@@ -291,148 +288,132 @@ int main(int argc, char** argv)
                 }
             }
 
-            simulationBlocks[currentBlockNr - startPoint]->initScenario(*scenario, boundaries.data());
-            simulationBlocks[currentBlockNr - startPoint]->connectNeighbourLocalities(refinedNeighbours);
-            simulationBlocks[currentBlockNr - startPoint]->connectNeighbours(realNeighbours);
-            simulationBlocks[currentBlockNr - startPoint]->connectLocalNeighbours(neighbourBlocks);
-            simulationBlocks[currentBlockNr - startPoint]->setRank(currentBlockNr);
-            simulationBlocks[currentBlockNr - startPoint]->setDuration(simulationDuration);
+            simulationBlock->initScenario(*scenario, boundaries.data());
+            simulationBlock->connectNeighbourLocalities(refinedNeighbours);
+            simulationBlock->connectNeighbours(realNeighbours);
+            simulationBlock->connectLocalNeighbours(neighbourBlocks);
+            simulationBlock->setRank(startPoint);
+            simulationBlock->setDuration(simulationDuration);
 
             /* For checkpoints. */
-            simulationBlocks[currentBlockNr - startPoint]->writer->initMetadataFile(
-                backupMetadataNames[currentBlockNr - startPoint],
+            simulationBlock->writer->initMetadataFile(
+                backupMetadataNames[0], // TODO only one metadata !
                 simulationDuration,
                 ranksPerTeam,
-                simulationBlocks[currentBlockNr - startPoint]->nx,
-                simulationBlocks[currentBlockNr - startPoint]->ny,
+                simulationBlock->nx,
+                simulationBlock->ny,
                 0,
-                std::vector<BoundaryType>(boundaries.begin(), boundaries.end()),
-                {simulationBlocks[currentBlockNr - startPoint]->originX,
-                 simulationBlocks[currentBlockNr - startPoint]->originX +
-                     (simulationBlocks[currentBlockNr - startPoint]->nx) *
-                         simulationBlocks[currentBlockNr - startPoint]->dx,
-                 simulationBlocks[currentBlockNr - startPoint]->originY,
-                 simulationBlocks[currentBlockNr - startPoint]->originY +
-                     (simulationBlocks[currentBlockNr - startPoint]->ny) *
-                         simulationBlocks[currentBlockNr - startPoint]->dy});
-        }
-//------------------------------------------------------------------------------
+                std::vector<BoundaryType>(
+                    boundaries.begin(),
+                    boundaries.end()),
+                    {simulationBlock->originX,
+                     simulationBlock->originX + (simulationBlock->nx) * simulationBlock->dx,
+                     simulationBlock->originY,
+                     simulationBlock->originY + (simulationBlock->ny) * simulationBlock->dy});
+
     }
-    else /* loading from a checkpoint */
-    {
-        std::vector<SWE_Scenario*> scenarios{};
-        /* TODO same sitaution as the if block above.. there is only one block in this rank. */
-        for (int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++)
-        {
-            int localBlockPositionX = currentBlockNr / blockCountY;
-            int localBlockPositionY = currentBlockNr % blockCountY;
+    else /* loading from a checkpoint */ {
+        SWE_Scenario* scenario;
 
-            io::Reader reader{restartNameInput,
-                              outputTeamName,
-                              myRankInTeam,
-                              ranksPerTeam,
-                              localBlockPositionX,
-                              localBlockPositionY};
+        int localBlockPositionX = startPoint / blockCountY;
+        int localBlockPositionY = startPoint  % blockCountY;
 
-            int nxLocal = reader.getGridSizeX();
-            int nyLocal = reader.getGridSizeY();
-            scenario = reader.getScenario();
-            simulationDuration = scenario->endSimulation();
-            scenarios.push_back(scenario);
-            simulationStart = reader.getCurrentTime();
+        io::Reader reader{restartNameInput,
+                          outputTeamName,
+                          myRankInTeam,
+                          ranksPerTeam,
+                          localBlockPositionX,
+                          localBlockPositionY};
 
-            /* only in classical checkpointing */
-            numberOfCheckpoints = reader.getRemainingCheckpoints();
+        int nxLocal = reader.getGridSizeX();
+        int nyLocal = reader.getGridSizeY();
+        scenario = reader.getScenario();
+        simulationDuration = scenario->endSimulation();
+        simulationStart = reader.getCurrentTime();
 
-            int widthScenario = scenario->getBoundaryPos(BND_RIGHT) - scenario->getBoundaryPos(BND_LEFT);
-            int heightScenario = scenario->getBoundaryPos(BND_TOP) - scenario->getBoundaryPos(BND_BOTTOM);
+        /* only in classical checkpointing */
+        numberOfCheckpoints = reader.getRemainingCheckpoints();
 
-            float dxSimulation = (float)widthScenario / nxLocal;
-            float dySimulation = (float)heightScenario / nyLocal;
+        int widthScenario = scenario->getBoundaryPos(BND_RIGHT) - scenario->getBoundaryPos(BND_LEFT);
+        int heightScenario = scenario->getBoundaryPos(BND_TOP) - scenario->getBoundaryPos(BND_BOTTOM);
 
-            // Compute the origin of the local simulation block w.r.t. the
-            // original scenario domain.
-            float localOriginX = scenario->getBoundaryPos(BND_LEFT);
-            float localOriginY = scenario->getBoundaryPos(BND_BOTTOM);
-            std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
-            std::string backupTeamPosName = genTeamPosName(backupTeamName, localBlockPositionX, localBlockPositionY);
+        float dxSimulation = (float)widthScenario / nxLocal;
+        float dySimulation = (float)heightScenario / nyLocal;
 
-            backupMetadataNames.push_back(backupTeamPosName + "_meta");
-            simulationBlocks.push_back(std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
-                new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
-                                                          nyLocal,
-                                                          dxSimulation,
-                                                          dySimulation,
-                                                          localOriginX,
-                                                          localOriginY,
-                                                          0,
-                                                          outputTeamPosName,
-                                                          backupTeamPosName,
-                                                          true,
-                                                          true)));
-        }
 
-        for (int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++)
-        {
-            int localBlockPositionX = currentBlockNr / blockCountY;
-            int localBlockPositionY = currentBlockNr % blockCountY;
-            std::array<int, 4> myNeighbours =
-                getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, currentBlockNr);
 
-            scenario = scenarios[currentBlockNr - startPoint];
+        // Compute the origin of the local simulation block w.r.t. the
+        // original scenario domain.
+        float localOriginX = scenario->getBoundaryPos(BND_LEFT);
+        float localOriginY = scenario->getBoundaryPos(BND_BOTTOM);
+        std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
+        std::string backupTeamPosName = genTeamPosName(backupTeamName, localBlockPositionX, localBlockPositionY);
 
-            int refinedNeighbours[4];
-            int realNeighbours[4];
-            std::array<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>, 4> neighbourBlocks;
-            std::array<BoundaryType, 4> boundaries;
 
-            for (int j = 0; j < 4; j++)
-            {
-                if (myNeighbours[j] >= startPoint && myNeighbours[j] < (startPoint + blocksPerRank))
-                {
-                    refinedNeighbours[j] = -2;
-                    realNeighbours[j] = myNeighbours[j];
-                    neighbourBlocks[j] = simulationBlocks[myNeighbours[j] - startPoint];
-                    boundaries[j] = CONNECT_WITHIN_RANK;
-                }
-                else if (myNeighbours[j] == -1)
-                {
-                    boundaries[j] = scenario->getBoundaryType((Boundary)j);
-                    refinedNeighbours[j] = -1;
-                    realNeighbours[j] = -1;
-                }
-                else
-                {
-                    realNeighbours[j] = myNeighbours[j];
-                    refinedNeighbours[j] = myNeighbours[j] / blocksPerRank;
-                    boundaries[j] = CONNECT;
-                }
+        backupMetadataNames.push_back(backupTeamPosName + "_meta");
+        simulationBlock = std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
+             new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
+                                                       nyLocal,
+                                                       dxSimulation,
+                                                       dySimulation,
+                                                       localOriginX,
+                                                       localOriginY,
+                                                       0,
+                                                       outputTeamPosName,
+                                                       backupTeamPosName,
+                                                       true, // always write for checkpointing
+                                                       true));
+
+        std::array<int, 4> myNeighbours =
+            getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, startPoint);
+
+        int refinedNeighbours[4];
+        int realNeighbours[4];
+        std::array<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>, 4> neighbourBlocks;
+        std::array<BoundaryType, 4> boundaries;
+
+        for (int j = 0; j < 4; j++) {
+            if (myNeighbours[j] >= startPoint && myNeighbours[j] < (startPoint + blocksPerRank)) {
+                refinedNeighbours[j] = -2;
+                realNeighbours[j] = myNeighbours[j];
+                //neighbourBlocks[j] = simulationBlocks[myNeighbours[j] - startPoint];
+                neighbourBlocks[j] = simulationBlock;
+                boundaries[j] = CONNECT_WITHIN_RANK;
             }
-
-            simulationBlocks[currentBlockNr - startPoint]->initScenario(*scenario, boundaries.data());
-            simulationBlocks[currentBlockNr - startPoint]->connectNeighbourLocalities(refinedNeighbours);
-            simulationBlocks[currentBlockNr - startPoint]->connectNeighbours(realNeighbours);
-            simulationBlocks[currentBlockNr - startPoint]->connectLocalNeighbours(neighbourBlocks);
-            simulationBlocks[currentBlockNr - startPoint]->setRank(currentBlockNr);
-            simulationBlocks[currentBlockNr - startPoint]->setDuration(simulationDuration);
-            simulationBlocks[currentBlockNr - startPoint]->writer->initMetadataFile(
-                backupMetadataNames[currentBlockNr - startPoint],
-                simulationDuration,
-                ranksPerTeam,
-                simulationBlocks[currentBlockNr - startPoint]->nx,
-                simulationBlocks[currentBlockNr - startPoint]->ny,
-                0,
-                std::vector<BoundaryType>(boundaries.begin(), boundaries.end()),
-                {simulationBlocks[currentBlockNr - startPoint]->originX,
-                 simulationBlocks[currentBlockNr - startPoint]->originX +
-                     (simulationBlocks[currentBlockNr - startPoint]->nx) *
-                         simulationBlocks[currentBlockNr - startPoint]->dx,
-                 simulationBlocks[currentBlockNr - startPoint]->originY,
-                 simulationBlocks[currentBlockNr - startPoint]->originY +
-                     (simulationBlocks[currentBlockNr - startPoint]->ny) *
-                         simulationBlocks[currentBlockNr - startPoint]->dy});
-            delete scenario;
+            else if (myNeighbours[j] == -1) {
+                boundaries[j] = scenario->getBoundaryType((Boundary)j);
+                refinedNeighbours[j] = -1;
+                realNeighbours[j] = -1;
+            }
+            else {
+                realNeighbours[j] = myNeighbours[j];
+                refinedNeighbours[j] = myNeighbours[j] / blocksPerRank;
+                boundaries[j] = CONNECT;
+            }
         }
+
+        simulationBlock->initScenario(*scenario, boundaries.data());
+        simulationBlock->connectNeighbourLocalities(refinedNeighbours);
+        simulationBlock->connectNeighbours(realNeighbours);
+        simulationBlock->connectLocalNeighbours(neighbourBlocks);
+        simulationBlock->setRank(startPoint);
+        simulationBlock->setDuration(simulationDuration);
+        simulationBlock->writer->initMetadataFile(
+            backupMetadataNames[0], // TODO only one metafile
+            simulationDuration,
+            ranksPerTeam,
+            simulationBlock->nx,
+            simulationBlock->ny,
+            0,
+            std::vector<BoundaryType>(
+                boundaries.begin(),
+                boundaries.end()),
+                {simulationBlock->originX,
+                 simulationBlock->originX + (simulationBlock->nx) * simulationBlock->dx,
+                 simulationBlock->originY,
+                 simulationBlock->originY + (simulationBlock->ny) * simulationBlock->dy});
+
+        delete scenario;
     } /* end of else */
 
     /* Compute when the checkpoints are reached */
@@ -447,8 +428,8 @@ int main(int argc, char** argv)
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 /* TODO on this naiv soft error checking we have only one simulationBlock ! */
-    for (auto& block : simulationBlocks) block->sendBathymetry();
-    for (auto& block : simulationBlocks) block->recvBathymetry();
+    simulationBlock->sendBathymetry();
+    simulationBlock->recvBathymetry();
 //------------------------------------------------------------------------------
 
     std::vector<float> timesteps;
@@ -492,13 +473,8 @@ int main(int argc, char** argv)
 //------------------------------------------------------------------------------
 
     // Write zero timestep
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-/* TODO on this naiv soft error checking we have only one simulationBlock ! */
-    for (auto& block : simulationBlocks) { block->writeTimestep(0.f); }
-//------------------------------------------------------------------------------
-
-
-    /* Simulate start TODO */
+    /* we have only one simulationBlock ! */
+    simulationBlock->writeTimestep(0.f);
 
     std::cout << "+---------------------+\n"
               << "| Starting Simulation |\n"
@@ -507,62 +483,58 @@ int main(int argc, char** argv)
               << "\t\t\t" << "---- Rank " << myRankInTeam
               << std::endl;
 
-    /* We should only have one block per rank */
-    assert(simulationBlocks.size() == 1);
-
     for (int i = 0; i < numberOfCheckpoints; i++) {
 
         /* Simulate until the checkpoint is reached */
         while (t < checkpointInstantOfTime[i]) {
 
-            // exchange boundaries between blocks TODO only one block
-            for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
-            for (auto& currentBlock : simulationBlocks) { currentBlock->receiveGhostLayer(); }
+            // exchange boundaries between blocks
+            simulationBlock->setGhostLayer();
+            simulationBlock->receiveGhostLayer();
 
-            // Get a reference to the current block TODO there is only one block
-            const int& currentBlockNr = 0;
-            auto& currentBlock = *simulationBlocks[currentBlockNr];
+            auto& currentBlock = *simulationBlock;
 
             std::cout << "calculating.. t = " << t << "\t\t/ "
                       << simulationDuration;
+
+            if(!writeOutput) {
+                std::cout << "\t\t\t\t---- Rank " << myRankInTeam << std::endl;
+            }
 
             currentBlock.computeNumericalFluxes();
 
             hasRecovered = false;
 
             /* Agree on a timestep */
-            timestep = simulationBlocks[0]->maxTimestep;
+            timestep = simulationBlock->maxTimestep;
             float agreed_timestep;
             MPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 
             // TODO only one block
-            for (auto& block : simulationBlocks) { block->maxTimestep = agreed_timestep; }
-            for (auto& block : simulationBlocks) { block->updateUnknowns(agreed_timestep); }
+            simulationBlock->maxTimestep = agreed_timestep;
+            simulationBlock->updateUnknowns(agreed_timestep);
 
             t += agreed_timestep;
 
-            std::cout << "  --> Writing timestep at: " << t
-                      << "\t\t\t\t---- Rank " << myRankInTeam /* equals global rank with one team */
-                      << std::endl;
-
-            /* TODO if write */
-            for (auto& block : simulationBlocks) {block->writeTimestep(t);}
-
+            /* TODO checkpointing also writes one timestep */
+            if(writeOutput && (numberOfCheckpoints - 1 - i) > 0) {
+                std::cout << "  --> Writing timestep at: " << t
+                        << "\t\t\t\t---- Rank " << myRankInTeam /* equals global rank with one team */
+                        << std::endl;
+                simulationBlock->writeTimestep(t);
+            }
         }
 
         /* checkpoints left */
         int numberOfCheckpointsLeft = (numberOfCheckpoints - 1) - i;
 
-        // TODO only one block
-        for (int i = 0; i < (int) simulationBlocks.size(); i++) {
-            assert(i == 0);
+        // TODO remove metadatas as well
+        if (numberOfCheckpointsLeft > 0) {
             std::cout << "      --- CHECKPOINTING AT : " << t << " ---" << std::endl;
-            simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], numberOfCheckpointsLeft);
+            simulationBlock->createCheckpoint(t, backupMetadataNames[0], numberOfCheckpointsLeft);
         }
-
-
     }
 
-    for (auto& block : simulationBlocks) { block->freeMpiType(); }
+    simulationBlock->freeMpiType();
     MPI_Finalize();
 }
