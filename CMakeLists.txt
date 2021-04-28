@@ -23,17 +23,21 @@ set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVERS})
 # More executables can be added for other failure mitigation methods
 add_executable(swe_hardRes_wTaskSharing)                # --> old version
 
-add_executable(swe_softRes_and_hardRes_woutTaskSharing) # --> new naive version
+add_executable(swe_softRes)                             # --> soft error resilience
+add_executable(swe_softRes_and_hardRes_woutTaskSharing) # --> soft + hard error resilience
 add_executable(swe_checkpointRestart)                   # --> baseline version
 #add_executable(swe_softRes_and_hardRes_wTaskSharing) TODO
 
 target_sources(swe_hardRes_wTaskSharing PRIVATE src/main.cpp)
 target_sources(swe_hardRes_wTaskSharing PRIVATE src/constants.hpp)
 
-target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE src/swe_softRes_and_hardRes_woutTaskSharing.cpp)
+target_sources(swe_softRes PRIVATE src/tolerance/swe_softRes.cpp)
+target_sources(swe_softRes PRIVATE src/constants.hpp)
+
+target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE src/tolerance/swe_softRes_and_hardRes_woutTaskSharing.cpp)
 target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE src/constants.hpp)
 
-target_sources(swe_checkpointRestart PRIVATE src/swe_checkpointRestart.cpp)
+target_sources(swe_checkpointRestart PRIVATE src/tolerance/swe_checkpointRestart.cpp)
 target_sources(swe_checkpointRestart PRIVATE src/constants.hpp)
 
 # Each subdirectory has it's own CMakeLists.txt to target their sources
@@ -46,6 +50,8 @@ add_subdirectory(src/blocks)
 
 # Include the src directory
 target_include_directories(swe_hardRes_wTaskSharing PRIVATE src)
+
+target_include_directories(swe_softRes PRIVATE src)
 
 target_include_directories(swe_softRes_and_hardRes_woutTaskSharing PRIVATE src)
 
@@ -63,6 +69,9 @@ endif()
 target_include_directories(swe_hardRes_wTaskSharing SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_hardRes_wTaskSharing PRIVATE ${NETCDF_LIBRARIES})
 
+target_include_directories(swe_softRes SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+target_link_libraries(swe_softRes PRIVATE ${NETCDF_LIBRARIES})
+
 target_include_directories(swe_softRes_and_hardRes_woutTaskSharing SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_softRes_and_hardRes_woutTaskSharing PRIVATE ${NETCDF_LIBRARIES})
 
@@ -75,6 +84,7 @@ target_link_libraries(swe_checkpointRestart PRIVATE ${NETCDF_LIBRARIES})
 find_package(MPI REQUIRED)
 if (MPI_FOUND)
     target_link_libraries(swe_hardRes_wTaskSharing PUBLIC MPI::MPI_CXX)
+    target_link_libraries(swe_softRes PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_softRes_and_hardRes_woutTaskSharing PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_checkpointRestart PUBLIC MPI::MPI_CXX) # TODO checkpointing doesn't need ulfm !
 else()
@@ -113,10 +123,12 @@ add_library(tmpi SHARED
 
 # Link tmpi, swe_checkpointRestart does not need it
 target_link_libraries(swe_hardRes_wTaskSharing PRIVATE tmpi)
+target_link_libraries(swe_softRes PRIVATE tmpi)
 target_link_libraries(swe_softRes_and_hardRes_woutTaskSharing PRIVATE tmpi)
 
 # include path, swe_checkpointRestart does not need it
 target_include_directories(swe_hardRes_wTaskSharing PRIVATE teampi-soft-error-resilience/include)
+target_include_directories(swe_softRes PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_and_hardRes_woutTaskSharing PRIVATE teampi-soft-error-resilience/include)
 
 
@@ -125,21 +137,40 @@ target_include_directories(swe_softRes_and_hardRes_woutTaskSharing PRIVATE teamp
 # TODO add debug and release options to activate debugging flags
 
 # TODO you can flags to teampi here
-target_compile_options(tmpi PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
-)
 
-target_compile_options(swe_hardRes_wTaskSharing PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
-)
-
-target_compile_options(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
-)
-
-target_compile_options(swe_checkpointRestart PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
-)
+if (DEBUG)
+    target_compile_options(tmpi PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_hardRes_wTaskSharing PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_softRes PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_checkpointRestart PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+else () # TODO change flags here
+    target_compile_options(tmpi PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_hardRes_wTaskSharing PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_softRes PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+    target_compile_options(swe_checkpointRestart PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+endif ()
 
 #*******************************************************************************
 

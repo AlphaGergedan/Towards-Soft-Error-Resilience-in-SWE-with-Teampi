@@ -1,21 +1,14 @@
 /**
- * @file src/swe_checkpointRestart.cpp
+ * @file src/tolerance/swe_checkpointRestart.cpp
  *
  * @brief baseline model for resilience, checkpoint/restart.
  *
  * TODO
- *   - remove dependencies with teaMPI
- *
- *   - use checkpointsLeft field. This field was not used in other
- *     failure mitigation methods because our checkpoints were real
- *     time dependent.
- *
- *  - remove unneccesary blocks
+ *  - add support for soft resilience, see literature,
  *
  *  - don't allow -r and -c at the same time (also x,y and t)
  *
  *  - tested with 1, 2 and 4 processes but with 6 processes:
- *    ftagree:agreement (ERA) Error: Agreement ID (0.0).1 was started by some processor, but I never completed to it
  *
  */
 

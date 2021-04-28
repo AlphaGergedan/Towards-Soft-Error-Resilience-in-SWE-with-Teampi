@@ -1,11 +1,12 @@
 /**
  * @file src/swe_softRes_and_hardRes_woutTaskSharing.cpp
  *
- * @brief hard error resiliency without task sharing and no soft error resilience
+ * @brief hard error resiliency with soft error detection without task sharing
  *
  * TODO
- *   - Soft error resilience needs to be added
- *   - You can send hashes using heartbeats
+ *   - Implement compare buffer with replicas
+ *
+ *   - Introduce random bitflips, tests
  *
  */
 
@@ -241,15 +242,20 @@ int main(int argc, char** argv)
     std::function<void(int)> load(loadCheckpointCallback);
     TMPI_SetCreateCheckpointCallback(&create);
     TMPI_SetLoadCheckpointCallback(&load);
+
+    /* TODO: integrate warmspares to soft error detection */
     TMPI_SetErrorHandlingStrategy(TMPI_WarmSpareErrorHandler);
+
+    /*
+     * we don't set any error handling strategies for now,
+     * TMPI_NoErrorHandler is set by default
+     */
+
 
     // init MPI
     int myRankInTeam;
-    int provided;
-    int requested = MPI_THREAD_MULTIPLE;
     if (setjmp(jumpBuffer) == 0)
     {
-        // MPI_Init_thread(&argc, &argv, requested, &provided);
         MPI_Init(&argc, &argv);
     }
     MPI_Comm_size(MPI_COMM_WORLD, &ranksPerTeam);
@@ -389,7 +395,7 @@ int main(int argc, char** argv)
             simulationBlocks[currentBlockNr - startPoint]->setRank(currentBlockNr);
             simulationBlocks[currentBlockNr - startPoint]->setDuration(simulationDuration);
 
-            /* For checkpoints. */
+            /* For checkpoints. TODO check if we need this for hard failure resilience */
             simulationBlocks[currentBlockNr - startPoint]->writer->initMetadataFile(
                 backupMetadataNames[currentBlockNr - startPoint],
                 simulationDuration,
@@ -803,10 +809,14 @@ int main(int argc, char** argv)
             timeSinceLastHeartbeat = MPI_Wtime() - timeOfLastHeartbeat;
 
             /* TODO Why send bcast to the rank's team's 0 here ? */
-            MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            // MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             // MPI_Barrier(TMPI_GetInterTeamComm());
-            if (myTeam == 1 && myRankInTeam == 0 && restartNameInput == "" && t > 5.f)
+            if (myTeam == 1 && myRankInTeam == 0 && restartNameInput == "" && t > 1.f && t < 1.3f)
             {
+
+                std::cout << "TEAM:1 Rank:0 is SLEEPING...." << std::endl;
+                sleep(1);
+
                 // return 1;
             }
         }
