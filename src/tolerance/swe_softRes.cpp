@@ -142,7 +142,7 @@ int main(int argc, char** argv)
         return 1;
     }
     numberOfHashes = args.getArgument<unsigned int>("hash-count");
-    bitflip_at = args.getArgument<double>("inject-bitflip");
+    if (args.isSet("inject-bitflip")) bitflip_at = args.getArgument<double>("inject-bitflip");
     verbose = args.isSet("verbose");
 
     /* Simulation time */
