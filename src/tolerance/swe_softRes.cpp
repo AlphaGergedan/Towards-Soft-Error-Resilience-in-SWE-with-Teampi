@@ -13,6 +13,7 @@
 
 
 #include <bits/c++config.h>
+#include <bitset>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -93,6 +94,7 @@ int main(int argc, char** argv)
     args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
     args.addOption("hash-method", 'm', "Which hashing method to use: (1 | 2), default: 1", args.Required, false);
     args.addOption("hash-count", 'c', "Number of total hashes to send to the replica", args.Required, true);
+    args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
 
     // Parse command line arguments
@@ -121,6 +123,8 @@ int main(int argc, char** argv)
     int hashOption;
     unsigned int numberOfHashes;
 
+    double bitflip_at = -1.f;
+
     bool verbose = false;
 
     /* Read in command line arguments */
@@ -138,6 +142,7 @@ int main(int argc, char** argv)
         return 1;
     }
     numberOfHashes = args.getArgument<unsigned int>("hash-count");
+    bitflip_at = args.getArgument<double>("inject-bitflip");
     verbose = args.isSet("verbose");
 
     /* Simulation time */
@@ -212,52 +217,53 @@ int main(int argc, char** argv)
     float dxSimulation = (float)widthScenario / nxRequested;
     float dySimulation = (float)heightScenario / nyRequested;
 
+    int localBlockPositionX = startPoint / blockCountY;
+    int localBlockPositionY = startPoint % blockCountY;
+
+    // compute local number of cells for each SWE_Block w.r.t. the
+    // simulation domain (particularly not the original scenario
+    // domain, which might be finer in resolution) (blocks at the
+    // domain boundary are assigned the "remainder" of cells)
+
+    int nxBlockSimulation = (nxRequested) / blockCountX;
+    int nxRemainderSimulation = nxRequested - (blockCountX - 1) * nxBlockSimulation;
+    int nyBlockSimulation = nyRequested / blockCountY;
+    int nyRemainderSimulation = nyRequested - (blockCountY - 1) * nyBlockSimulation;
+
+    int nxLocal = (localBlockPositionX < blockCountX - 1) ? nxBlockSimulation : nxRemainderSimulation;
+    int nyLocal = (localBlockPositionY < blockCountY - 1) ? nyBlockSimulation : nyRemainderSimulation;
+
+    // Compute the origin of the local simulation block w.r.t. the
+    // original scenario domain.
+    float localOriginX =
+        scenario->getBoundaryPos(BND_LEFT) + localBlockPositionX * dxSimulation * nxBlockSimulation;
+    float localOriginY =
+        scenario->getBoundaryPos(BND_BOTTOM) + localBlockPositionY * dySimulation * nyBlockSimulation;
+
+    std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
+    std::string backupTeamPosName = genTeamPosName("BACKUP_" + outputTeamName, localBlockPositionX, localBlockPositionY);
+
+    /* Add the block to be calculated by this rank. */
+    simulationBlock = std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
+        new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
+                                                  nyLocal,
+                                                  dxSimulation,
+                                                  dySimulation,
+                                                  localOriginX,
+                                                  localOriginY,
+                                                  0,
+                                                  outputTeamPosName,
+                                                  backupTeamPosName,
+                                                  true,
+                                                  false));
+
     /* TODO on this naiv soft error checking we have only one simulationBlock ! */
     /* Loop over the rank's block number in its team. */
     for (unsigned int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++) {
         assert(currentBlockNr == startPoint); // TODO only one block
 
-        int localBlockPositionX = currentBlockNr / blockCountY;
-        int localBlockPositionY = currentBlockNr % blockCountY;
-
-        // compute local number of cells for each SWE_Block w.r.t. the
-        // simulation domain (particularly not the original scenario
-        // domain, which might be finer in resolution) (blocks at the
-        // domain boundary are assigned the "remainder" of cells)
-
-        int nxBlockSimulation = (nxRequested) / blockCountX;
-        int nxRemainderSimulation = nxRequested - (blockCountX - 1) * nxBlockSimulation;
-        int nyBlockSimulation = nyRequested / blockCountY;
-        int nyRemainderSimulation = nyRequested - (blockCountY - 1) * nyBlockSimulation;
-
-        int nxLocal = (localBlockPositionX < blockCountX - 1) ? nxBlockSimulation : nxRemainderSimulation;
-        int nyLocal = (localBlockPositionY < blockCountY - 1) ? nyBlockSimulation : nyRemainderSimulation;
-
-        // Compute the origin of the local simulation block w.r.t. the
-        // original scenario domain.
-        float localOriginX =
-            scenario->getBoundaryPos(BND_LEFT) + localBlockPositionX * dxSimulation * nxBlockSimulation;
-        float localOriginY =
-            scenario->getBoundaryPos(BND_BOTTOM) + localBlockPositionY * dySimulation * nyBlockSimulation;
-
-        std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
-        std::string backupTeamPosName = genTeamPosName("BACKUP_" + outputTeamName, localBlockPositionX, localBlockPositionY);
-
         //backupMetadataNames.push_back(backupTeamPosName + "_metadata"); TODO
 
-        /* Add the block to be calculated by this rank. */
-        simulationBlock = std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
-            new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
-                                                      nyLocal,
-                                                      dxSimulation,
-                                                      dySimulation,
-                                                      localOriginX,
-                                                      localOriginY,
-                                                      0,
-                                                      outputTeamPosName,
-                                                      backupTeamPosName,
-                                                      true,
-                                                      false));
     }
 
 
@@ -390,21 +396,12 @@ int main(int argc, char** argv)
             const int fieldSizeY{(currentBlock.nx + 1) * (currentBlock.ny + 2)};
 
             if(verbose) {
-                std::cout << "calculating.. t = " << t << "\t\t/ "
-                          << simulationDuration;
-
-                if(!writeOutput) {
-                    std::cout << "\t\t\t\t---- Rank " << myRankInTeam << std::endl;
-                }
+                std::cout << "calculating.. t = " << t
+                          << "\t\t\t\t---- TEAM " << myTeam << " Rank "
+                          << myRankInTeam << std::endl;
             }
 
             currentBlock.computeNumericalFluxes();
-
-            if (verbose) {
-                std::cout << "Team " << myTeam << " calculated timestep "
-                          << currentBlock.maxTimestep
-                          << std::endl;
-            }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // MOVE THIS SECTION TO A HEADER FILE
@@ -429,7 +426,29 @@ int main(int argc, char** argv)
 
             float* calculated_maxTimeStep = &(currentBlock.maxTimestep);
 
-            /* Convert them to stringis */
+            /* Inject a bitflip at team 0 at rank 0 */
+            if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
+
+                /* index of the float we want to corrupt */
+                size_t flipAt_float = fieldSizeX / 2;
+
+                std::cout << "\n............Injecting_a_bit_flip.................\n";
+                std::cout << "old value : " << calculated_huNetUpdatesLeft[flipAt_float]
+                          << "\n";
+
+                /* flip only the first bit with the XOR operation */
+                ((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
+
+                std::cout << "new value : " << calculated_huNetUpdatesLeft[flipAt_float]
+                          << "\n"
+                          << std::endl;
+
+                /* prevent any other bitflip */
+                bitflip_at = -1.f;
+            }
+
+
+            /* Convert them to strings */
             std::string str_hLeft((const char*) calculated_hNetUpdatesLeft, sizeof(float) * fieldSizeX);
             std::string str_hRight((const char*) calculated_hNetUpdatesRight, sizeof(float) * fieldSizeX);
 
@@ -444,38 +463,49 @@ int main(int argc, char** argv)
 
             std::string str_maxTimeStep((const char*) calculated_maxTimeStep, sizeof(float));
 
-            /* OPTION A: hash them using SHA1 (like redmpi did) TODO use library next time.. */
-            checksum.update(str_hLeft);
-            checksum.update(str_hRight);
+            if (hashOption == 2) {
+                /* OPTION A: hash them using SHA1 (like redmpi did) TODO use library next time.. */
+                checksum.update(str_hLeft);
+                checksum.update(str_hRight);
 
-            checksum.update(str_huLeft);
-            checksum.update(str_huRight);
+                checksum.update(str_huLeft);
+                checksum.update(str_huRight);
 
-            checksum.update(str_hBelow);
-            checksum.update(str_hAbove);
+                checksum.update(str_hBelow);
+                checksum.update(str_hAbove);
 
-            checksum.update(str_hvBelow);
-            checksum.update(str_hvAbove);
+                checksum.update(str_hvBelow);
+                checksum.update(str_hvAbove);
 
-            checksum.update(str_maxTimeStep);
+                checksum.update(str_maxTimeStep);
+            }
+            else if (hashOption == 1) {
+                /*
+                    OPTION B: hash them using std::hash
+                    HINT: TODO xor is used when combining the hash but this
+                    might not be ideal, see boost::hash_combine
+                */
 
-            /* OPTION B: hash them using std::hash
-                HINT: TODO xor is used when combining the hash but this
-                might not be ideal, see boost::hash_combine */
+                total_hash ^= hash_fn(str_hLeft);
+                total_hash ^= hash_fn(str_hRight);
 
-            total_hash ^= hash_fn(str_hLeft);
-            total_hash ^= hash_fn(str_hRight);
+                total_hash ^= hash_fn(str_huLeft);
+                total_hash ^= hash_fn(str_huRight);
 
-            total_hash ^= hash_fn(str_huLeft);
-            total_hash ^= hash_fn(str_huRight);
+                total_hash ^= hash_fn(str_hBelow);
+                total_hash ^= hash_fn(str_hAbove);
 
-            total_hash ^= hash_fn(str_hBelow);
-            total_hash ^= hash_fn(str_hAbove);
+                total_hash ^= hash_fn(str_hvBelow);
+                total_hash ^= hash_fn(str_hvAbove);
 
-            total_hash ^= hash_fn(str_hvBelow);
-            total_hash ^= hash_fn(str_hvAbove);
+                total_hash ^= hash_fn(str_maxTimeStep);
+            }
+            else {
+                std::cout << "Unknown hash method.. something wrong\n" << std::endl;
+                MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
+            }
 
-            total_hash ^= hash_fn(str_maxTimeStep);
+
 
 // MOVE THIS SECTION TO A HEADER FILE
 //------------------------------------------------------------------------------
@@ -491,11 +521,10 @@ int main(int argc, char** argv)
 
             t += agreed_timestep;
 
-
             if(writeOutput) {
                 if(verbose) {
-                    std::cout << "  --> Writing timestep at: " << t
-                              << "\t\t\t\t---- Rank " << myRankInTeam /* equals global rank with one team */
+                    std::cout << "--> Writing timestep at: " << t
+                              << " by team " << myTeam << ", rank " << myRankInTeam
                               << std::endl;
                 }
                 simulationBlock->writeTimestep(t);
@@ -506,9 +535,11 @@ int main(int argc, char** argv)
         // End Heartbeat send the computed task to compare hashes
         //
         // std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
-
-        /* end the checksum SHA1*/
-        std::string final_checksum = checksum.final();
+        std::string final_checksum = "";
+        if (hashOption == 2) {
+            /* end the checksum SHA1*/
+            final_checksum = checksum.final();
+        }
 
         if(verbose) {
             /* print heartbeat for debugging */
@@ -549,7 +580,7 @@ int main(int argc, char** argv)
         //       more than we have to, fix this by converting 40 chars
         //       to 20 bytes (read them as hex). Possible option could be
         //       to send 20 bytes as 20 chars again.
-        if (hashOption == 2) {
+        else if (hashOption == 2) {
 
             /* heartbeat end : OPTION A */
             MPI_Sendrecv(final_checksum.c_str(),   /* Send buffer      */
@@ -564,6 +595,10 @@ int main(int argc, char** argv)
                         0,                         /* Receive tag      */
                         MPI_COMM_SELF,             /* Communicator     */
                         MPI_STATUS_IGNORE);        /* Status object    */
+        }
+        else {
+            std::cout << "Unknown hash method.. something wrong\n" << std::endl;
+            MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
         }
 
     }
