@@ -3,12 +3,20 @@
  *
  * @brief baseline model for resilience, checkpoint/restart.
  *
+ * Ideal for running without checkpoints to see the baseline simulation time or
+ * running with checkpoints wihtout writing output.
+ *
  * TODO
  *  - add support for soft resilience, see literature,
  *
  *  - don't allow -r and -c at the same time (also x,y and t)
  *
- *  - tested with 1, 2 and 4 processes but with 6 processes:
+ *  - tested with 1, 2 and 4 processes but with 6 processes..
+ *
+ *  known issues
+ *    checkpoints slow down due to copying as the data gets larger
+ *    checkpoints writes a timestep to the output file which causes them to slow down as well
+ *
  *
  */
 
@@ -172,8 +180,9 @@ int main(int argc, char** argv)
     // Print status
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
+    double startTime = MPI_Wtime();
 
-    std::printf("Rank %i of Team %i spawned at %s\n", myRankInTeam, myTeam, hostname);
+    std::printf("Rank %i of Team %i spawned at %s with start time %f\n", myRankInTeam, myTeam, hostname, startTime);
 
 
     /* int totalBlocks = blocksPerRank * ranksPerTeam; */
@@ -510,7 +519,13 @@ int main(int argc, char** argv)
             t += agreed_timestep;
 
             /* TODO checkpointing also writes one timestep */
-            if(writeOutput && (numberOfCheckpoints - 1 - i) > 0) {
+            //if(writeOutput && (numberOfCheckpoints - 1 - i) > 0) {
+                //std::cout << "  --> Writing timestep at: " << t
+                        //<< "\t\t\t\t---- Rank " << myRankInTeam /* equals global rank with one team */
+                        //<< std::endl;
+                //simulationBlock->writeTimestep(t);
+            //}
+            if(writeOutput) {
                 std::cout << "  --> Writing timestep at: " << t
                         << "\t\t\t\t---- Rank " << myRankInTeam /* equals global rank with one team */
                         << std::endl;
@@ -529,5 +544,8 @@ int main(int argc, char** argv)
     }
 
     simulationBlock->freeMpiType();
+    double totalTime = MPI_Wtime() - startTime;
+    std::cout << "Rank " << myRankInTeam << " from TEAM " << myTeam
+              << " end time : " << totalTime << std::endl;
     MPI_Finalize();
 }

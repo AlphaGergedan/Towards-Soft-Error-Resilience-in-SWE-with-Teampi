@@ -3,6 +3,11 @@ target_sources(swe_hardRes_wTaskSharing PRIVATE
   DimSplitMPIOverdecomp.cpp
   DimSplitMPIOverdecomp.hpp)
 
+target_sources(swe_softRes PRIVATE
+  Block.hpp
+  DimSplitMPIOverdecomp.cpp
+  DimSplitMPIOverdecomp.hpp)
+
 target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
   Block.hpp
   DimSplitMPIOverdecomp.cpp
