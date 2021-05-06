@@ -9,32 +9,44 @@ library. See the original [SWE](https://github.com/TUM-I5/SWE) and
 
 Increased error rates in high performance computing due to multiple cores and
 memories may lead to silent data corruptions. In such a case, we are unable to
-detect the error without observing the application's results.
+detect the error without observing the application's results. In order to
+provide such resilience, we need to use replication and compare the results of
+the replicated processes. A naive method would be to run 2 teams computing the
+same application and then compare their results at the end. We try to improve
+this by hashing the 'tasks' computed by the replicas and share them across the
+replicas. We test 2 different hash functions:
+1. The function object std::hash<>, which according to
+[this](https://stackoverflow.com/questions/19411742/what-is-the-default-hash-function-used-in-c-stdunordered-map)
+page is based on MurmurHashUnaligned2 for the specialization for std::strings.
+It is 8 bytes long
+2. SHA-1, which is relatively slower but 20 bytes long
 
-Keep in mind:
-- don't break teaMPI's asynchronization
-- don't break warmSpares. So we don't break fault tolerance
+We implemented following methods to provide soft error resilience to SWE
+applications.
 
-### First Method: Comparing Hashes Using Heartbeats ###
+### Single Heartbeats with Hashes ###
 
-Two possible hashing methods:
-  1. SHA-1 hash (20 bytes)
-  2. std::hash (size\_t bytes == 8 bytes)
+This is a soft error resilience technique, where we compute one block per rank
+in team. So we divide the SWE domain into `number_of_ranks_in_a_team` blocks.
+Each rank computes it's own block and issues a single heartbeat in each
+`heartbeat-interval` in simulation time. In each single heartbeat they send the
+hashes of the computed updates to their replicas. TeaMPI handles the comparison
+of the hashes, and therefore an early detection of a silent data corruption is
+possible. This method does not however guarantee any hard failure resilience as
+the heartbeat intervals depend on the time steps.
+(See
+[swe\_softRes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes.cpp)
+for the implementation and [its executable](#running) for usage examples)
 
-This is a naive soft error resilience technique, where we compute one block per
-rank in team. So we divide the domain into 'number of ranks in a team' blocks.
-Each rank computes it's own block and issues heartbeats in each `heartbeat-interval`
-wall-clock seconds sending the hashes of the computed updates to their replicas.
-teaMPI handles the comparison of the hashes, and therefore detection of a silent
-data corruption is possible. (See [running examples](#running))
+### TODO Integrating Single Heratbeats to Hard Failure Resilience ###
+
+One heartbeat pair is bound to the wall clock interval that user specifies for
+hard error resilience. And the other heartbeat interval is for the soft error
+detection, which only depends on the algorithm and only sending hashes
 
 Theoretically, correction of the data is possible in case of a soft error by
 running 3 teams at least, and by deploying a voting mechanism like in
 [redMPI](https://www.christian-engelmann.info/?page_id=1873).
-
-### Second Method: ###
-
-TODO
 
 ## Setting Up ##
 
@@ -66,21 +78,33 @@ Now you should see the executables in the specified 'build/directory'.
 
 ### Running ###
 
-You should read the 'README.md' on the submodule before running the simulation.
+You should read the
+'[README.md](https://gitlab.lrz.de/AtamertRahma/teampi-soft-error-resilience/-/blob/master/README.md)'
+on the submodule before running the simulation and set the required environment
+variables.
 
 Also read the 'help' outputs of the each executables before executing them by
 running `./executable -h`
 
-An example run for naive soft error detection and hard erpo:
-  - `export TEAMS=2` running 2 teams is enough for soft error detection
-  - `export SPARES=1` at least one spare process for the hard failure mitigation
-  - then run
-  ```
-  mpirun --oversubscribe -np 2 buid/directory/swe_softRes_and_hardRes_woutTaskSharing -t 10 -x 1000 -y 1000 -i 2 -m 1 -o out/directory/outputName -b out/directory/backupName
-  ```
+For soft error resilience we have the following executables:
+1. single heartbeats with hashes: `./build/directory/swe_softRes` with options
+  - `-t SIMULATION_DURATION`: time in seconds to simulate
+  - `-x RESOLUTION_X`: number of simulated cells in x-direction
+  - `-y RESOLUTION_Y`: number of simulated cells in y-direction
+  - `-o OUTPUT_BASEPATH`: output base file name
+  - `-w`: write output using netcdf writer to the specified output base file
+  - `-m HASH_METHOD`: which hash function to use: (0=NONE | 1=stdhash | 2=SHA1),
+  default: 1
+  - `-c HASH_COUNT`: number of total hashes to send to the replica
+  - `-f INJECT_BITFLIP`: injects a bit-flip to the first rank right after the
+  simulation time reaches the given argument (double)
+  - `-v`: let the simulation produce more output, default: no
+  - `-h`: show this help message
 
-  TODO testing the mitigation methods
-
+  Example run:
+  ```
+  mpirun --oversubscribe -np 2 buid/directory/swe_softRes -t 2 -x 1000 -y 1000 -o outputFile -w -m 1 -c 5 -f 0.2 -v
+  ```
 
 ```
 TODO: add the environment variables to the README on teampi submodule, list:
@@ -91,10 +115,5 @@ TODO: add the environment variables to the README on teampi submodule, list:
 
       TMPI_FILE
       TMPI_OUTPUT_PATH
-
-
- LOGINFO                           enables extra logging information on stdout
-                                   but needs to be enabled at compile time and
-                                   doesn't compile. Fix this TODO
 ```
 
