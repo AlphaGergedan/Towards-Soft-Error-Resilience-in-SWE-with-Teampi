@@ -153,12 +153,12 @@ inline unsigned char* Hasher::finalize_SHA1() {
     const char *s = (const char*) final_sha1.data();
 
     /* we will return this */
-    unsigned char result[20];
+    unsigned char resultOfsha1[20];
 
     for (int i = 0; i < 4; i++) {
         // TODO
     }
-    return result;
+    return resultOfsha1;
 }
 
 /* hash with std::hash */

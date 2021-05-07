@@ -1,13 +1,9 @@
 /**
- * @file src/swe_softRes_and_hardRes_woutTaskSharing.cpp
+ * @file src/tolerance/swe_softRes_and_hardRes_woutTaskSharing.cpp
  *
  * @brief hard error resiliency with soft error detection without task sharing
  *
- * TODO
- *   - Implement compare buffer with replicas
- *
- *   - Introduce random bitflips, tests
- *
+ * TODO description
  */
 
 
@@ -40,7 +36,7 @@
 #include "tools/Args.hpp"
 #include "types/Boundary.hpp"
 
-#include "tools/sha1.hpp"
+#include "tools/hasher.hpp"
 
 
 /* Size of size_t to decide which MPI_Datatype we need */
@@ -163,16 +159,16 @@ int main(int argc, char** argv)
     args.addOption("simulation-duration", 't', "Time in seconds to simulate");
     args.addOption("resolution-x", 'x', "Number of simulated cells in x-direction");
     args.addOption("resolution-y", 'y', "Number of simulated cells in y-direction");
-    args.addOption("decomp-factor",
-                   'd',
-                   "Split each rank into \"TEAMS\" * \"decomp-factor\" blocks",
-                   tools::Args::Required,
-                   false);
     args.addOption("output-basepath", 'o', "Output base file name");
-    args.addOption("backup-basepath", 'b', "Output base file name");
-    args.addOption("restart-basepath", 'r', "Restart base file name", args.Required, false);
-    args.addOption("heartbeat-interval", 'i', "Wall-clock time in seconds to wait between heartbeats");
-    args.addOption("hash-method", 'm', "Which hashing to use: (1 | 2), default: 1", args.Required, false);
+//TODO remove this after debugging    args.addOption("backup-basepath", 'b', "Output base file name");
+//TODO remove this after debugging    args.addOption("restart-basepath", 'r', "Restart base file name", args.Required, false);
+    args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
+    args.addOption("heartbeat-interval", 'i', "Wall-clock time in seconds to wait between heartbeats", args.Required, true);
+    args.addOption("hash-method", 'm', "Which hashing method to use: ( 0=NONE | 1=stdhash | 2=SHA1 ), default: 1", args.Required, false);
+    args.addOption("hash-count", 'c', "Number of total hashes to send to the replica", args.Required, true);
+    args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
+    // TODO integrate -s option for sleep/kill
+    args.addOption("sleep-rank", 's', "Sleeps or kills the rank 0 of team 0. Use '-1' to kill it and use a positive double to let it sleep in each iteration", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
 
     /* TODO add write option*/
@@ -192,49 +188,65 @@ int main(int argc, char** argv)
     /* Arguments to read */
 
     float simulationDuration;
-    clock_t heartbeatInterval;
+    double heartbeatInterval;
 
     int nxRequested;
     int nyRequested;
 
-    unsigned int decompFactor = 1;
+    unsigned int decompFactor = 1; // TODO remove this after debugging
+
+    bool writeOutput = false;
 
     int hashOption;
+    unsigned int numberOfHashes;
+
+    double bitflip_at = -1.f;
 
     bool verbose = false;
 
     /* Read in command line arguments */
     simulationDuration = args.getArgument<float>("simulation-duration");
-    /* changed from checkpoint interval TODO, remove this line if sure is valid */
-    heartbeatInterval = args.getArgument<clock_t>("heartbeat-interval");
     nxRequested = args.getArgument<int>("resolution-x");
     nyRequested = args.getArgument<int>("resolution-y");
-
-    if (args.isSet("decomp-factor")) {
-        decompFactor = args.getArgument<unsigned int>("decomp-factor");
-        if (decompFactor == 0) {
-            decompFactor = 1;
-        }
-    }
-
     outputNameInput = args.getArgument<std::string>("output-basepath");
-    backupNameInput = args.getArgument<std::string>("backup-basepath");
-    if (args.isSet("restart-basepath")) {
-        restartNameInput = args.getArgument<std::string>("restart-basepath");
+    writeOutput = args.isSet("write-output");
+    heartbeatInterval = args.getArgument<double>("heartbeat-interval");
+    hashOption = args.getArgument<int>("hash-method", 1);
+    if (hashOption != 0 && hashOption != 1 && hashOption != 2) {
+        std::cout << "Invalid hash method. It has to be either:\n"
+                  << "  0,\n"
+                  << "  i^420 or\n"
+                  << "  the number of which engineers think it's e"
+                  << std::endl;
+        return 1;
     }
+    numberOfHashes = args.getArgument<unsigned int>("hash-count");
+    if (args.isSet("inject-bitflip")) bitflip_at = args.getArgument<double>("inject-bitflip");
+    verbose = args.isSet("verbose");
+
+    /* fixed backup name */
+    //backupNameInput = args.getArgument<std::string>("backup-basepath");
+    backupNameInput = "BACKUP_" + outputNameInput;
 
     hashOption = args.getArgument<int>("hash-method", 1);
-    if (hashOption != 1 && hashOption != 2) {
+    if (hashOption != 0 && hashOption != 1 && hashOption != 2) {
         std::cout << "Invalid hash method. It has to be either:\n"
+                  << "  0,\n"
                   << "  i^420 or\n"
                   << "  the number of which engineers think it's e"
                   << std::endl;
         return 1;
     }
 
-
-    /* whether to generate a verbose output */
-    verbose = args.isSet("verbose");
+    /* Compute when the hash intervals are reached */
+    float *sendHashAt = new float[numberOfHashes];
+    /* Time delta between sending hashes */
+    float sendHashDelta = simulationDuration / numberOfHashes;
+    /* The first hash is sent after 0 + delta t */
+    sendHashAt[0] = sendHashDelta;
+    for (unsigned int i = 1; i < numberOfHashes; i++) {
+        sendHashAt[i] = sendHashAt[i - 1] + sendHashDelta;
+   }
 
 
     // init teaMPI
@@ -246,12 +258,6 @@ int main(int argc, char** argv)
     /* TODO: integrate warmspares to soft error detection */
     TMPI_SetErrorHandlingStrategy(TMPI_WarmSpareErrorHandler);
 
-    /*
-     * we don't set any error handling strategies for now,
-     * TMPI_NoErrorHandler is set by default
-     */
-
-
     // init MPI
     int myRankInTeam;
     if (setjmp(jumpBuffer) == 0)
@@ -262,12 +268,14 @@ int main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
     const int myTeam{TMPI_GetTeamNumber()};
     int numTeams = TMPI_GetInterTeamCommSize();
+    assert(numTeams == 2);
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     //unsigned int blocksPerRank = numTeams * decompFactor;
 
     // TODO check
     /* Since we are doing the first option naively, we will not share any
-     * blocks. Which means it is best that we have only one block per replica */
+     * blocks. Which means it is best that we have only one block per replica
+     * ==> TODO REMOVE the variables we don't need after debugging */
     unsigned int blocksPerRank = 1;
 //------------------------------------------------------------------------------
     outputTeamName = outputNameInput + "_t" + std::to_string(myTeam);
@@ -291,7 +299,7 @@ int main(int argc, char** argv)
 
     float simulationStart{0.0f};
 
-    // if not loading from a checkpoint
+    // if not loading from a checkpoint, TODO debug this
     if (restartNameInput == "")
     {
         scenario = new SWE_RadialBathymetryDamBreakScenario{};
@@ -585,364 +593,385 @@ int main(int argc, char** argv)
     for (auto& block : simulationBlocks) { block->writeTimestep(0.f); }
 //------------------------------------------------------------------------------
 
-    /* For debugging only TODO count the heartbeats */
+        /*
+         *      TODO
+         *      fix the loop, we also need to send hashes
+         *
+         *  !!! THIS LOOP IS FROM swe_softRes.cpp !!!
+         *
+         *      Hasher swe_hasher;
+         *
+         *      for (unsigned int i = 0; i < numberOfHashes; i++) {
+         *
+         *          while (t < sendHashAt[i]) {
+         *
+         *              // compute
+         *
+         *              // update hash
+         *
+         *          }
+         *
+         *          // send hash with heartbeat
+         *      }
+         *
+         *
+         *
+         *  !!! THIS LOOP IS FROM THIS FILE soft + hard !!!
+         *
+         *      while (t < simulationDuration) {
+         *
+         *          // start heartbeat
+         *
+         *          while (timeSinceLastHeartbeat < heartbeatInterval && t < simulationDuration) {
+         *
+         *              // compute
+         *
+         *              // update timeSinceLastHeartbeat
+         *
+         *          }
+         *
+         *          // end heartbeat
+         *
+         *      }
+         *
+         *
+         *  TODO create the ultimate loop
+         *
+         *      Hasher swe_hasher;
+         *
+         *      // start heartbeat and update timeSinceLastHeartbeat
+         *
+         *      for (unsigned int i = 0; i < numberOfHashes; i++) {
+         *
+         *          while (t < sendHashAt[i]) {
+         *
+         *              if (timeSinceLastHeartbeat >= heartbeatInterval)
+         *                  // end heartbeat && start heartbeat and update timeSinceLastHeartbeat
+         *
+         *              // compute
+         *
+         *              // update hash
+         *
+         *              // update timeSinceLastHeartbeat
+         *          }
+         *
+         *          // send hash with heartbeat
+         *      }
+         *
+         *      // end the last heartbeat
+         *
+         */
+
+
+    /* For debugging only TODO. ATTENTION: only counts the heartbeats with
+     * hashes to make sure the number is right */
     int heartbeatCounter = 0;
 
-    // simulate until end of simulation
-    while (t < simulationDuration)
-    {
+    // Size of the update fields incl. ghost layer TODO integrate simulationBlock
+    const int fieldSizeX =
+        (simulationBlocks.at(0)->nx + 2) * (simulationBlocks.at(0)->ny + 2);
+    const int fieldSizeY =
+        (simulationBlocks.at(0)->nx + 1) * (simulationBlocks.at(0)->ny + 2);
 
-        /**
-         * Start hearbeat before the task begins.
-         * If we post a heartbeat after every time step, a single rank would
-         * delay the heartbeats of neighouring ranks because point-to-point
-         * messages (like receiveGhostLayer) are required before a new
-         * simulation time step can be started.
-         */
-        MPI_Sendrecv(MPI_IN_PLACE,              /* Send buffer      */
-                     0,                         /* Send count       */
-                     MPI_BYTE,                  /* Send type        */
-                     MPI_PROC_NULL,             /* Destination      */
-                     1,                         /* Send tag         */
-                     MPI_IN_PLACE,              /* Receive buffer   */
-                     0,                         /* Receive count    */
-                     MPI_BYTE,                  /* Receive type     */
-                     MPI_PROC_NULL,             /* Source           */
-                     0,                         /* Receive tag      */
-                     MPI_COMM_SELF,             /* Communicator     */
-                     MPI_STATUS_IGNORE);        /* Status object    */
+    /* for hashing the calculated updates to detect silent data corruptions */
+    // TODO integrate simulation block
+    Hasher swe_hasher = Hasher(
+      fieldSizeX, fieldSizeY,
+      simulationBlocks.at(0)->hNetUpdatesLeft.getRawPointer(),
+      simulationBlocks.at(0)->hNetUpdatesRight.getRawPointer(),
+      simulationBlocks.at(0)->huNetUpdatesLeft.getRawPointer(),
+      simulationBlocks.at(0)->huNetUpdatesRight.getRawPointer(),
+      simulationBlocks.at(0)->hNetUpdatesBelow.getRawPointer(),
+      simulationBlocks.at(0)->hNetUpdatesAbove.getRawPointer(),
+      simulationBlocks.at(0)->hvNetUpdatesBelow.getRawPointer(),
+      simulationBlocks.at(0)->hvNetUpdatesAbove.getRawPointer(),
+      &(simulationBlocks.at(0)->maxTimestep));
 
-        double timeOfLastHeartbeat{MPI_Wtime()};
-        double timeSinceLastHeartbeat{0.0};
 
+    /* start the very first hearbeat */
+    MPI_Sendrecv(MPI_IN_PLACE,              /* Send buffer      */
+                 0,                         /* Send count       */
+                 MPI_BYTE,                  /* Send type        */
+                 MPI_PROC_NULL,             /* Destination      */
+                 1,                         /* Send tag         */
+                 MPI_IN_PLACE,              /* Receive buffer   */
+                 0,                         /* Receive count    */
+                 MPI_BYTE,                  /* Receive type     */
+                 MPI_PROC_NULL,             /* Source           */
+                 0,                         /* Receive tag      */
+                 MPI_COMM_SELF,             /* Communicator     */
+                 MPI_STATUS_IGNORE);        /* Status object    */
+
+    double timeOfLastHeartbeat = MPI_Wtime();
+    double timeSinceLastHeartbeat = 0.f;
+
+    if (verbose) {
         /* print heartbeat for debugging */
-        std::cout << "\n\t++++++++++++++ " << heartbeatCounter << ". "
-                  << "HEARTBEAT START ++++++++++++++\n\t"
+        std::cout << "\n\t++++++++++++++ "
+                  << "FIRST HEARTBEAT START ++++++++++++++\n\t"
                   << "  - team:\t\t" << myTeam << "\n\t"
                   << "  - rank:\t\t" << myRankInTeam << "\n\t"
-                  << "at t = " << t << ", at MPI_Wtime() : " << timeOfLastHeartbeat << std::endl;
+                  << "at t = " << t << ", at MPI_Wtime() : "
+                  << timeOfLastHeartbeat << std::endl;
+    }
+
+    for (unsigned int i = 0; i < numberOfHashes; i++) {
+
+        /* Simulate until the next sending is reached */
+        while (t < sendHashAt[i]) {
+
+            if (timeSinceLastHeartbeat >= heartbeatInterval) {
+
+                /* end Heartbeat */
+                MPI_Sendrecv(MPI_IN_PLACE,              /* Send buffer      */
+                             0,                         /* Send count       */
+                             MPI_BYTE,                  /* Send type        */
+                             MPI_PROC_NULL,             /* Destination      */
+                             -1,                        /* Send tag         */
+                             MPI_IN_PLACE,              /* Receive buffer   */
+                             0,                         /* Receive count    */
+                             MPI_BYTE,                  /* Receive type     */
+                             MPI_PROC_NULL,             /* Source           */
+                             0,                         /* Receive tag      */
+                             MPI_COMM_SELF,             /* Communicator     */
+                             MPI_STATUS_IGNORE);        /* Status object    */
+
+                if (verbose) {
+                    /* print heartbeat for debugging */
+                    std::cout << "\n\t+++++++++ "
+                              << "HEARTBEAT END ++++++++\n\t"
+                              << "  - team:\t\t" << myTeam << "\n\t"
+                              << "  - rank:\t\t" << myRankInTeam << "\n\t"
+                              << " at t = " << t << ", at MPI_Wtime() : "
+                              << timeOfLastHeartbeat << std::endl;
+                }
 
 
-        /* hash the computation and store the result here for comparison
-         * with the other replicas
-         *
-         * TODO hash with SHA1 implementation or std::hash ?
-         *      test this. boost::hash_combine for combining std::hashes?
-         */
+                /* start Hearbeat */
+                /* If we post a heartbeat after every time step, a single rank
+                 * would delay the heartbeats of neighouring ranks because
+                 * point-to-point messages (like receiveGhostLayer) are required
+                 * before a new simulation time step can be started.
+                 */
+                MPI_Sendrecv(MPI_IN_PLACE,              /* Send buffer      */
+                            0,                          /* Send count       */
+                            MPI_BYTE,                   /* Send type        */
+                            MPI_PROC_NULL,              /* Destination      */
+                            1,                          /* Send tag         */
+                            MPI_IN_PLACE,               /* Receive buffer   */
+                            0,                          /* Receive count    */
+                            MPI_BYTE,                   /* Receive type     */
+                            MPI_PROC_NULL,              /* Source           */
+                            0,                          /* Receive tag      */
+                            MPI_COMM_SELF,              /* Communicator     */
+                            MPI_STATUS_IGNORE);         /* Status object    */
 
-        /* hash function and hash storage */
-        std::hash<std::string> hash_fn;
-        std::size_t total_hash = 0; /* initialized as 0 because we want the
-                                     * first xor operation with the first hash
-                                     * would give us the
-                                     * hash itself
-                                     */
+                timeOfLastHeartbeat = MPI_Wtime();
+                timeSinceLastHeartbeat = 0.f;
 
-        /* sha1 hash */
-        SHA1 checksum;
-
-        // simulate until the heartbeat interval is reached
-        while (timeSinceLastHeartbeat < heartbeatInterval && t < simulationDuration) {
-
-            if (verbose) {
-                std::cout << "\n"
-                          << "--------------- while (timeSinceLastHeartbeat="
-                          << timeSinceLastHeartbeat << " < heartbeatInterval="
-                          << heartbeatInterval << " && t="
-                          << t << " < simulationDuration="
-                          << simulationDuration << ")---------------"
-                          << "TEAM " << myTeam << ": \t\tBegin iteration at time " << t
-                          << std::endl;
+                if (verbose) {
+                    /* print heartbeat for debugging */
+                    std::cout << "\n\t++++++++++++++ "
+                              << "HEARTBEAT START ++++++++++++++\n\t"
+                              << "  - team:\t\t" << myTeam << "\n\t"
+                              << "  - rank:\t\t" << myRankInTeam << "\n\t"
+                              << "at t = " << t << ", at MPI_Wtime() : "
+                              << timeOfLastHeartbeat << std::endl;
+                }
             }
+
 
             // exchange boundaries between blocks
             for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
             for (auto& currentBlock : simulationBlocks) { currentBlock->receiveGhostLayer(); }
-            const MPI_Comm interTeamComm{TMPI_GetInterTeamComm()};
 
-            /* TODO: Since there is only on blockPerRank we don't need to wait */
-            if (blocksPerRank > 1 && !hasRecovered)
-            {
-                assert(false);
-                std::cout << "\n\n\n\n\n\t\t\t************* ATTENTION **************"
-                          << "\t\t\tTHIS BLOCK SHOULD NEVER BE VISITED, NAIV.CPP IS PROBLEMATIC!"
-                          << "\n\n\n\n\n\t\t\t************* ATTENTION **************"
+            /* TODO we only have one block, so don't need the list again */
+            assert(simulationBlocks.size() == 1);
+
+            if(verbose) {
+                std::cout << "calculating.. t = " << t
+                          << "\t\t\t\t---- TEAM " << myTeam << " Rank "
+                          << myRankInTeam << std::endl;
+            }
+
+            /* compute current updates */
+            simulationBlocks.at(0)->computeNumericalFluxes();
+
+            /* Inject a bitflip at team 0 at rank 0 */
+            if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
+
+                /* index of the float we want to corrupt */
+                size_t flipAt_float = fieldSizeX / 2;
+
+                float *calculated_huNetUpdatesLeft = simulationBlocks.at(0)->huNetUpdatesLeft.getRawPointer();
+
+                std::cout << "\n............Injecting..a..bit..flip.................\n"
+                          << "old value : " <<     calculated_huNetUpdatesLeft[flipAt_float]
+                          << "\n...............DATA..CORRUPTED......................\n"
+                          << "\n";
+
+                /* flip only the first bit with the XOR operation */
+                ((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
+
+                std::cout << "new value : " << calculated_huNetUpdatesLeft[flipAt_float]
+                          << "\n"
                           << std::endl;
-                // Avoid overwriting an old send buffer before everyone reaches this point
-                MPI_Barrier(interTeamComm);
+
+                /* prevent any other bitflip */
+                bitflip_at = -1.f;
             }
-            /* No sending will be make */
-            //std::vector<MPI_Request> send_reqs(11 * numTeams, MPI_REQUEST_NULL);
 
-            /* There is just one block in the naive version! TODO unneccesary loop */
-            for (int i{0}; i < blocksPerRank; i++)
-            {
-                // Get a reference to the current block
-                const int& currentBlockNr{myBlockOrder[i]};
-                auto& currentBlock = *simulationBlocks[currentBlockNr];
+            /* update the hash */
+            if (hashOption == 0) {
+                /* don't hash. 0 is for 'no hashing' */
+            }
+            else if (hashOption == 1) {
+                swe_hasher.update_stdHash();
+            }
+            else if (hashOption == 2) {
+                swe_hasher.update_SHA1();
+            }
+            else {
+                std::cout << "Unknown hash method.. something went wrong\n"
+                          << std::endl;
+                MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
+            }
 
-                // Size of the update fields incl. ghost layer
-                const int fieldSizeX{(currentBlock.nx + 2) * (currentBlock.ny + 2)};
-                const int fieldSizeY{(currentBlock.nx + 1) * (currentBlock.ny + 2)};
+            /* Agree on a timestep */
+            timestep = simulationBlocks.at(0)->maxTimestep;
+            float agreed_timestep;
+            MPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 
-                // The first [decompFactor] blocks are the ones we always compute ourselves
-                // HINT: There is only one block in the naive version anyway.. TODO
-                if (i < decompFactor)
-                {
-                    currentBlock.computeNumericalFluxes();
+            simulationBlocks.at(0)->maxTimestep = agreed_timestep;
+            simulationBlocks.at(0)->updateUnknowns(agreed_timestep);
 
-                    if (verbose) {
-                        std::cout << "Team " << myTeam << " calculated timestep "
-                                  << currentBlock.maxTimestep
-                                  << std::endl;
-                    }
+            t += agreed_timestep;
 
-                    /* Pointers to the results to be hashed (with their size on top) */
-                    // TODO: try to implement this huge block with a function above
-                    //       for better readability
-
-                    // fieldSizeX
-                    float* calculated_hNetUpdatesLeft = currentBlock.hNetUpdatesLeft.getRawPointer();
-                    float* calculated_hNetUpdatesRight = currentBlock.hNetUpdatesRight.getRawPointer();
-
-                    // fieldSizeX
-                    float* calculated_huNetUpdatesLeft = currentBlock.huNetUpdatesLeft.getRawPointer();
-                    float* calculated_huNetUpdatesRight = currentBlock.huNetUpdatesRight.getRawPointer();
-
-                    // fieldSizeY
-                    float* calculated_hNetUpdatesBelow = currentBlock.hNetUpdatesBelow.getRawPointer();
-                    float* calculated_hNetUpdatesAbove = currentBlock.hNetUpdatesAbove.getRawPointer();
-
-                    float* calculated_hvNetUpdatesBelow = currentBlock.hvNetUpdatesBelow.getRawPointer();
-                    float* calculated_hvNetUpdatesAbove = currentBlock.hvNetUpdatesAbove.getRawPointer();
-
-                    float* calculated_maxTimeStep = &(currentBlock.maxTimestep);
-
-                    /* Convert them to stringis */
-                    std::string str_hLeft((const char*) calculated_hNetUpdatesLeft, sizeof(float) * fieldSizeX);
-                    std::string str_hRight((const char*) calculated_hNetUpdatesRight, sizeof(float) * fieldSizeX);
-
-                    std::string str_huLeft((const char*) calculated_huNetUpdatesLeft, sizeof(float) * fieldSizeX);
-                    std::string str_huRight((const char*) calculated_huNetUpdatesRight, sizeof(float) * fieldSizeX);
-
-                    std::string str_hBelow((const char*) calculated_hNetUpdatesBelow, sizeof(float) * fieldSizeY);
-                    std::string str_hAbove((const char*) calculated_hNetUpdatesAbove, sizeof(float) * fieldSizeY);
-
-                    std::string str_hvBelow((const char*) calculated_hvNetUpdatesBelow, sizeof(float) * fieldSizeY);
-                    std::string str_hvAbove((const char*) calculated_hvNetUpdatesAbove, sizeof(float) * fieldSizeY);
-
-                    std::string str_maxTimeStep((const char*) calculated_maxTimeStep, sizeof(float));
-
-                    /* OPTION A: hash them using SHA1 (like redmpi did) TODO use library next time.. */
-                    checksum.update(str_hLeft);
-                    checksum.update(str_hRight);
-
-                    checksum.update(str_huLeft);
-                    checksum.update(str_huRight);
-
-                    checksum.update(str_hBelow);
-                    checksum.update(str_hAbove);
-
-                    checksum.update(str_hvBelow);
-                    checksum.update(str_hvAbove);
-
-                    checksum.update(str_maxTimeStep);
-
-                    /* OPTION B: hash them using std::hash
-                         HINT: TODO xor is used when combining the hash but this
-                         might not be ideal, see boost::hash_combine */
-
-                    total_hash ^= hash_fn(str_hLeft);
-                    total_hash ^= hash_fn(str_hRight);
-
-                    total_hash ^= hash_fn(str_huLeft);
-                    total_hash ^= hash_fn(str_huRight);
-
-                    total_hash ^= hash_fn(str_hBelow);
-                    total_hash ^= hash_fn(str_hAbove);
-
-                    total_hash ^= hash_fn(str_hvBelow);
-                    total_hash ^= hash_fn(str_hvAbove);
-
-                    total_hash ^= hash_fn(str_maxTimeStep);
-
-                    /* No sending to other teams because we avoid this in naive version*/
-                } else { /* This else block should never be visited.. Remove this block if sure everyting working fine TODO */
-                    std::cout << "\n\n\n\n\n\t\t\t************* ATTENTION **************"
-                              << "\t\t\tTHIS BLOCK SHOULD NEVER BE VISITED, NAIV.CPP IS PROBLEMATIC!"
-                              << "\n\n\n\n\n\t\t\t************* ATTENTION **************"
+            if(writeOutput) {
+                if(verbose) {
+                    std::cout << "--> Writing timestep at: " << t
+                              << " by team " << myTeam << ", rank " << myRankInTeam
                               << std::endl;
-                    assert(false);
-                } // end of else
-            } // end of for (int i{0}; i < blocksPerRank; i++)
-
-            hasRecovered = false;
-
-            // determine max possible timestep TODO THIS IS NOT NECCESSARY WITH ONE BLOCK
-            timesteps.clear();
-            for (auto& block : simulationBlocks)
-            {
-                timesteps.push_back(block->maxTimestep);
-                if (verbose) {
-                    std::cout << "Team " << myTeam << ": Single Timestep " << block->maxTimestep << std::endl;
                 }
-
+                simulationBlocks.at(0)->writeTimestep(t);
             }
-            float minTimestep = *std::min_element(timesteps.begin(), timesteps.end());
-            MPI_Allreduce(&minTimestep, &timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-            if (verbose) {
-                std::cout << "Team " << myTeam << ": Max Timestep " << timestep << std::endl;
-            }
-            for (auto& block : simulationBlocks) { block->maxTimestep = timestep; }
-            for (auto& block : simulationBlocks) { block->updateUnknowns(timestep); }
-            t += timestep;
 
-             /* write output */
-            if (verbose) {
-              std::cout << "\n"
-                        << "Rank " << myRankInTeam << " from TEAM " << myTeam
-                        << " writing output at t = " << t << std::endl;
-            }
-            for (auto& block : simulationBlocks) {block->writeTimestep(t);}
-
-            /* Update the elapsed time after sending the heartbeat. */
+            /* update the elapsed time after sending the heartbeat */
             timeSinceLastHeartbeat = MPI_Wtime() - timeOfLastHeartbeat;
 
             /* TODO Why send bcast to the rank's team's 0 here ? */
             // MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             // MPI_Barrier(TMPI_GetInterTeamComm());
-            if (myTeam == 1 && myRankInTeam == 0 && restartNameInput == "" && t > 1.f && t < 1.3f)
-            {
 
-                std::cout << "TEAM:1 Rank:0 is SLEEPING...." << std::endl;
-                sleep(1);
+            // TODO add user input variable to sleep or kill this rank for testing
+            if (myTeam == 1 && myRankInTeam == 0 &&
+                restartNameInput == "" && t > 1.f && t < 1.3f) {
 
-                // return 1;
+                //std::cout << "TEAM:1 Rank:0 is SLEEPING...." << std::endl;
+                //sleep(1);
+
+                //return 1;
             }
+
+        } // end of while(t < sendHashAt[i])
+
+        // send hash with heartbeat
+        /* Finalize hash computation */
+        if (hashOption == 0) {
+            /* don't hash. 0 is for 'no hashing' */
         }
+        else if (hashOption == 1) {
 
-        // End Heartbeat send the computed task to compare hashes
-        //
-        // std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
+            size_t total_hash = swe_hasher.finalize_stdHash();
 
-        /* end the checksum SHA1*/
-        std::string final_checksum = checksum.final();
+            if(verbose) {
+                /* print heartbeat for debugging */
+                std::cout << "\n\t+++++++++ " << heartbeatCounter << ". "
+                          << "HEARTBEAT HASH ++++++++\n\t"
+                          << "  - team:\t\t" << myTeam << "\n\t"
+                          << "  - rank:\t\t" << myRankInTeam << "\n\t"
+                          << "  - size_t total_hash (" << sizeof(total_hash)
+                          << " bytes)" << " : " << total_hash
+                          << " at t = " << t << std::endl;
+            }
 
-        /* print heartbeat for debugging */
-        std::cout << "\n\t+++++++++ " << heartbeatCounter << ". "
-                  << "HEARTBEAT END SENDING HASH ++++++++\n\t"
-                  << "  - team:\t\t" << myTeam << "\n\t"
-                  << "  - rank:\t\t" << myRankInTeam << "\n\t"
-                  << "  - size_t total_hash (" << sizeof(total_hash)
-                  << " bytes)" << " : " << total_hash
-                  << " ; SHA1 checksum (" << final_checksum.size()
-                  << " bytes)" << " : " << final_checksum
-                  << " at t = " << t << ", at MPI_Wtime() : "
-                  << timeOfLastHeartbeat << std::endl;
+            /* single heartbeat with hash */
+            MPI_Sendrecv(&total_hash,               /* Send buffer      */
+                         1,                         /* Send count       */
+                         MPI_SIZE_T,                /* Send type        */
+                         MPI_PROC_NULL,             /* Destination      */
+                         0,                         /* Send tag         */
+                         MPI_IN_PLACE,              /* Receive buffer   */
+                         0,                         /* Receive count    */
+                         MPI_BYTE,                  /* Receive type     */
+                         MPI_PROC_NULL,             /* Source           */
+                         0,                         /* Receive tag      */
+                         MPI_COMM_SELF,             /* Communicator     */
+                         MPI_STATUS_IGNORE);        /* Status object    */
+        }
+        else if (hashOption == 2) {
+
+            /* get 20 bytes from SHA1 hasher
+             * SHA1 has a fixed output size of 120 bits == 20 bytes */
+            unsigned char *total_hash = swe_hasher.finalize_SHA1();
+            std::cout << "\nsorry.. but SHA1 hashing is still in development :(\n"
+                      << std::endl;
+
+            assert(false);
+
+            if(verbose) {
+                /* print heartbeat for debugging */
+                std::cout << "\n\t+++++++++ " << heartbeatCounter << ". "
+                          << "HEARTBEAT HASH ++++++++\n\t"
+                          << "  - team:\t\t" << myTeam << "\n\t"
+                          << "  - rank:\t\t" << myRankInTeam << "\n\t"
+                          << "  - unsigned char total_hash (" << 20
+                          << " bytes)" << " : " << total_hash // TODO print only 20 bytes here
+                          << " at t = " << t << std::endl;
+            }
+
+            /* single heartbeat with hash */
+            MPI_Sendrecv(total_hash,                /* Send buffer      */
+                         20,                        /* Send count       */
+                         MPI_CHAR,                  /* Send type        */
+                         MPI_PROC_NULL,             /* Destination      */
+                         0,                         /* Send tag         */
+                         MPI_IN_PLACE,              /* Receive buffer   */
+                         0,                         /* Receive count    */
+                         MPI_BYTE,                  /* Receive type     */
+                         MPI_PROC_NULL,             /* Source           */
+                         0,                         /* Receive tag      */
+                         MPI_COMM_SELF,             /* Communicator     */
+                         MPI_STATUS_IGNORE);        /* Status object    */
+
+        }
+        else {
+            std::cout << "Unknown hash method.. something went wrong\n"
+                      << std::endl;
+            MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
+        }
 
         heartbeatCounter++;
 
-        /* Send the hash calculated by std::hash and XORed with size size_t */
-        if (hashOption == 1) {
+    } // for (unsigned int i = 0; i < numberOfHashes; i++)
 
-            /* heartbeat end : OPTION B */
-            MPI_Sendrecv(&total_hash,              /* Send buffer      */
-                        1,                         /* Send count       */
-                        MPI_SIZE_T,                /* Send type        */
-                        MPI_PROC_NULL,             /* Destination      */
-                        -1,                        /* Send tag         */
-                        MPI_IN_PLACE,              /* Receive buffer   */
-                        0,                         /* Receive count    */
-                        MPI_BYTE,                  /* Receive type     */
-                        MPI_PROC_NULL,             /* Source           */
-                        0,                         /* Receive tag      */
-                        MPI_COMM_SELF,             /* Communicator     */
-                        MPI_STATUS_IGNORE);        /* Status object    */
-        }
-
-        /* Send the has calculated by SHA1, size is 20 byte */
-        // TODO: normally size is 20 bytes, but when writing in hex
-        //       using strings, we get 40 charactrers. So we are sending
-        //       more than we have to, fix this by converting 40 chars
-        //       to 20 bytes (read them as hex). Possible option could be
-        //       to send 20 bytes as 20 chars again.
-        if (hashOption == 2) {
-
-            /* heartbeat end : OPTION A */
-            MPI_Sendrecv(final_checksum.c_str(),   /* Send buffer      */
-                        final_checksum.size(),     /* Send count: 20 ? */
-                        MPI_CHAR,                  /* Send type        */
-                        MPI_PROC_NULL,             /* Destination      */
-                        -1,                        /* Send tag         */
-                        MPI_IN_PLACE,              /* Receive buffer   */
-                        0,                         /* Receive count    */
-                        MPI_BYTE,                  /* Receive type     */
-                        MPI_PROC_NULL,             /* Source           */
-                        0,                         /* Receive tag      */
-                        MPI_COMM_SELF,             /* Communicator     */
-                        MPI_STATUS_IGNORE);        /* Status object    */
-        }
+    /* end the very last Heartbeat */
+    MPI_Sendrecv(MPI_IN_PLACE,              /* Send buffer      */
+                 0,                         /* Send count       */
+                 MPI_BYTE,                  /* Send type        */
+                 MPI_PROC_NULL,             /* Destination      */
+                 -1,                        /* Send tag         */
+                 MPI_IN_PLACE,              /* Receive buffer   */
+                 0,                         /* Receive count    */
+                 MPI_BYTE,                  /* Receive type     */
+                 MPI_PROC_NULL,             /* Source           */
+                 0,                         /* Receive tag      */
+                 MPI_COMM_SELF,             /* Communicator     */
+                 MPI_STATUS_IGNORE);        /* Status object    */
 
 
-        ///* Normal heartbeat */
-        //MPI_Sendrecv(MPI_IN_PLACE,              /* Send buffer      */
-                     //0,                         /* Send count       */
-                     //MPI_BYTE,                  /* Send type        */
-                     //MPI_PROC_NULL,             /* Destination      */
-                     //-1,                        /* Send tag         */
-                     //MPI_IN_PLACE,              /* Receive buffer   */
-                     //0,                         /* Receive count    */
-                     //MPI_BYTE,                  /* Receive type     */
-                     //MPI_PROC_NULL,             /* Source           */
-                     //0,                         /* Receive tag      */
-                     //MPI_COMM_SELF,             /* Communicator     */
-                     //MPI_STATUS_IGNORE);        /* Status object    */
-
-
-        // printf("Returned from heartbeat rank: %d, team %d\n",
-        // l_mpiRank, l_teamNumber); Only write timestep when simluation
-        // has finished
-
-        /*
-        std::printf("Rank %i of Team %i writing output on timestep %f\n", myRankInTeam, myTeam, t);
-        std::cout << "\n-------------------------------------------------"
-                  << "Rank " << myRankInTeam << " from TEAM " << myTeam
-                  << " writing output at t = " << t << std::endl;
-        */
-
-        /* TODO there is only one simulation block.. */
-        /*
-        for (int i = 0; i < (int) simulationBlocks.size(); i++) {
-            simulationBlocks[i]->writeTimestep(t);
-            //simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
-        }
-        */
-
-        // End Heartbeat
-        //std::cout << "Team " << myTeam << ": HEARTBEAT! Current simulation time is " << t << '\n';
-        //MPI_Sendrecv(MPI_IN_PLACE,
-                     //0,
-                     //MPI_BYTE,
-                     //MPI_PROC_NULL,
-                     //-1,
-                     //MPI_IN_PLACE,
-                     //0,
-                     //MPI_BYTE,
-                     //MPI_PROC_NULL,
-                     //0,
-                     //MPI_COMM_SELF,
-                     //MPI_STATUS_IGNORE);
-
-        // printf("Returned from heartbeat rank: %d, team %d\n",
-        // l_mpiRank, l_teamNumber); Only write timestep when simluation
-        // has finished
-        /* if (t >= simulationDuration) {
-            std::printf("Rank %i of Team %i writing final checkpoint\n", myRankInTeam, myTeam);
-            for (int i = 0; i < simulationBlocks.size(); i++) {
-                simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
-            }
-        } */
-    }
+    delete[] sendHashAt;
+    delete scenario;
 
     for (auto& block : simulationBlocks) { block->freeMpiType(); }
     MPI_Finalize();
