@@ -6,8 +6,6 @@
  * TODO description
  */
 
-
-
 #include <bits/c++config.h>
 #include <cstdint>
 #include <functional>
@@ -67,7 +65,7 @@ std::vector<std::string> backupMetadataNames{};
 * blocks. Which means it is best that we have only one block per replica,
 * so using only one variable makes more sense TODO*/
 
-std::string backupMetadataName;
+//std::string backupMetadataName; TODO
 //------------------------------------------------------------------------------
 std::string outputTeamName{""};
 std::string backupTeamName{""};
@@ -82,11 +80,12 @@ std::vector<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>> simulationBl
 * blocks. Which means it is best that we have only one block per replica,
 * so using only one variable makes more sense TODO*/
 
-std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp> simulationBlock; /* needs to be global
-                                                                         * for checkpointcallbacks
-                                                                         * below, which will be
-                                                                         * passed to teaMPI
-                                                                         **/
+//std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp> simulationBlock;
+/* needs to be global TODO
+* for checkpointcallbacks
+* below, which will be
+* passed to teaMPI
+**/
 //------------------------------------------------------------------------------
 SWE_Scenario* scenario{nullptr};
 bool hasRecovered{false};
@@ -101,7 +100,7 @@ void createCheckpointCallback(std::vector<int> failedTeams)
     // write a checkpoint for every block
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 /* TODO on this naiv soft error checking we have only one simulationBlock ! */
-    for (int i = 0; i < simulationBlocks.size(); i++)
+    for (unsigned int i = 0; i < simulationBlocks.size(); i++)
     {
         simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
     }
@@ -168,7 +167,7 @@ int main(int argc, char** argv)
     args.addOption("hash-count", 'c', "Number of total hashes to send to the replica", args.Required, true);
     args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
     // TODO integrate -s option for sleep/kill
-    args.addOption("sleep-rank", 's', "Sleeps or kills the rank 0 of team 0. Use '-1' to kill it and use a positive double to let it sleep in each iteration", args.Required, false);
+    args.addOption("kill-rank", 'k', "Kills the rank 0 of team 0 at the specified simulation time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
 
     /* TODO add write option*/
@@ -202,6 +201,8 @@ int main(int argc, char** argv)
 
     double bitflip_at = -1.f;
 
+    double kill_rank = -1.f;
+
     bool verbose = false;
 
     /* Read in command line arguments */
@@ -222,6 +223,7 @@ int main(int argc, char** argv)
     }
     numberOfHashes = args.getArgument<unsigned int>("hash-count");
     if (args.isSet("inject-bitflip")) bitflip_at = args.getArgument<double>("inject-bitflip");
+    if (args.isSet("kill-rank")) kill_rank = args.getArgument<double>("kill-rank");
     verbose = args.isSet("verbose");
 
     /* fixed backup name */
@@ -254,8 +256,6 @@ int main(int argc, char** argv)
     std::function<void(int)> load(loadCheckpointCallback);
     TMPI_SetCreateCheckpointCallback(&create);
     TMPI_SetLoadCheckpointCallback(&load);
-
-    /* TODO: integrate warmspares to soft error detection */
     TMPI_SetErrorHandlingStrategy(TMPI_WarmSpareErrorHandler);
 
     // init MPI
@@ -589,7 +589,8 @@ int main(int argc, char** argv)
 
     // Write zero timestep
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-/* TODO on this naiv soft error checking we have only one simulationBlock ! */
+/* TODO on this naiv soft error checking we have only one simulationBlock !
+ * TODO only write zero timestep, if not restoring !!! */
     for (auto& block : simulationBlocks) { block->writeTimestep(0.f); }
 //------------------------------------------------------------------------------
 
@@ -863,14 +864,15 @@ int main(int argc, char** argv)
             // MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             // MPI_Barrier(TMPI_GetInterTeamComm());
 
-            // TODO add user input variable to sleep or kill this rank for testing
-            if (myTeam == 1 && myRankInTeam == 0 &&
-                restartNameInput == "" && t > 1.f && t < 1.3f) {
-
-                //std::cout << "TEAM:1 Rank:0 is SLEEPING...." << std::endl;
-                //sleep(1);
-
-                //return 1;
+            /* kill the rank 0 if specified parameter is set */
+            if (kill_rank >= 0 && t >= kill_rank &&
+                myTeam == 0 && myRankInTeam == 0 && restartNameInput == "") {
+                std::cout << "TEAM:0 Rank:0 RETURNS ERROR CODE for hard failure simulation...."
+                          << std::endl;
+                return 1;
+                //std::cout << "ETERNAL SLEEP TIME FOR THE TEAM:0 Rank:0 for hard failure simulation...."
+                          //<< std::endl;
+                //while(true) sleep(10); TODO also check if this is working
             }
 
         } // end of while(t < sendHashAt[i])
@@ -968,6 +970,21 @@ int main(int argc, char** argv)
                  0,                         /* Receive tag      */
                  MPI_COMM_SELF,             /* Communicator     */
                  MPI_STATUS_IGNORE);        /* Status object    */
+
+    /*
+     * TODO without this, we get error sometimes.. figure this out
+     */
+    //MPI_Barrier(TMPI_GetInterTeamComm());
+
+    if (verbose) {
+        /* print heartbeat for debugging */
+        std::cout << "\n\t+++++++++ "
+        << "LAST HEARTBEAT END ++++++++\n\t"
+        << "  - team:\t\t" << myTeam << "\n\t"
+        << "  - rank:\t\t" << myRankInTeam << "\n\t"
+        << " at t = " << t << ", at MPI_Wtime() : "
+        << timeOfLastHeartbeat << std::endl;
+    }
 
 
     delete[] sendHashAt;
