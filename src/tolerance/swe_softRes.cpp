@@ -165,6 +165,9 @@ int main(int argc, char** argv)
         sendHashAt[i] = sendHashAt[i - 1] + sendHashDelta;
     }
 
+    // init teaMPI
+    TMPI_SetErrorHandlingStrategy(TMPI_NoErrorHandler);
+
     // init MPI
     int myRankInTeam;
     int ranksPerTeam;
@@ -305,7 +308,6 @@ int main(int argc, char** argv)
     simulationBlock->sendBathymetry();
     simulationBlock->recvBathymetry();
 
-    std::vector<float> timesteps;
     // Simulated time
     t = simulationStart;
 
@@ -414,7 +416,7 @@ int main(int argc, char** argv)
                 bitflip_at = -1.f;
             }
 
-            /* compute the hash */
+            /* update the hash */
             if (hashOption == 0) {
                 /* don't hash. 0 is for 'no hashing' */
             }
@@ -529,7 +531,12 @@ int main(int argc, char** argv)
 
     } // for (unsigned int i = 0; i < numberOfHashes; i++)
 
+    delete[] sendHashAt;
+    delete scenario;
+//    delete simulationBlock.get(); /* shared pointer issue */
+
     simulationBlock->freeMpiType();
     MPI_Finalize();
+
     return 0;
 }
