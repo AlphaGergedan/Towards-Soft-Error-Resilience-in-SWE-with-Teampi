@@ -61,8 +61,6 @@
 #endif
 
 
-// some data needs to be global, otherwise the checkpoint callbacks cannot
-// access it.
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //std::vector<std::string> backupMetadataNames{};
 
@@ -150,7 +148,7 @@ int main(int argc, char** argv)
     /* Simulation time */
     float t(0.0F);
 
-    /* one block per rank TODO remove simulationBlocks variable */
+    /* one block per rank */
     std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp> simulationBlock;
 
     std::string outputTeamName = "";
@@ -178,7 +176,6 @@ int main(int argc, char** argv)
     int numTeams = TMPI_GetInterTeamCommSize();
     assert(numTeams == 2);
 
-    // TODO check
     /* Since we are doing the first option naively, we will not share any
      * blocks. Which means it is best that we have only one block per replica */
     unsigned int blocksPerRank = 1;
@@ -236,7 +233,7 @@ int main(int argc, char** argv)
 
     std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
 
-    /* TODO backups can be removed in this version */
+    /* we keep a backup file for constructor, we don't use them */
     std::string backupTeamPosName = genTeamPosName("BACKUP_" + outputTeamName, localBlockPositionX, localBlockPositionY);
 
     /* Add the block to be calculated by this rank. */
@@ -253,58 +250,45 @@ int main(int argc, char** argv)
                                                   true,
                                                   false));
 
-    /* TODO on this naiv soft error checking we have only one simulationBlock ! */
-    /* Loop over the rank's block number in its team. */
-    for (unsigned int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++) {
-        assert(currentBlockNr == startPoint); // TODO only one block
+    /* no metadata in this version */
+    //backupMetadataNames.push_back(backupTeamPosName + "_metadata");
 
-        //backupMetadataNames.push_back(backupTeamPosName + "_metadata"); TODO
+    std::array<int, 4> myNeighbours =
+        getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, startPoint);
 
-    }
+    int refinedNeighbours[4];
+    int realNeighbours[4];
+    std::array<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>, 4> neighbourBlocks;
+    std::array<BoundaryType, 4> boundaries;
 
-
-    /* TODO on this naiv soft error checking we have only one simulationBlock ! */
-    for (unsigned int currentBlockNr = startPoint; currentBlockNr < startPoint + blocksPerRank; currentBlockNr++) {
-        int localBlockPositionX = currentBlockNr / blockCountY;
-        int localBlockPositionY = currentBlockNr % blockCountY;
-        std::array<int, 4> myNeighbours =
-            getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, currentBlockNr);
-
-        int refinedNeighbours[4];
-        int realNeighbours[4];
-        std::array<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>, 4> neighbourBlocks;
-        std::array<BoundaryType, 4> boundaries;
-
-        /* For all my neighbours. */
-        for (int j = 0; j < 4; j++) {
-            if (myNeighbours[j] >= startPoint && myNeighbours[j] < (startPoint + blocksPerRank)) {
-                refinedNeighbours[j] = -2;
-                realNeighbours[j] = myNeighbours[j];
-                neighbourBlocks[j] = simulationBlock;
-                boundaries[j] = CONNECT_WITHIN_RANK;
-            }
-            else if (myNeighbours[j] == -1) {
-                boundaries[j] = scenario->getBoundaryType((Boundary)j);
-                refinedNeighbours[j] = -1;
-                realNeighbours[j] = -1;
-            }
-            else {
-                realNeighbours[j] = myNeighbours[j];
-                refinedNeighbours[j] = myNeighbours[j] / blocksPerRank;
-                boundaries[j] = CONNECT;
-            }
+    /* For all my neighbours. */
+    for (int j = 0; j < 4; j++) {
+        if (myNeighbours[j] >= startPoint && myNeighbours[j] < (startPoint + blocksPerRank)) {
+            refinedNeighbours[j] = -2;
+            realNeighbours[j] = myNeighbours[j];
+            neighbourBlocks[j] = simulationBlock;
+            boundaries[j] = CONNECT_WITHIN_RANK;
         }
-
-        simulationBlock->initScenario(*scenario, boundaries.data());
-        simulationBlock->connectNeighbourLocalities(refinedNeighbours);
-        simulationBlock->connectNeighbours(realNeighbours);
-        simulationBlock->connectLocalNeighbours(neighbourBlocks);
-        simulationBlock->setRank(currentBlockNr);
-        simulationBlock->setDuration(simulationDuration);
+        else if (myNeighbours[j] == -1) {
+            boundaries[j] = scenario->getBoundaryType((Boundary)j);
+            refinedNeighbours[j] = -1;
+            realNeighbours[j] = -1;
+        }
+        else {
+            realNeighbours[j] = myNeighbours[j];
+            refinedNeighbours[j] = myNeighbours[j] / blocksPerRank;
+            boundaries[j] = CONNECT;
+        }
     }
 
+    simulationBlock->initScenario(*scenario, boundaries.data());
+    simulationBlock->connectNeighbourLocalities(refinedNeighbours);
+    simulationBlock->connectNeighbours(realNeighbours);
+    simulationBlock->connectLocalNeighbours(neighbourBlocks);
+    simulationBlock->setRank(startPoint);
+    simulationBlock->setDuration(simulationDuration);
 
-    /* on this soft error detection we have only one simulationBlock ! */
+
     simulationBlock->sendBathymetry();
     simulationBlock->recvBathymetry();
 
@@ -319,31 +303,13 @@ int main(int argc, char** argv)
      * when sharing (each block es a complete 'task') so this helps us to order
      * the blocks by their numbers across this rank's replicas to compute and
      * share the results.
-     *
-     * In the naiv case, we have only one block per rank. So there is no
-     * sharing.
      */
     std::vector<int> myBlockOrder{};
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//
-// TODO
-//
-// THERE IS ONLY ONE BLOCK!
-
-    // Add my primary blocks first to block order
-    //for (int i = myTeam; i < blocksPerRank; i += numTeams) { myBlockOrder.push_back(i); }
-    // Add all other secondary blocks to block order
-    //for (int i = 0; i < blocksPerRank; i++)
-    //{
-    //    if (i % numTeams != myTeam)
-    //    {
-    //        myBlockOrder.push_back(i);
-    //    }
-    //}
-
-    myBlockOrder.push_back(0); /* We have only one block,
-                                  but this is conventionally same as main.cpp */
+    /* In the naiv case, we have only one block per rank. So there is no
+     * sharing.
+     */
+    myBlockOrder.push_back(0);
 
 //------------------------------------------------------------------------------
     // Write zero timestep
@@ -493,6 +459,7 @@ int main(int argc, char** argv)
             std::cout << "\nsorry.. but SHA1 hashing is still in development :(\n"
                       << std::endl;
 
+            // TODO
             assert(false);
 
             if(verbose) {
@@ -502,7 +469,7 @@ int main(int argc, char** argv)
                           << "  - team:\t\t" << myTeam << "\n\t"
                           << "  - rank:\t\t" << myRankInTeam << "\n\t"
                           << "  - unsigned char total_hash (" << 20
-                          << " bytes)" << " : " << total_hash // TODO print only 20 bytes here
+                          << " bytes)" << " : " << total_hash
                           << " at t = " << t << std::endl;
             }
 
