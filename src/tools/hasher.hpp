@@ -3,10 +3,9 @@
  *
  * @brief Small header for hashing calculated variables to be used in tolerance
  *
- * TODO improve hashing methods, converting to string might not be useful
- *
+ * TODO XOR operation is used when combining hashes but see boost::hash_combine
+ *      it might be better?
  */
-
 
 
 #ifndef HASHER_HPP
@@ -31,6 +30,7 @@ public:
 
     /* hashes with std::hash */
     void update_stdHash();
+    void update_stdHash_float();
     size_t finalize_stdHash();
 
     /* hashes with SHA-1 */
@@ -71,6 +71,7 @@ private:
      *      this way we must convert them to strings first !
      */
     std::hash<std::string> hash_fn;
+    std::hash<float> hash_fn_float;
     std::size_t total_hash;
 
     /* sha1 hash */
@@ -86,7 +87,7 @@ private:
  * Constructor: save the pointers to the updates to hash
  *              them later.
  *
- * @param fieldSizeX TODO
+ * @param fieldSizeX
  * @param fieldSizeY
  * @param hNetUpdatesLeft
  * @param hNetUpdatesRight
@@ -129,9 +130,9 @@ inline Hasher::Hasher(int fieldSizeX, int fieldSizeY,
 }
 
 /**
- * TODO
+ * Returns the final hash value calculated by the standard library
  *
- * @return r
+ * @return r Final hash value
  */
 inline size_t Hasher::finalize_stdHash() {
     size_t r = total_hash;
@@ -167,11 +168,11 @@ inline void Hasher::update_stdHash() {
     /* update the strings */
     updateStrings();
 
-    /* TODO is this better than concat the strings then xor?*/
-    total_hash ^= hash_fn(Hasher::str_hLeft);
-    total_hash ^= hash_fn(Hasher::str_hRight);
-    total_hash ^= hash_fn(Hasher::str_huLeft);
-    total_hash ^= hash_fn(Hasher::str_huRight);
+    /* update the hash */
+    total_hash ^= hash_fn(str_hLeft);
+    total_hash ^= hash_fn(str_hRight);
+    total_hash ^= hash_fn(str_huLeft);
+    total_hash ^= hash_fn(str_huRight);
     total_hash ^= hash_fn(str_hBelow);
     total_hash ^= hash_fn(str_hAbove);
     total_hash ^= hash_fn(str_hvBelow);
@@ -179,6 +180,30 @@ inline void Hasher::update_stdHash() {
     total_hash ^= hash_fn(str_maxTimeStep);
 }
 
+/* TODO tries to improve hashing by not converting them to strings */
+inline void Hasher::update_stdHash_float() {
+
+    /* update the hash using float hasher  */
+
+    // iterate through float arrays with the size fielSizeX
+    for (int i = 0; i < fieldSizeX; i++) {
+        total_hash ^= hash_fn_float(hNetUpdatesLeft[i]);
+        total_hash ^= hash_fn_float(hNetUpdatesRight[i]);
+        total_hash ^= hash_fn_float(huNetUpdatesLeft[i]);
+        total_hash ^= hash_fn_float(huNetUpdatesRight[i]);
+    }
+
+    // iterate through float arrays with the size fieldSizeY
+    for (int j = 0; j < fieldSizeY; j++) {
+        total_hash ^= hash_fn_float(hNetUpdatesBelow[j]);
+        total_hash ^= hash_fn_float(hNetUpdatesAbove[j]);
+        total_hash ^= hash_fn_float(hvNetUpdatesBelow[j]);
+        total_hash ^= hash_fn_float(hvNetUpdatesAbove[j]);
+    }
+
+    // lastly hash the max time step
+    total_hash ^= hash_fn_float(*maxTimeStep);
+}
 
 /**
  * hash with SHA-1
@@ -205,23 +230,21 @@ inline void Hasher::update_SHA1() {
 
 
 /**
- *
- * TODO
- *
- *
+ * Converts the float arrays to strings to be hashed later
+ * TODO create a single string to avoid overhead maybe ? But more collisions?
  */
 inline void Hasher::updateStrings() {
-    str_hLeft = std::string((const char*) Hasher::hNetUpdatesLeft, sizeof(float) * fieldSizeX);
-    Hasher::str_hRight = std::string((const char*) Hasher::hNetUpdatesRight, sizeof(float) * fieldSizeX);
-    Hasher::str_huLeft = std::string((const char*) Hasher::huNetUpdatesLeft, sizeof(float) * fieldSizeX);
-    Hasher::str_huRight = std::string((const char*) Hasher::huNetUpdatesRight, sizeof(float) * fieldSizeX);
+    str_hLeft = std::string((const char*) hNetUpdatesLeft, sizeof(float) * fieldSizeX);
+    str_hRight = std::string((const char*) hNetUpdatesRight, sizeof(float) * fieldSizeX);
+    str_huLeft = std::string((const char*) huNetUpdatesLeft, sizeof(float) * fieldSizeX);
+    str_huRight = std::string((const char*) huNetUpdatesRight, sizeof(float) * fieldSizeX);
 
-    Hasher::str_hBelow = std::string((const char*) Hasher::hNetUpdatesBelow, sizeof(float) * fieldSizeY);
-    Hasher::str_hAbove = std::string((const char*) Hasher::hNetUpdatesAbove, sizeof(float) * fieldSizeY);
-    Hasher::str_hvBelow = std::string((const char*) Hasher::hvNetUpdatesBelow, sizeof(float) * fieldSizeY);
-    Hasher::str_hvAbove = std::string((const char*) Hasher::hvNetUpdatesAbove, sizeof(float) * fieldSizeY);
+    str_hBelow = std::string((const char*) hNetUpdatesBelow, sizeof(float) * fieldSizeY);
+    str_hAbove = std::string((const char*) hNetUpdatesAbove, sizeof(float) * fieldSizeY);
+    str_hvBelow = std::string((const char*) hvNetUpdatesBelow, sizeof(float) * fieldSizeY);
+    str_hvAbove = std::string((const char*) hvNetUpdatesAbove, sizeof(float) * fieldSizeY);
 
-    Hasher::str_maxTimeStep = std::string((const char*) Hasher::maxTimeStep, sizeof(float));
+    str_maxTimeStep = std::string((const char*) maxTimeStep, sizeof(float));
 }
 
 
