@@ -123,6 +123,7 @@ int main(int argc, char** argv)
     args.addOption("output-basepath", 'o', "Output base file name");
     args.addOption("backup-basepath", 'b', "Output base file name");
     args.addOption("restart-basepath", 'r', "Restart base file name", tools::Args::Required, false);
+    args.addOption("kill-rank", 'k', "Kills the rank 0 of team 0 at the specified simulation time", args.Required, false);
 
     // Parse command line arguments
     tools::Args::Result ret = args.parse(argc, argv);
@@ -159,6 +160,9 @@ int main(int argc, char** argv)
 
     }
 
+    double kill_rank = -1.f;
+    if (args.isSet("kill-rank")) kill_rank = args.getArgument<double>("kill-rank");
+
     // init teaMPI
     std::function<void(std::vector<int>)> create(createCheckpointCallback);
     std::function<void(int)> load(loadCheckpointCallback);
@@ -168,8 +172,6 @@ int main(int argc, char** argv)
 
     // init MPI
     int myRankInTeam;
-    int provided;
-    int requested = MPI_THREAD_MULTIPLE;
     if (setjmp(jumpBuffer) == 0)
     {
         // MPI_Init_thread(&argc, &argv, requested, &provided);
@@ -183,10 +185,10 @@ int main(int argc, char** argv)
     outputTeamName = outputNameInput + "_t" + std::to_string(myTeam);
     backupTeamName = backupNameInput + "_t" + std::to_string(myTeam);
 
-    /* also add team to the restart name */
-    if (args.isSet("restart-basepath")) {
-        restartNameInput = restartNameInput + "_t" + std::to_string(myTeam);
-    }
+//    /* also add team to the restart name */ TODO commented for debugging
+//    if (args.isSet("restart-basepath")) {
+//        restartNameInput = restartNameInput + "_t" + std::to_string(myTeam);
+//    }
 
     // Print status
     char hostname[HOST_NAME_MAX];
@@ -786,19 +788,23 @@ int main(int argc, char** argv)
 
             timeSinceLastHeartbeat = MPI_Wtime() - timeOfLastHeartbeat;
             MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-            // MPI_Barrier(TMPI_GetInterTeamComm());
-            if (myTeam == 1 && myRankInTeam == 0 && restartNameInput == "" && t > 5.f)
-            {
-                // return 1;
+            //MPI_Barrier(TMPI_GetInterTeamComm());
+            if (kill_rank >= 0 && t >= kill_rank &&
+                myTeam == 0 && myRankInTeam == 0 && restartNameInput == "") {
+                std::cout << "TEAM:0 Rank:0 RETURNS ERROR CODE for hard failure simulation...."
+                          << std::endl;
+                return 1;
+                //std::cout << "ETERNAL SLEEP TIME FOR THE TEAM:0 Rank:0 for hard failure simulation...."
+                          //<< std::endl;
+                //while(true) sleep(10); TODO also check if this is working
             }
-
         }
 
 
         /* write checkpoint */
-        for (int i = 0; i < simulationBlocks.size(); i++) {
-            simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
-        }
+//        for (int i = 0; i < simulationBlocks.size(); i++) {
+//            simulationBlocks[i]->createCheckpoint(t, backupMetadataNames[i], 0);
+//        }
 
 
 
