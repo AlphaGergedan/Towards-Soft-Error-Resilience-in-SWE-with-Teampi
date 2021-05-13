@@ -103,7 +103,7 @@ For soft error resilience we have the following executables:
 
   Example run:
   ```
-  mpirun --oversubscribe -np 2 buid/directory/swe_softRes -t 2 -x 1000 -y 1000 -o outputFile -w -m 1 -c 5 -f 0.2 -v
+  mpirun --oversubscribe -np 2 build/directory/swe_softRes -t 2 -x 1000 -y 1000 -o outputFile -w -m 1 -c 5 -f 0.2 -v
   ```
 
 ```
