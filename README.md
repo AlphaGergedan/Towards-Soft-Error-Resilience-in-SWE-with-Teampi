@@ -57,12 +57,16 @@ version 4. Follow the instruction in the `INSTALL` file, see the source code
 steps does not work, read the `HACKING.md`, or try to build using the master
 branch of Open MPI itself: https://github.com/open-mpi/ompi
 - run `./autogen.pl`
-- make sure to have recent versions of GUN Autoconf, Automake, and Libtool
+- make sure to have recent versions of GUN Automake and Libtool. Autoconf seems
+to have backwards compatibility issues, versions >2.7 may generate faulty
+configure file. Version 2.69 seems to be working fine
 - now run `./configure --prefix=/ulfm/installation/path --with-ft` to enable
 ULFM and to install it in the specified `/ulfm/installation/path` directory.
 - finally run `make all install` to finish installation.
 
-Also make sure that you have NetCDF library installed.
+Also make sure that you have NetCDF library installed. You may need to set the
+environment variable `HDF5_USE_FILE_LOCKING=FALSE` for reading netcdf files
+depending on your configurations
 
 ### Compiling ###
 
@@ -70,6 +74,7 @@ Follow the following steps to compile the project:
 - go to the root `/` directory of the project
 - make sure you have teaMPI by running: `git submodule update --init --recursive`
 - run `cmake -DMPI_HOME=/ulfm/installation/path -B build/directory -S .`
+(-DUSE\_DEBUG='on' option can be used for debug mode)
 - now prepend the include directory of the installed Open MPI with ULFM (for
 example by running `export CPATH=/ulfm/installation/path/include:$CPATH`)
 - finally run `make -C build/directory`
