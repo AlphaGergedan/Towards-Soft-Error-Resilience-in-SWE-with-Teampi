@@ -14,6 +14,12 @@ target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
   hasher.hpp
   sha1.hpp)
 
+target_sources(swe_softRes_and_hardRes_wTaskSharing PRIVATE
+  help.hpp
+  Args.hpp
+  hasher.hpp
+  sha1.hpp)
+
 target_sources(swe_checkpointRestart PRIVATE
   help.hpp
   Args.hpp)
