@@ -52,6 +52,7 @@
 #include "blocks/DimSplitMPIOverdecomp.hpp"
 
 #include <mpi.h>
+#include <ostream>
 #include <unistd.h>
 
 #include <algorithm>
@@ -140,9 +141,19 @@ void SWE_DimensionalSplittingMPIOverdecomp::writeTimestep(float time) {
 
 void SWE_DimensionalSplittingMPIOverdecomp::createCheckpoint(float time, std::string backupMetadataName,
                                                              int checkpointsLeft) {
+    // TODO do we really need to write timestep here? If writing outputs
+    //      at the same time, this might conflict. Alternative would be
+    //      to write output before writing checkpoint (even while benchmarking)
+//    double t1 = MPI_Wtime();
     writeTimestep(time);
+//    double t2 = MPI_Wtime();
     writer->updateMetadataFile(backupMetadataName, time, checkpointsLeft);
+//    double t3 = MPI_Wtime();
     writer->commitBackup();
+//    double t4 = MPI_Wtime();
+//    std::cout << "\t\t-- writeTimestep(time) in " << t2-t1 << " seconds" << std::endl;
+//    std::cout << "\t\t-- writer->updateMetadataFile(backupMetadataName, time, checkpointsLeft) in " << t3-t2 << " seconds" << std::endl;
+//    std::cout << "\t\t-- writer->commitBackup() in " << t4-t3 << " seconds" << std::endl;
     std::cout << "Wrote timestep with time " << time << '\n';
 }
 
@@ -600,6 +611,75 @@ void SWE_DimensionalSplittingMPIOverdecomp::updateUnknowns(float dt) {
                 hu[i][j] = hv[i][j] = 0.;  // no water, no speed!
         }
     }
+}
+
+/**
+ * validates the following physical and numerical admissability
+ * criteria, should be called after the computeNumericalFluxes
+ * but before the updateUnknowns method:
+ *   1. Physcial Admissability
+ *      - Bathymetry should not be changed TODO
+ *      - No negative water height
+ *   2. Numerical Admissability
+ *      - No NaN values
+ *
+ * Warning: there is still a chance for silent data corruptions, even
+ *          if the results are admissable. Adding more admissability
+ *          checks can reduce this probability even more
+ *          This check does not validate the I/O files
+ */
+bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep) {
+
+    /* return value */
+    bool admissable = true;
+
+    admissable &= !std::isnan(maxTimestep);
+
+    for (int i = 0; i < nx + 2; i++) {
+        for (int j = 0; j < ny + 2; j++) {
+
+            /* Check for NaN values */
+
+            /* Condition for field X */
+            if ( i != (nx + 1) ) {
+                admissable &= !std::isnan(hNetUpdatesLeft[i][j]);
+                admissable &= !std::isnan(hNetUpdatesRight[i][j]);
+                admissable &= !std::isnan(hNetUpdatesAbove[i][j]);
+                admissable &= !std::isnan(hNetUpdatesBelow[i][j]);
+                admissable &= !std::isnan(huNetUpdatesLeft[i][j]);
+                admissable &= !std::isnan(huNetUpdatesRight[i][j]);
+                admissable &= !std::isnan(hvNetUpdatesAbove[i][j]);
+                admissable &= !std::isnan(hvNetUpdatesBelow[i][j]);
+
+                /* This check not necessary? We already share the result if it
+                 * is correct, so in this error we can't do anything but we can
+                 * detect it if we check it
+                 */
+                admissable &= !std::isnan(b[i][j]);
+                admissable &= !std::isnan(h[i][j]);
+                admissable &= !std::isnan(hv[i][j]);
+                admissable &= !std::isnan(hu[i][j]);
+            } else {
+                admissable &= !std::isnan(hNetUpdatesLeft[i][j]);
+                admissable &= !std::isnan(hNetUpdatesRight[i][j]);
+                admissable &= !std::isnan(huNetUpdatesLeft[i][j]);
+                admissable &= !std::isnan(huNetUpdatesRight[i][j]);
+            }
+
+            /* TODO condition for height */
+            if ( (i > 0) && (i < (nx + 1)) && (j > 0) && (j < (ny + 1)) ) {
+                float temp = h[i][j] - maxTimestep / dx * (hNetUpdatesRight[i - 1][j - 1]
+                                     + hNetUpdatesLeft[i][j - 1])
+                                     + maxTimestep / dy * (hNetUpdatesAbove[i - 1][j - 1]
+                                     + hNetUpdatesBelow[i - 1][j]);
+
+                /* Check for negative water height */
+                admissable &= temp >= 0;
+            }
+        }
+    }
+
+    return admissable;
 }
 
 MPI_Datatype SWE_DimensionalSplittingMPIOverdecomp::getBlockMPIType() { return blockData_t; }

@@ -1,19 +1,13 @@
 /**
- * @file src/main.cpp
- * @brief hard failure mitigation with task sharing
+ * @file src/tolerance/swe_softRes_and_hardRes_wTaskSharing.cpp
+ *
+ * @brief soft and hard error resilience with task sharing
  *
  * TODO
  *   - description
  *
- *   - change the name to match with the executable
- *
- *   - currently supports classical checkpointing, it should be enabled by the
- *     user.
- *
- *
+ *   - after these prechecks, share only if the results have no soft errors
  */
-
-
 
 
 #include <mpi.h>
@@ -123,6 +117,7 @@ int main(int argc, char** argv)
     args.addOption("output-basepath", 'o', "Output base file name");
     args.addOption("backup-basepath", 'b', "Output base file name");
     args.addOption("restart-basepath", 'r', "Restart base file name", tools::Args::Required, false);
+    // TODO introduce bitflips, make NaN or also random bitflip
     args.addOption("kill-rank", 'k', "Kills the rank 0 of team 0 at the specified simulation time", args.Required, false);
 
     // Parse command line arguments
@@ -555,6 +550,11 @@ int main(int argc, char** argv)
                 if (i < decompFactor)
                 {
                     currentBlock.computeNumericalFluxes();
+
+                    /* check for soft errors */
+                    assert(currentBlock.validateAdmissability(t));
+
+
                     std::cout << "Team " << myTeam << ": Block" << currentBlockNr << " calculated timestep "
                               << currentBlock.maxTimestep << '\n';
                     // Send to all other teams
@@ -569,7 +569,12 @@ int main(int argc, char** argv)
                         else
                         {
                             std::cout << "Team " << myTeam << ": Sending t=" << t << " to Team " << destTeam << '\n';
+
+                            /* current timestep */
                             MPI_Isend(&t, 1, MPI_FLOAT, destTeam, 1, interTeamComm, &send_reqs[11 * destTeam]);
+                            MPI_Request_free(&send_reqs[11 * destTeam]);
+
+                            /* current block */
                             MPI_Isend(&myBlockOrder[i],
                                       1,
                                       MPI_INT,
@@ -577,7 +582,7 @@ int main(int argc, char** argv)
                                       2,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 1]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 1]);
 
                             /* h netupdates Left */
                             MPI_Isend(currentBlock.hNetUpdatesLeft.getRawPointer(),
@@ -587,7 +592,7 @@ int main(int argc, char** argv)
                                       2,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 2]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 2]);
 
                             /* h netupdates Right */
                             MPI_Isend(currentBlock.hNetUpdatesRight.getRawPointer(),
@@ -597,7 +602,7 @@ int main(int argc, char** argv)
                                       3,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 3]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 3]);
 
                             /* hu netupdates Left */
                             MPI_Isend(currentBlock.huNetUpdatesLeft.getRawPointer(),
@@ -607,7 +612,7 @@ int main(int argc, char** argv)
                                       4,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 4]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 4]);
 
                             /* hu netupdates Right*/
                             MPI_Isend(currentBlock.huNetUpdatesRight.getRawPointer(),
@@ -617,7 +622,7 @@ int main(int argc, char** argv)
                                       5,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 5]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 5]);
 
                             /* h netupdates below */
                             MPI_Isend(currentBlock.hNetUpdatesBelow.getRawPointer(),
@@ -627,7 +632,7 @@ int main(int argc, char** argv)
                                       6,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 6]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 6]);
 
                             /* h netupdates above */
                             MPI_Isend(currentBlock.hNetUpdatesAbove.getRawPointer(),
@@ -637,7 +642,7 @@ int main(int argc, char** argv)
                                       7,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 7]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 7]);
 
                             /* hv netupdates below */
                             MPI_Isend(currentBlock.hvNetUpdatesBelow.getRawPointer(),
@@ -647,7 +652,7 @@ int main(int argc, char** argv)
                                       8,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 8]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 8]);
 
                             /* hv netupdates above */
                             MPI_Isend(currentBlock.hvNetUpdatesAbove.getRawPointer(),
@@ -657,7 +662,7 @@ int main(int argc, char** argv)
                                       9,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 9]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 9]);
 
                             /* max time step */
                             MPI_Isend(&(currentBlock.maxTimestep),
@@ -667,7 +672,7 @@ int main(int argc, char** argv)
                                       10,
                                       interTeamComm,
                                       &send_reqs[11 * destTeam + 10]);
-                            // MPI_Request_free(&req);
+                            MPI_Request_free(&send_reqs[11 * destTeam + 10]);
                         }
                     }
                 }
@@ -758,6 +763,10 @@ int main(int argc, char** argv)
                                       << code << '\n';
                         }
                         currentBlock.computeNumericalFluxes();
+
+                        /* check for soft errors */
+                        assert(currentBlock.validateAdmissability(t));
+
                     }
                     else
                     {

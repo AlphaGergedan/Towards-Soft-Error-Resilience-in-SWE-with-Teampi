@@ -111,6 +111,9 @@ public:
     void writeTimestep(float timestep);
     void createCheckpoint(float t, std::string backupMetadataName, int checkpointsLeft);
 
+    /* validates physical and numerical admissability criteria */
+    bool validateAdmissability(float timestep);
+
     struct blockData_s
     {
         float t;
@@ -168,6 +171,5 @@ public:
     void sendBathymetry();
     void recvBathymetry();
 };
-
 
 #endif // SWE_DIM_SPLIT_MPI_OVERDECOMP_HPP
