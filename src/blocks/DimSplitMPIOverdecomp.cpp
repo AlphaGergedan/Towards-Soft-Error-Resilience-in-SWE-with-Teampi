@@ -627,11 +627,19 @@ void SWE_DimensionalSplittingMPIOverdecomp::updateUnknowns(float dt) {
  *          if the results are admissable. Adding more admissability
  *          checks can reduce this probability even more
  *          This check does not validate the I/O files
+ *
+ * @param timeStep
+ * @return admissable returns 0 if admissable,
+ *                            1 if only updates not admissable, >1 otherwise
  */
-bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep) {
+int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep) {
 
     /* return value */
-    bool admissable = true;
+    int admissable = 0;
+
+    /* admissability */
+    bool updatesAdmissable = true;
+    bool dataAdmissable = true;
 
     admissable &= !std::isnan(maxTimestep);
 
@@ -642,28 +650,28 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep
 
             /* Condition for field X */
             if ( i != (nx + 1) ) {
-                admissable &= !std::isnan(hNetUpdatesLeft[i][j]);
-                admissable &= !std::isnan(hNetUpdatesRight[i][j]);
-                admissable &= !std::isnan(hNetUpdatesAbove[i][j]);
-                admissable &= !std::isnan(hNetUpdatesBelow[i][j]);
-                admissable &= !std::isnan(huNetUpdatesLeft[i][j]);
-                admissable &= !std::isnan(huNetUpdatesRight[i][j]);
-                admissable &= !std::isnan(hvNetUpdatesAbove[i][j]);
-                admissable &= !std::isnan(hvNetUpdatesBelow[i][j]);
+                updatesAdmissable &= !std::isnan(hNetUpdatesLeft[i][j]);
+                updatesAdmissable &= !std::isnan(hNetUpdatesRight[i][j]);
+                updatesAdmissable &= !std::isnan(hNetUpdatesAbove[i][j]);
+                updatesAdmissable &= !std::isnan(hNetUpdatesBelow[i][j]);
+                updatesAdmissable &= !std::isnan(huNetUpdatesLeft[i][j]);
+                updatesAdmissable &= !std::isnan(huNetUpdatesRight[i][j]);
+                updatesAdmissable &= !std::isnan(hvNetUpdatesAbove[i][j]);
+                updatesAdmissable &= !std::isnan(hvNetUpdatesBelow[i][j]);
 
                 /* This check not necessary? We already share the result if it
                  * is correct, so in this error we can't do anything but we can
                  * detect it if we check it
                  */
-                admissable &= !std::isnan(b[i][j]);
-                admissable &= !std::isnan(h[i][j]);
-                admissable &= !std::isnan(hv[i][j]);
-                admissable &= !std::isnan(hu[i][j]);
+                dataAdmissable &= !std::isnan(b[i][j]);
+                dataAdmissable &= !std::isnan(h[i][j]);
+                dataAdmissable &= !std::isnan(hv[i][j]);
+                dataAdmissable &= !std::isnan(hu[i][j]);
             } else {
-                admissable &= !std::isnan(hNetUpdatesLeft[i][j]);
-                admissable &= !std::isnan(hNetUpdatesRight[i][j]);
-                admissable &= !std::isnan(huNetUpdatesLeft[i][j]);
-                admissable &= !std::isnan(huNetUpdatesRight[i][j]);
+                updatesAdmissable &= !std::isnan(hNetUpdatesLeft[i][j]);
+                updatesAdmissable &= !std::isnan(hNetUpdatesRight[i][j]);
+                updatesAdmissable &= !std::isnan(huNetUpdatesLeft[i][j]);
+                updatesAdmissable &= !std::isnan(huNetUpdatesRight[i][j]);
             }
 
             /* TODO condition for height */
@@ -674,12 +682,53 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep
                                      + hNetUpdatesBelow[i - 1][j]);
 
                 /* Check for negative water height */
-                admissable &= temp >= 0;
+                dataAdmissable &= temp >= 0;
             }
+
+            // TODO bathymetry check if changed
         }
     }
 
+    /* is data admissable */
+    if (!dataAdmissable) return 2;
+
+    admissable += updatesAdmissable ? 0 : 1;
     return admissable;
 }
+
+
+/**
+ * Injects a random bit flip into one of the following arrays:
+ *
+ *  --> b, h, hv, hu, hNetUpdatesLeft, hNetUpdatesRight,
+ *      huNetUpdatesLeft, huNetUpdatesRight, hNetUpdatesAbove,
+ *      hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip() {
+    //TODO
+}
+
+
+/**
+ * Injects a random bit flip into one of the following arrays:
+ *
+ *  --> hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft,
+ *      huNetUpdatesRight, hNetUpdatesAbove, hNetUpdatesBelow,
+ *      hvNetUpdatesAbove, hvNetUpdatesBelow
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoUpdates() {
+    //TODO
+}
+
+
+/**
+ * Injects a random bit flip into one of the following arrays:
+ *
+ *  --> b, h, hv, hu
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoData() {
+    //TODO
+}
+
 
 MPI_Datatype SWE_DimensionalSplittingMPIOverdecomp::getBlockMPIType() { return blockData_t; }

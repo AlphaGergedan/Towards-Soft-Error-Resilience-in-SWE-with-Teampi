@@ -112,7 +112,16 @@ public:
     void createCheckpoint(float t, std::string backupMetadataName, int checkpointsLeft);
 
     /* validates physical and numerical admissability criteria */
-    bool validateAdmissability(float timestep);
+    int validateAdmissability(float timestep);
+
+    /* injects a random bit flip into a random array */
+    void injectRandomBitflip();
+
+    /* injects a random bit flip into an update array, for debugging */
+    void injectRandomBitflip_intoUpdates();
+
+    /* injects a random bit flip into a data array, for debugging */
+    void injectRandomBitflip_intoData();
 
     struct blockData_s
     {
