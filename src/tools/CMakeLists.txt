@@ -5,20 +5,20 @@ target_sources(swe_hardRes_wTaskSharing PRIVATE
 target_sources(swe_softRes PRIVATE
   help.hpp
   Args.hpp
+  hasher.cpp
   hasher.hpp
   sha1.hpp)
 
 target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
   help.hpp
   Args.hpp
+  hasher.cpp
   hasher.hpp
   sha1.hpp)
 
 target_sources(swe_softRes_and_hardRes_wTaskSharing PRIVATE
   help.hpp
-  Args.hpp
-  hasher.hpp
-  sha1.hpp)
+  Args.hpp)
 
 target_sources(swe_checkpointRestart PRIVATE
   help.hpp

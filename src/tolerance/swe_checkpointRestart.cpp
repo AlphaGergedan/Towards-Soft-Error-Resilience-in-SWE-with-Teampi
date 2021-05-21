@@ -1,10 +1,10 @@
 /**
  * @file src/tolerance/swe_checkpointRestart.cpp
  *
- * @brief baseline model for resilience, checkpoint/restart.
+ * @brief baseline model for hard error resilience, checkpoint/restart.
  *
  * Ideal for running without checkpoints to see the baseline simulation time or
- * running with checkpoints wihtout writing output.
+ * running with checkpoints without writing output.
  *
  * TODO
  *  - add support for soft resilience, see literature,
@@ -475,7 +475,8 @@ int main(int argc, char** argv)
 //------------------------------------------------------------------------------
 
     // Write zero timestep
-    /* we have only one simulationBlock ! */
+    /* we have only one simulationBlock !
+     * TODO don't write if restored from checkpoint */
     simulationBlock->writeTimestep(0.f);
 
     std::cout << "+---------------------+\n"

@@ -51,6 +51,7 @@
  */
 #include "blocks/DimSplitMPIOverdecomp.hpp"
 
+#include <bitset>
 #include <mpi.h>
 #include <ostream>
 #include <unistd.h>
@@ -699,13 +700,51 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep)
 
 /**
  * Injects a random bit flip into one of the following arrays:
- *
+
  *  --> b, h, hv, hu, hNetUpdatesLeft, hNetUpdatesRight,
  *      huNetUpdatesLeft, huNetUpdatesRight, hNetUpdatesAbove,
  *      hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow
+ *
+ * The array, element and bit to corrupt is selected randomly.
  */
 void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip() {
-    //TODO
+
+    float* data_arrays[12] = {
+        /* arrays with size (nx+2)*(ny+2) */
+        b.getRawPointer(), h.getRawPointer(),
+        hv.getRawPointer(), hu.getRawPointer(),
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
+
+    unsigned int arraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 12;
+    arraySize = (rand_index < 8) ? ((nx+2)*(ny+2)) : ((nx+1)*(ny+2));
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    std::bitset<32> *targetFloat =
+        reinterpret_cast<std::bitset<32> *>(data_arrays[rand_index] + rand_float);
+
+    std::cout << "\n............Injecting..a..bit..flip.................\n"
+              << "  Corruption at array index " << rand_index << " of [b, h, hv, hu, "
+              << "hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft, huNetUpdatesRight, "
+              << "hNetUpdatesAbove, hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow]\n"
+              << "             at element index " << rand_float << "\n"
+              << "  --> old value : " << (data_arrays[rand_index])[rand_float] << "\n";
+
+    /* flip the bit */
+    targetFloat->flip(rand_bit);
+
+    std::cout << "  --> new value : " << (data_arrays[rand_index])[rand_float] << "\n"
+              << std::endl;
 }
 
 
@@ -717,7 +756,27 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip() {
  *      hvNetUpdatesAbove, hvNetUpdatesBelow
  */
 void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoUpdates() {
-    //TODO
+
+    //TODO for now we only make one fixed float to NaN for debugging .
+
+    /* index of the float we want to corrupt */
+    size_t flipAt_float = ((nx+2)*(ny+2)) / 2;
+
+    float *calculated_huNetUpdatesLeft = huNetUpdatesLeft.getRawPointer();
+
+    std::cout << "\n............Injecting..a..bit..flip.................\n"
+              << "old value : " <<     calculated_huNetUpdatesLeft[flipAt_float]
+              << "\n...............DATA..CORRUPTED......................\n"
+              << "\n";
+
+    /* flip only the first bit with the XOR operation */
+    //((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
+
+    calculated_huNetUpdatesLeft[flipAt_float] = NAN;
+
+    std::cout << "new value : " << calculated_huNetUpdatesLeft[flipAt_float]
+              << "\n"
+              << std::endl;
 }
 
 
@@ -725,9 +784,57 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoUpdates() {
  * Injects a random bit flip into one of the following arrays:
  *
  *  --> b, h, hv, hu
+ *
+ * The array, element and bit to corrupt is selected randomly.
  */
 void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoData() {
-    //TODO
+
+    //TODO for now we only make one fixed float to NaN for debugging .
+
+    /* index of the float we want to corrupt */
+    size_t flipAt_float = ((nx+2)*(ny+2)) / 2;
+
+    float *waterHeight = h.getRawPointer();
+
+    std::cout << "\n............Injecting..a..bit..flip.................\n"
+              << "  Corruption at array index " << 1 << " of [b, h, hv, hu]\n"
+              << "             at element index " << flipAt_float << "\n"
+              << "  --> old value : " << waterHeight[flipAt_float] << "\n";
+
+    /* flip only the first bit with the XOR operation */
+    //((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
+
+    waterHeight[flipAt_float] = NAN;
+
+    std::cout << "new value : " << waterHeight[flipAt_float]
+              << "\n"
+              << std::endl;
+
+    /*
+
+    float* data_arrays[4] = {b.getRawPointer(), h.getRawPointer(),
+                             hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = (nx + 2) * (ny + 2);
+
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 4;
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    std::bitset<32> *targetFloat =
+        reinterpret_cast<std::bitset<32> *>(data_arrays[rand_index] + rand_float);
+
+    std::cout << "\n............Injecting..a..bit..flip.................\n"
+              << "  Corruption at array index " << rand_index << " of [b, h, hv, hu]\n"
+              << "             at element index " << rand_float << "\n"
+              << "  --> old value : " << (data_arrays[rand_index])[rand_float] << "\n";
+
+    targetFloat->flip(rand_bit);
+
+    std::cout << "  --> new value : " << (data_arrays[rand_index])[rand_float] << "\n"
+              << std::endl;
+
+    */
 }
 
 

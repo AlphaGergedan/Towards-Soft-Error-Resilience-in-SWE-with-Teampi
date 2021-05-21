@@ -1,15 +1,34 @@
 /**
  * @file src/tolerance/swe_softRes.cpp
  *
- * @brief Soft error resilience only with detection using hashes
+ * @brief Soft error detection using hashes
  *
  * This file tries to integrate hashes to the heartbeats used in
  * the tmpi library, which helps us to compare the results of the
  * replicas.
  *
- * TODO introduce tests
- * TODO fix hashing method with sha1
  *
+ *  Here is a short pseudo-code for the computation loop:
+ *
+ *      Hasher swe_hasher;
+ *
+ *      for (unsigned int i = 0; i < numberOfHashes; i++) {
+ *
+ *          while (t < sendHashAt[i]) {
+ *
+ *              // compute
+ *
+ *              // update hash
+ *
+ *          }
+ *
+ *          // send hash with heartbeat
+ *      }
+ *
+ *
+ *
+ * TODO fix hashing method with sha1
+ * TODO randomize the bit flip into dimensionalsplitting block
  *
  */
 
@@ -62,8 +81,6 @@
 
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-//std::vector<std::string> backupMetadataNames{};
-
 
 std::array<int, 4> getNeighbours(int localBlockPositionX,
                                  int localBlockPositionY,
@@ -360,24 +377,7 @@ int main(int argc, char** argv)
 
             /* Inject a bitflip at team 0 at rank 0 */
             if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
-
-                /* index of the float we want to corrupt */
-                size_t flipAt_float = fieldSizeX / 2;
-
-                float *calculated_huNetUpdatesLeft = simulationBlock->huNetUpdatesLeft.getRawPointer();
-
-                std::cout << "\n............Injecting..a..bit..flip.................\n"
-                          << "old value : " <<     calculated_huNetUpdatesLeft[flipAt_float]
-                          << "\n...............DATA..CORRUPTED......................\n"
-                          << "\n";
-
-                /* flip only the first bit with the XOR operation */
-                ((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
-
-                std::cout << "new value : " << calculated_huNetUpdatesLeft[flipAt_float]
-                          << "\n"
-                          << std::endl;
-
+                simulationBlock->injectRandomBitflip();
                 /* prevent any other bitflip */
                 bitflip_at = -1.f;
             }
@@ -405,6 +405,9 @@ int main(int argc, char** argv)
 
             simulationBlock->maxTimestep = agreed_timestep;
             simulationBlock->updateUnknowns(agreed_timestep);
+
+            /* TODO hash here ! This version does not check over all the
+             * h,b,hu,hv data domain ! */
 
             t += agreed_timestep;
 
@@ -503,6 +506,20 @@ int main(int argc, char** argv)
 //    delete simulationBlock.get(); /* shared pointer issue */
 
     simulationBlock->freeMpiType();
+
+/*
+    // TODO trying to fix the error
+    PMPI_Comm_set_errhandler(TMPI_GetInterTeamComm(), MPI_ERRORS_RETURN);
+    PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
+
+    int err = 1;
+
+    while(true) {
+        err = PMPI_Barrier(MPI_COMM_WORLD);
+        if (err == 0) break;
+    }
+*/
+
     MPI_Finalize();
 
     return 0;

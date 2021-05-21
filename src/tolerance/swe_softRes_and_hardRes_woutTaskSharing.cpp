@@ -7,7 +7,7 @@
  *
  *
  *
- *  Here is the short pseudo-code for the computation loop:
+ *  Here is a short pseudo-code for the computation loop:
  *
  *      Hasher swe_hasher;
  *
@@ -195,7 +195,7 @@ int main(int argc, char** argv)
     args.addOption("heartbeat-interval", 'i', "Wall-clock time in seconds to wait between heartbeats", args.Required, true);
     args.addOption("hash-method", 'm', "Which hashing method to use: ( 0=NONE | 1=stdhash | 2=SHA1 ), default: 1", args.Required, false);
     args.addOption("hash-count", 'c', "Number of total hashes to send to the replica", args.Required, true);
-    /* TODO inject-bitflip : make this option random */
+    /* TODO inject-bitflip : make this option random (time) */
     args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
     args.addOption("kill-rank", 'k', "Kills the rank 0 of team 0 at the specified simulation time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
@@ -670,24 +670,7 @@ int main(int argc, char** argv)
 
             /* Inject a bitflip at team 0 at rank 0 */
             if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
-
-                /* index of the float we want to corrupt */
-                size_t flipAt_float = fieldSizeX / 2;
-
-                float *calculated_huNetUpdatesLeft = simulationBlock->huNetUpdatesLeft.getRawPointer();
-
-                std::cout << "\n............Injecting..a..bit..flip.................\n"
-                          << "old value : " <<     calculated_huNetUpdatesLeft[flipAt_float]
-                          << "\n...............DATA..CORRUPTED......................\n"
-                          << "\n";
-
-                /* flip only the first bit with the XOR operation */
-                ((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
-
-                std::cout << "new value : " << calculated_huNetUpdatesLeft[flipAt_float]
-                          << "\n"
-                          << std::endl;
-
+                simulationBlock->injectRandomBitflip();
                 /* prevent any other bitflip */
                 bitflip_at = -1.f;
             }
@@ -730,8 +713,8 @@ int main(int argc, char** argv)
             /* update the elapsed time after sending the heartbeat */
             timeSinceLastHeartbeat = MPI_Wtime() - timeOfLastHeartbeat;
 
-            /* TODO Why send bcast to the rank's team's 0 here ? */
-            // MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            /* TODO Why send bcast to the rank's team's 0 here, different heartbeats bad ? */
+            MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             // MPI_Barrier(TMPI_GetInterTeamComm());
 
             /* kill the rank 0 if specified parameter is set */
