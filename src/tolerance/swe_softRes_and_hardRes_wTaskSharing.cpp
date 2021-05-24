@@ -17,21 +17,30 @@
  *
  *      int nextTeam = (myTeam + 1) % numberOfTeams;
  *      while ( t < simulationDuration ) {
- *          // start heartbeat
- *          while ( timeSinceLastHeartbeat < heartbeatInterval && t < simulationDuration ) {
- *              [...]
- *              for (blocks) {
- *                  if (isPrimary) {
- *                      // report admissability, load checkpoint if not admissable
- *                      // share results
- *                  }
- *                  else {
- *                      // receive report, create checkpoint and wait if replica reports SDC
- *                      // receive secondary blocks
- *                  }
- *              }
+ *        // start heartbeat
+ *        while ( timeSinceLastHeartbeat < heartbeatInterval && t < simulationDuration ) {
+ *          [...]
+ *          char ReportFlag;
+ *          for (primaryBlocks) {
+ *            // compute the block
+ *            // check admissability criteria to detect SDC
+ *            // set the report flag
  *          }
- *          // end heartbeat
+ *          // TODO
+ *          // send report to my team and my replica
+ *          // receive report from my team and load checkpoint if flag set
+ *
+ *          for (blocks) {
+ *            if (isPrimary) {
+ *              // share results
+ *            }
+ *            else {
+ *              // receive report, create checkpoint and wait if replica reports SDC
+ *              // receive secondary blocks
+ *            }
+ *          }
+ *        }
+ *        // end heartbeat
  *      }
  *
  * TODO adding more admissability criteria
@@ -117,8 +126,8 @@ void loadCheckpointCallback(int reloadTeam)
     longjmp(jumpBuffer, 1);
 }
 
-/* TODO currently in development ... only difference that hasRecovered flag is not set !!! */
-void loadCheckpointCallback_AFTER_SDC(int reloadTeam)
+/* TODO currently in development ... only difference is that hasRecovered flag is not set !!! */
+void loadCheckpointCallback2_softErrorRecovery(int reloadTeam)
 {
     int myRankInTeam;
     MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
@@ -152,8 +161,7 @@ std::array<int, 4> getNeighbours(int localBlockPositionX,
     return myNeighbours;
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     // Define command line arguments
     tools::Args args;
 
@@ -246,8 +254,9 @@ int main(int argc, char** argv)
     backupTeamName = backupNameInput + "_t" + std::to_string(myTeam);
     /* in recovery, the team name is already added to restart name in load function */
 
-    /* Print status */
-    tools::FtLogger::ft_logger.ft_print_spawnStatus(myRankInTeam, myTeam);
+    /* Begin the logger */
+    tools::FtLogger ft_logger(myTeam, myRankInTeam);
+    ft_logger.ft_print_spawnStatus();
 
     int totalBlocks = blocksPerRank * ranksPerTeam;
 
@@ -529,13 +538,12 @@ int main(int argc, char** argv)
 
         double timeOfLastHeartbeat{MPI_Wtime()};
         double timeSinceLastHeartbeat{0.0};
-        if (verbose) tools::FtLogger::ft_logger.ft_print_HBstart(myTeam, myRankInTeam, timeOfLastHeartbeat, t);
+        if (verbose) ft_logger.ft_print_HBstart(timeOfLastHeartbeat, t);
 
         // simulate until the checkpoint is reached
-        while (timeSinceLastHeartbeat < heartbeatInterval && t < simulationDuration)
-        {
-            if (verbose) tools::FtLogger::ft_logger.ft_print_loop(myTeam, myRankInTeam, timeSinceLastHeartbeat,
-                                                                  heartbeatInterval, simulationDuration, t);
+        while (timeSinceLastHeartbeat < heartbeatInterval && t < simulationDuration) {
+            if (verbose) ft_logger.ft_print_loop(timeSinceLastHeartbeat, heartbeatInterval,
+                                                 simulationDuration, t);
 
             // exchange boundaries between blocks
             for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
@@ -546,10 +554,190 @@ int main(int argc, char** argv)
                 // Avoid overwriting an old send buffer before everyone reaches this point
                 MPI_Barrier(interTeamComm);
             }
+
+            /* 0 for no SDC, 1 for SDC */
+            unsigned char reportFlag = 0;
+
+            /* compute and check the primary blocks for SDCs
+             * and set the reportFlag accordingly
+             */
+            for (unsigned int i = 0; i < decompFactor; i++) {
+                // Get a reference to the current block
+                const int& currentBlockNr{myBlockOrder[i]};
+                auto& currentBlock = *simulationBlocks[currentBlockNr];
+
+                currentBlock.computeNumericalFluxes();
+
+                /* inject bitflip if desired */
+                if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
+                    //currentBlock.injectRandomBitflip();
+                    currentBlock.injectRandomBitflip_intoData();
+                    //currentBlock.injectRandomBitflip_intoUpdates();
+
+                    /* prevent any other bitflip */
+                    bitflip_at = -1.f;
+                }
+
+                /* check for soft errors */
+                int admissable = currentBlock.validateAdmissability(t);
+
+                /* handle soft errors
+                 * if SDC detected in updates only, then recompute */
+                if (admissable == 1) {
+                    // TODO add some tests to validate / show that you are able to fix the errorrs
+                    currentBlock.computeNumericalFluxes();
+
+                    /* check if SDC is still present */
+                    if (currentBlock.validateAdmissability(t) != 0) {
+                        std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but cannot be fixed..\n"
+                                  << "             Warning the rest of my team and all my replicas"
+                                  << std::endl;
+                        reportFlag = 1;
+                    } else {
+                        std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but it is fixed.."
+                                  << std::endl;
+                        reportFlag = 1;
+                    }
+                }
+                // soft error in data, turn on the recovery mode
+                else if (admissable == 2) {
+                    std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but cannot be fixed..\n"
+                              << "             Warning the rest of my team and all my replicas"
+                              << std::endl;
+                    reportFlag = 1;
+                }
+                else { // TODO place this in front the others
+                    if (verbose) ft_logger.ft_SDC_notDetected();
+                }
+
+                if (verbose) ft_logger.ft_block_calculatingTask(currentBlockNr, currentBlock.maxTimestep);
+            } // primary block computation + admissability checks for SDCs are finished
+
+            unsigned char teamCheck = 0;
+            /* Report to my team */
+            MPI_Allreduce(&reportFlag, &teamCheck, 1, MPI_BYTE, MPI_MAX, MPI_COMM_WORLD);
+            assert(teamCheck < 2); // TODO remove after debugging
+
+            /* Rank 0 of my team reports to its replicas */
+            if (myRankInTeam == 0) {
+                for (int destTeam = 0; destTeam < numTeams; destTeam++) {
+                    if (destTeam != myTeam)
+                      MPI_Send(&teamCheck, 1, MPI_BYTE, destTeam, 30, interTeamComm);
+                }
+            }
+
+            /* load if SDC reported in my team */
+            if(teamCheck == 1) {
+                std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam
+                          << "; received SDC report from my Team, teamCheck = "
+                          << static_cast<int>(teamCheck) << " : WARNING! SOFT ERROR IS PRESENT IN MY TEAM !!"
+                          << std::endl;
+
+                int reloadTeam;
+                /* Receive the reload team */
+                MPI_Recv(&reloadTeam, 1, MPI_INT, MPI_ANY_SOURCE, 40,
+                         interTeamComm, MPI_STATUS_IGNORE);
+                std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam
+                          << "; loading checkpoint from team " << reloadTeam
+                          << "..." << std::endl;
+                loadCheckpointCallback2_softErrorRecovery(reloadTeam);
+            }
+
+            unsigned char receivedReportFlag[numTeams];
+            unsigned char replicaCheck[numTeams];
+            for (int i = 0; i < numTeams; i++) {
+                receivedReportFlag[i] = 0;
+                replicaCheck[i] = 0;
+            }
+            while (true) {
+                bool noSDC = true;
+                /* Receive report from all my replicas */
+                for (int sourceTeam = 0; sourceTeam < numTeams; sourceTeam++) {
+                    /* don't receive if 2 is set (already received) */
+                    if (receivedReportFlag[sourceTeam] != 2 && sourceTeam != myTeam) {
+                        if (myRankInTeam == 0) {
+                            MPI_Recv(receivedReportFlag+sourceTeam, 1, MPI_BYTE,
+                                    sourceTeam, 30, interTeamComm,
+                                    MPI_STATUS_IGNORE);
+                        }
+                        /* Inform my team about the other teams */
+                        MPI_Allreduce(receivedReportFlag+sourceTeam,
+                                      replicaCheck+sourceTeam, 1, MPI_BYTE, MPI_MAX,
+                                      MPI_COMM_WORLD);
+                        noSDC &= replicaCheck[sourceTeam] == 0;
+                    }
+                }
+
+                /* Break if no SDC is reported */
+                if (noSDC) break;
+
+                /* If myTeam is the team with the smallest index, that has not
+                 * been corrupted, then write checkpoint for all the corrupted
+                 * teams
+                 */
+                bool writeCheckpoint = true;
+                for (int i = 0; i < myTeam; i++) writeCheckpoint &= replicaCheck[i] == 1;
+
+                /* Extract the teams with SDC */
+                if (writeCheckpoint) {
+                    std::vector<int> failedTeams;
+                    for (int i = 0; i < numTeams; i++) {
+                        if (replicaCheck[i] == 1) {
+                            std::cout << "\t+++ TEAM " << myTeam << ": Replica "
+                                      << myRankInTeam << ", team " << i
+                                      << " got soft error\n"
+                                      << "\t+++ writing checkpoint for ya!"
+                                      << std::endl;
+                            failedTeams.push_back(i);
+                            /* Send myTeam to let the failed team know which
+                             * team is writing checkpoint for it */
+                            MPI_Send(&myTeam, 1, MPI_INT, i, 40, interTeamComm);
+                        }
+                    }
+                    createCheckpointCallback(failedTeams);
+                }
+                /* Set flags for the non failed teams */
+                for (int i = 0; i < numTeams; i++) {
+                    if (replicaCheck[i] == 0 && myRankInTeam == 0) {
+                        receivedReportFlag[i] = 2;
+                    }
+                    else {
+                        receivedReportFlag[i] = 0;
+                    }
+                    replicaCheck[i] = 0;
+                }
+            }
+
+            /* Primary Block computation + Admissability checks + SDC Reports
+             * are finished */
+
             std::vector<MPI_Request> send_reqs(11 * numTeams, MPI_REQUEST_NULL);
 
-            for (int i{0}; i < blocksPerRank; i++)
-            {
+            /* TODO
+             * Idea for handling synchonization of the blocks after hard error
+             * recovery
+             *
+             * Assign unique tags to each primary block
+             *
+             *      There are n=blocksPerRank blocks, first d=decompFactor blocks
+             *      are primary blocks.
+             *
+             *      integrate unique tags for each team replica :
+             *
+             *      Unique Tag | BlockNr
+             *      0 + offset | 0
+             *      1 + offset | 1
+             *      ..
+             *      n-1+offset | n
+             *
+             ****************************************************
+             *
+             *  In this loop do:
+             *    If primary block, it is already computed and
+             *                      checked for SDCs, we send it
+             *    else it is secondary block, we receive it
+             */
+            for (unsigned int i = 0; i < blocksPerRank; i++) {
                 // Get a reference to the current block
                 const int& currentBlockNr{myBlockOrder[i]};
                 auto& currentBlock = *simulationBlocks[currentBlockNr];
@@ -560,141 +748,16 @@ int main(int argc, char** argv)
 
                 // The first [decompFactor] blocks are the ones we always compute ourselves
                 if (i < decompFactor) {
-
-                    currentBlock.computeNumericalFluxes();
-
-                    /* inject bitflip if desired */
-                    if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
-                        currentBlock.injectRandomBitflip();
-                        //currentBlock.injectRandomBitflip_intoData();
-                        //currentBlock.injectRandomBitflip_intoUpdates();
-
-                        /* prevent any other bitflip */
-                        bitflip_at = -1.f;
-                    }
-
-                    /* check for soft errors */
-                    int destTeam = (myTeam + 1) % numTeams;
-                    MPI_Request reqSend;
-                    int sendBuf = 0; // TODO char could also be used
-                    int admissable = currentBlock.validateAdmissability(t);
-
-//--------------------TODO maybe move the block to a header, we have the same block below again.. -----------------------
-
-                    /* handle soft errors */
-                    // soft error only in updates, recomputing..
-                    if (admissable == 1) {
-                        currentBlock.computeNumericalFluxes();
-
-                        /* check if the silent error is still present */
-                        if (currentBlock.validateAdmissability(t) != 0) {
-                            std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected and cannot be fixed..\n"
-                                      << "             Warning the rest of my team and the reload team " << destTeam
-                                      << std::endl;
-                            sendBuf = -1;
-                        } else {
-                            std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but it is fixed.."
-                                      << std::endl;
-                            sendBuf = 1;
-                        }
-                    }
-                    // soft error in data, turn on the recovery mode
-                    else if (admissable == 2) {
-                        std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but cannot be fixed..\n"
-                                  << "             Warning the rest of my team and the reload team " << destTeam
-                                  << std::endl;
-                        sendBuf = -1;
-                    }
-                    else {
-                        //std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " : No SDC is detected"
-                                  //<< std::endl;
-                        if (verbose) tools::FtLogger::ft_logger.ft_SDC_notDetected(myTeam, myRankInTeam);
-                        sendBuf = 1;
-                    }
-
-                    /* report to my replica TODO after allreduce, only rank 0 can send this */
-                    MPI_Send(&sendBuf, 1, MPI_INT, destTeam, 30, interTeamComm);
-
-                    int teamCheck = 0;
-
-                    /* report to my team */
-                    MPI_Allreduce(&sendBuf, &teamCheck, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-
-                    //for (int i = 0; i < ranksPerTeam; i++) {
-                        //if (i != myRankInTeam) {
-                            // TODO try to send with Isend here
-                            //MPI_Isend(&sendBuf, 1, MPI_INT, i, 20, MPI_COMM_WORLD, &reqSend);
-                            //MPI_Request_free(&reqSend);
-                            //MPI_Send(&sendBuf, 1, MPI_INT, i, 20, MPI_COMM_WORLD);
-                        //}
-                    //}
-
-                    // TODO debugging
-                    if(sendBuf == 0) {
-                        std::cout << "UNKNOWN ERROR ??" << std::endl;
-                        MPI_Abort(MPI_COMM_WORLD, MPI_ERR_UNKNOWN);
-                    }
-
-                        /* TODO we dont need this ?
-                        wait for the checkpoint to load from destTeam
-                        std::cout << "\t***Waiting for replica " << destTeam << " to write checkpoint"
-                                  << std::endl;
-                        //int temp2;
-                        // tag 12 for emergency soft error recv
-                        //MPI_Recv(&temp2, 1, MPI_INT, destTeam, 40, interTeamComm, MPI_STATUS_IGNORE);
-                        */
-
-                    /* load if soft error is present TODO we don't have to wait here? */
-                    if(teamCheck == -1) {
-                        /* TODO wait for destTeam to write checkpoint, possibly we don't need to wait (there is a MPI_Recv in loadCheckpoint call) */
-                        std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam << "; received from my team, from rank " << i << " the buffer: "
-                                  << teamCheck << " : WARNING SOFT ERROR IS PRESENT IN MY TEAM !! loading checkpoint..." << std::endl;
-                        loadCheckpointCallback_AFTER_SDC(destTeam); // TODO change this name
-                    }
-
-//--------------------TODO maybe move the block to a header, we have the same block below again.. -----------------------
-
-
-                    // TODO TESTING REPORT CHECK LOCATION
-        //-----------------------------------------------------------------
-                    // check for soft errors in your own team TODO remove this after debugging
-                    for (int i = 0; i < ranksPerTeam; i++) {
-                        if (i != myRankInTeam) {
-                            //int teamCheck;
-                            //MPI_Recv(&teamCheck, 1, MPI_INT, i, 20, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-                            // TODO debugging
-                            //std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam << "; received from my team, from rank " << i << " the buffer: "
-                                      //<< teamCheck << std::endl;
-
-                            /* if soft error is present */
-                            //if (teamCheck == -1) {
-                                ///* TODO wait for destTeam to write checkpoint, possibly we don't need to wait (there is a MPI_Recv in loadCheckpoint call) */
-                                //std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam << "; received from my team, from rank " << i << " the buffer: "
-                                          //<< teamCheck << " : WARNING SOFT ERROR IS PRESENT IN MY TEAM !! loading.." << std::endl;
-                                //loadCheckpointCallback((myTeam + 1) % numTeams);
-                            //}
-                        }
-                    }
-
-        //---------------------------------------------------------------------------------------
-
-                    //std::cout << "Team " << myTeam << ": Block" << currentBlockNr << " calculated timestep "
-                              //<< currentBlock.maxTimestep << '\n';
-                    if (verbose) tools::FtLogger::ft_logger.ft_block_calculatingTask(myTeam, myRankInTeam, currentBlockNr, currentBlock.maxTimestep);
-
                     // Send to all other teams
-                    for (int destTeam{0}; destTeam < numTeams; destTeam++)
-                    {
+                    for (int destTeam{0}; destTeam < numTeams; destTeam++) {
                         if (destTeam == myTeam || hasRecovered == true)
                         {
                             // Do not send to myself
-                            // Skip send if I recovered
+                            // Skip send if I recovered (only if from hard failure)
                         }
-                        else
-                        {
+                        else {
                             //std::cout << "Team " << myTeam << ": Sending t=" << t << " to Team " << destTeam << '\n';
-                            if (verbose) tools::FtLogger::ft_logger.ft_block_sending(myTeam, myRankInTeam, t, destTeam);
+                            if (verbose) ft_logger.ft_block_sending(t, destTeam);
 
                             /* current timestep */
                             MPI_Isend(&t, 1, MPI_FLOAT, destTeam, 1, interTeamComm, &send_reqs[11 * destTeam]);
@@ -801,54 +864,8 @@ int main(int argc, char** argv)
                             MPI_Request_free(&send_reqs[11 * destTeam + 10]);
                         }
                     } // end of for (int destTeam{0}; destTeam < numTeams; destTeam++)
-
                 } // end of if (i < decompFactor), primary blocks
                 else {
-
-
-        //-----------------------------------------------------------------
-                    // TODO debugging test for Soft error ping from previous team
-
-                    /* attention, % is not the modulo operator, it is the remainder operator */
-                    int prevTeam = abs((myTeam - 1) % numTeams);
-                    int replicaCheck;
-                    int softErr;
-
-                    // TODO we can remove this after debugging + teams>2 problem fix
-                    int counter = 0;
-
-                    while (true) {
-                        /* check the replica if it has soft error */
-                        //if (counter == 1) std::cout << "\t### calling MPI_Recv " << std::endl;
-                        MPI_Recv(&replicaCheck, 1, MPI_INT, prevTeam, 30, interTeamComm, MPI_STATUS_IGNORE);
-                        //if (counter == 1) std::cout << "\t### MPI_Recv finished! " << std::endl;
-                        //std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam << "; received from replica from team " << prevTeam << " the buffer: "
-                                  //<< replicaCheck << std::endl;
-
-                        //std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam << "; replicaCheck Allreduce is called now !" << std::endl;
-
-                        /* inform the team about the replicas */
-                        MPI_Allreduce(&replicaCheck, &softErr, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-
-                        // TODO debugging
-                        //std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam << "; replicaCheck Allreduce result is : " << softErr << std::endl;
-
-                        /* if no SDC is detected from replica TEAM */
-                        if (softErr == 1) break;
-
-                        std::cout << "\t+++ TEAM " << myTeam << ": Replica " << myRankInTeam << ", team " << prevTeam << " got soft error"
-                                  << std::endl;
-                        std::cout << "\t+++ writing checkpoint for ya!"
-                                  << std::endl;
-
-                        std::vector<int> failedTeams;
-                        failedTeams.push_back(prevTeam);
-                        createCheckpointCallback(failedTeams);
-                        counter++;
-                    }
-
-                    // TODO TESTING REPORT CHECK LOCATION
-
                     int fieldSizeX = (currentBlock.nx + 2) * (currentBlock.ny + 2);
                     int fieldSizeY = (currentBlock.nx + 1) * (currentBlock.ny + 2);
                     std::vector<MPI_Request> reqs(11, MPI_REQUEST_NULL);
@@ -952,7 +969,7 @@ int main(int argc, char** argv)
                         // currentBlock.computeNumericalFluxes();
                         //std::cout << "Team " << myTeam << ": Received t=" << recv_t << " from Team " << source_rank
                                   //<< '\n';
-                        if (verbose) tools::FtLogger::ft_logger.ft_block_received(myTeam, myRankInTeam, recv_t, source_rank);
+                        if (verbose) ft_logger.ft_block_received(recv_t, source_rank);
                     }
                 } // end of else, secondary blocks
             }
@@ -968,12 +985,7 @@ int main(int argc, char** argv)
                           << std::endl;
             }
             float minTimestep = *std::min_element(timesteps.begin(), timesteps.end());
-
-            // TODO debugging ALL REDUCE TIME STEP
-            //std::cout << "\t*** team " << myTeam << ", rank " << myRankInTeam << "; Timestep Allreduce is called now !" << std::endl;
             MPI_Allreduce(&minTimestep, &timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-
-
             std::cout << "T" << myTeam << "R" << myRankInTeam
                       << " : Max Timestep = " << timestep << std::endl;
 
@@ -983,15 +995,16 @@ int main(int argc, char** argv)
 
             /* write output */
             if (writeOutput) {
-                if (verbose) tools::FtLogger::ft_logger.ft_writingTimeStep(myTeam, myRankInTeam, t);
+                if (verbose) ft_logger.ft_writingTimeStep(t);
                 for (auto& block : simulationBlocks) {block->writeTimestep(t);}
             }
 
             timeSinceLastHeartbeat = MPI_Wtime() - timeOfLastHeartbeat;
             MPI_Bcast(&timeSinceLastHeartbeat, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-            //MPI_Barrier(TMPI_GetInterTeamComm());
             if (kill_rank >= 0 && t >= kill_rank &&
                 myTeam == 0 && myRankInTeam == 0 && restartNameInput == "") {
+                std::cout << "Not supported... yet" << std::endl;
+                assert(false);
                 std::cout << "TEAM:0 Rank:0 RETURNS ERROR CODE for hard failure simulation...."
                           << std::endl;
                 return 1;
@@ -1015,7 +1028,7 @@ int main(int argc, char** argv)
                      0,
                      MPI_COMM_SELF,
                      MPI_STATUS_IGNORE);
-        if (verbose) tools::FtLogger::ft_logger.ft_print_HBend(myTeam, myRankInTeam, timeSinceLastHeartbeat, t);
+        if (verbose) ft_logger.ft_print_HBend(timeSinceLastHeartbeat, t);
     }
 
     for (auto& block : simulationBlocks) { block->freeMpiType(); }
