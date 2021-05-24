@@ -32,7 +32,7 @@ Each rank computes it's own block and issues a single heartbeat in each
 `heartbeat-interval` in simulation time. In each single heartbeat they send the
 hashes of the computed updates to their replicas. TeaMPI handles the comparison
 of the hashes, and therefore an early detection of a silent data corruption is
-possible. This method does not however guarantee any hard failure resilience as
+possible. This method however does not guarantee any hard failure resilience as
 the heartbeat intervals depend on the time steps.
 (See
 [swe\_softRes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes.cpp)
@@ -48,6 +48,31 @@ Theoretically, correction of the data is possible in case of a soft error by
 running 3 teams at least, and by deploying a voting mechanism like in
 [redMPI](https://www.christian-engelmann.info/?page_id=1873).
 
+### Soft and Hard Error Resilience with Task Sharing ###
+
+We already had hard error resilience using warm spares with task sharing in
+[Simon's version](https://github.com/xile273/SWE/tree/simon_task_sharing) of SWE
+with teaMPI. Integrating soft error resilience to task sharing using hashes is
+not possible in theory, hence hashes need to be validated after redundant
+computations. Fortunately we can still validate the task computations by
+prechecking admissability criteria of the task computations, which are usually
+not transparent to applications. In this version of SWE, we share a computed
+task, only if it is validated using the following 2 criteria:
+1. ***Physical Admissability*** : Computations are within some certain physical
+constraints, like no negative water height or bathymetry data is constant. These
+criteria are higly application specific
+2. ***Numerical Admissability*** : No floating point errors are present (NaN)
+and relaxed discrete maximum principle TODO
+
+If any data array, that can suffer from a bit flip, doesn't meet a predefined
+admissability criterion, then we assume that an SDC is present. Unfortunately
+we can not assume that any SDC occurred in the data will be detected in the
+future because of the computations depend on the data, if we want to use task
+sharing. This means, we have to check all the data array and share our computed
+tasks. If we detect an SDC, the other team creates a checkpoint and the
+corrupted team loads it. This however requires some additional synchronization
+between and within the teams. See [example runs](#running) for usage.
+
 ## Setting Up ##
 
 First, we need to add User Level Failure Mitigation
@@ -58,8 +83,8 @@ steps does not work, read the `HACKING.md`, or try to build using the master
 branch of Open MPI itself: https://github.com/open-mpi/ompi
 - run `./autogen.pl`
 - make sure to have recent versions of GUN Automake and Libtool. Autoconf seems
-to have backwards compatibility issues, versions >2.7 may generate faulty
-configure file. Version 2.69 seems to be working fine
+to have backwards compatibility issues, versions >2.7 may generate a faulty
+configuration file. Version 2.69 seems to be working fine
 - now run `./configure --prefix=/ulfm/installation/path --with-ft` to enable
 ULFM and to install it in the specified `/ulfm/installation/path` directory.
 - finally run `make all install` to finish installation.
@@ -108,7 +133,28 @@ For soft error resilience we have the following executables:
 
   Example run:
   ```
-  mpirun --oversubscribe -np 2 build/directory/swe_softRes -t 2 -x 1000 -y 1000 -o outputFile -w -m 1 -c 5 -f 0.2 -v
+  mpirun -np 2 build/directory/swe_softRes -t 2 -x 1000 -y 1000 -o outputFile -w -m 1 -c 5 -f 0.2 -v
+  ```
+2.  soft and hard error resilience with task sharing:
+`./build/directory/swe_softRes_and_hardRes_wTaskSharing` with options
+  - `-t SIMULATION_DURATION`: time in seconds to simulate
+  - `-i HEARTBEAT_INTERVAL` : wall-clock time in seconds to wait between heartbeats
+  - `-x RESOLUTION_X`: number of simulated cells in x-direction
+  - `-y RESOLUTION_Y`: number of simulated cells in y-direction
+  - `-d DECOMP_FACTOR` : Split each rank into "TEAMS" * "DECOMP\_FACTOR" blocks
+  - `-o OUTPUT_BASEPATH`: output base file name
+  - `-b BACKUP_BASEPATH`: backup base file name
+  - `-r RESTART_BASEPATH`: restart base file name
+  - `-w`: write output using netcdf writer to the specified output base file
+  - `-f INJECT_BITFLIP`: injects a bit-flip to the first rank right after the
+  simulation time reaches the given argument (double)
+  - `-k KILL_RANK` : kills the rank 0 of team 0 at the specified simulation time
+  - `-v`: let the simulation produce more output, default: no
+  - `-h`: show this help message
+
+  Example run:
+  ```
+  mpirun -np 2 build/directory/swe_softRes_and_hardRes_wTaskSharing -t 2 -i 5 -x 1000 -y 1000 -d 1 -o outputFile -b backupFile -w -v
   ```
 
 ```
