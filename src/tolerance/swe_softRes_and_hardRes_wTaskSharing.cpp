@@ -5,44 +5,56 @@
  *
  * Checks for admissability of the computations (also see validateAdmissability
  * in src/blocks/DimSplitMPIOverdecomp.cpp) and only share the results if they
- * are admissable. If they are not, processes of this team and the team above
- * ((myTeam+1)%numberOfTeams) goes into a recovery mode, and demand checkpoint
- * from the team (myTeam+1)%numberOfTeams. After the checkpoints written, the
- * team with the soft error can load the checkpoint and continue its computations
- * in an admissable state. This should (hopefully) not break hard error resilience
- * using warm spares TODO
- *
+ * are admissable. If they are not, all the teams goes into a recovery mode until
+ * all the teams have been recovered.
  *
  * Here is a short pseudo-code for the computation loop:
  *
- *      int nextTeam = (myTeam + 1) % numberOfTeams;
- *      while ( t < simulationDuration ) {
- *        // start heartbeat
- *        while ( timeSinceLastHeartbeat < heartbeatInterval && t < simulationDuration ) {
- *          [...]
- *          char ReportFlag;
- *          for (primaryBlocks) {
- *            // compute the block
- *            // check admissability criteria to detect SDC
- *            // set the report flag
- *          }
- *          // TODO
- *          // send report to my team and my replica
- *          // receive report from my team and load checkpoint if flag set
+ *  while (t < simulationDuration) {
  *
- *          for (blocks) {
- *            if (isPrimary) {
- *              // share results
- *            }
- *            else {
- *              // receive report, create checkpoint and wait if replica reports SDC
- *              // receive secondary blocks
- *            }
- *          }
+ *    // start Heartbeat
+ *
+ *    while (timeSinceLastHeartbeat < heartbeatInterval &&
+ *           t < simulationDuration) {
+ *
+ *      for each block in primaryBlocks
+ *        // computeNumericalFluxes + validate Admissability criteria
+ *
+ *      // report to myTeam with allReduce
+ *      // rank 0 of myTeam sends MPI_Send to its replicas (the reduced report)
+ *
+ *      if (SDC in my team)
+ *        // receive the reload team + loadCheckpoint
+ *
+ *      while (true) {
+ *        bool flagNoSDC
+ *        for each team in numTeams {
+ *          // rank 0 of myTeam receives report from its replica in team
+ *          // rank 0 sends this report to myTeam using Bcast
+ *          // set flagNoSDC to false if SDC is reported
  *        }
- *        // end heartbeat
+ *        if (flagNoSDC) break
+ *
+ *        // the healthy team with the lowest index is the reload team
+ *        // reload team sends its index to all the corrupted teams
+ *        // reload team writes checkpoint for all the corrupted teams
  *      }
  *
+ *      // at this point we have calculated the primaryBlocks and we have
+ *         validated all the results of all teams.
+ *         We can continue with taskSharing
+ *
+ *      for each block in blocks
+ *        if (block is primaryBlock) // send block to replicas
+ *        else // receive block from the replicas
+ *    }
+ *
+ *    // end Heartbeat
+ *
+ *  } // end of while (t < simulationDuration)
+ *
+ *
+ * TODO integrate hard resilience using warmSpares
  * TODO adding more admissability criteria
  * TODO warm spares integration for also activating hard error resilience
  */
@@ -643,7 +655,9 @@ int main(int argc, char** argv) {
                 loadCheckpointCallback2_softErrorRecovery(reloadTeam);
             }
 
+            /* Report flags to be received from the other teams */
             unsigned char receivedReportFlag[numTeams];
+            /* Flag to set to indicate that we have already received from that team */
             unsigned char replicaCheck[numTeams];
             for (int i = 0; i < numTeams; i++) {
                 receivedReportFlag[i] = 0;
@@ -653,18 +667,22 @@ int main(int argc, char** argv) {
                 bool noSDC = true;
                 /* Receive report from all my replicas */
                 for (int sourceTeam = 0; sourceTeam < numTeams; sourceTeam++) {
-                    /* don't receive if 2 is set (already received) */
-                    if (receivedReportFlag[sourceTeam] != 2 && sourceTeam != myTeam) {
+                    /* don't receive if already received */
+                    if (!replicaCheck[sourceTeam] && sourceTeam != myTeam) {
                         if (myRankInTeam == 0) {
                             MPI_Recv(receivedReportFlag+sourceTeam, 1, MPI_BYTE,
                                     sourceTeam, 30, interTeamComm,
                                     MPI_STATUS_IGNORE);
                         }
                         /* Inform my team about the other teams */
-                        MPI_Allreduce(receivedReportFlag+sourceTeam,
-                                      replicaCheck+sourceTeam, 1, MPI_BYTE, MPI_MAX,
-                                      MPI_COMM_WORLD);
-                        noSDC &= replicaCheck[sourceTeam] == 0;
+                        MPI_Bcast(receivedReportFlag+sourceTeam, 1, MPI_BYTE, 0,
+                                  MPI_COMM_WORLD);
+
+                        /* if no error is reported */
+                        if (!receivedReportFlag[sourceTeam])
+                            replicaCheck[sourceTeam]++;
+                        else
+                            noSDC = false;
                     }
                 }
 
@@ -676,13 +694,13 @@ int main(int argc, char** argv) {
                  * teams
                  */
                 bool writeCheckpoint = true;
-                for (int i = 0; i < myTeam; i++) writeCheckpoint &= replicaCheck[i] == 1;
+                for (int i = 0; i < myTeam; i++) writeCheckpoint &= receivedReportFlag[i] == 1;
 
                 /* Extract the teams with SDC */
                 if (writeCheckpoint) {
                     std::vector<int> failedTeams;
                     for (int i = 0; i < numTeams; i++) {
-                        if (replicaCheck[i] == 1) {
+                        if (receivedReportFlag[i] == 1) {
                             std::cout << "\t+++ TEAM " << myTeam << ": Replica "
                                       << myRankInTeam << ", team " << i
                                       << " got soft error\n"
@@ -695,16 +713,6 @@ int main(int argc, char** argv) {
                         }
                     }
                     createCheckpointCallback(failedTeams);
-                }
-                /* Set flags for the non failed teams */
-                for (int i = 0; i < numTeams; i++) {
-                    if (replicaCheck[i] == 0 && myRankInTeam == 0) {
-                        receivedReportFlag[i] = 2;
-                    }
-                    else {
-                        receivedReportFlag[i] = 0;
-                    }
-                    replicaCheck[i] = 0;
                 }
             }
 
