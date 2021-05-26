@@ -595,7 +595,10 @@ int main(int argc, char** argv) {
 
                 /* handle soft errors
                  * if SDC detected in updates only, then recompute */
-                if (admissable == 1) {
+                if (admissable == 0) {
+                    //if (verbose) ft_logger.ft_SDC_notDetected();
+                }
+                else if (admissable == 1) {
                     // TODO add some tests to validate / show that you are able to fix the errorrs
                     currentBlock.computeNumericalFluxes();
 
@@ -618,11 +621,12 @@ int main(int argc, char** argv) {
                               << std::endl;
                     reportFlag = 1;
                 }
-                else { // TODO place this in front the others
-                    if (verbose) ft_logger.ft_SDC_notDetected();
+                else {
+                    std::cout << "Unknown error (admissability)" << std::endl;
+                    assert(false);
                 }
 
-                if (verbose) ft_logger.ft_block_calculatingTask(currentBlockNr, currentBlock.maxTimestep);
+                //if (verbose) ft_logger.ft_block_calculatingTask(currentBlockNr, currentBlock.maxTimestep);
             } // primary block computation + admissability checks for SDCs are finished
 
             unsigned char teamCheck = 0;
@@ -977,7 +981,7 @@ int main(int argc, char** argv) {
                         // currentBlock.computeNumericalFluxes();
                         //std::cout << "Team " << myTeam << ": Received t=" << recv_t << " from Team " << source_rank
                                   //<< '\n';
-                        if (verbose) ft_logger.ft_block_received(recv_t, source_rank);
+                        //if (verbose) ft_logger.ft_block_received(recv_t, source_rank);
                     }
                 } // end of else, secondary blocks
             }
@@ -988,14 +992,14 @@ int main(int argc, char** argv) {
             timesteps.clear();
             for (auto& block : simulationBlocks) {
                 timesteps.push_back(block->maxTimestep);
-                std::cout << "T" << myTeam << "R" << myRankInTeam
-                          << " : Single Timestep = " << block->maxTimestep
-                          << std::endl;
+                //std::cout << "T" << myTeam << "R" << myRankInTeam
+                          //<< " : Single Timestep = " << block->maxTimestep
+                          //<< std::endl;
             }
             float minTimestep = *std::min_element(timesteps.begin(), timesteps.end());
             MPI_Allreduce(&minTimestep, &timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-            std::cout << "T" << myTeam << "R" << myRankInTeam
-                      << " : Max Timestep = " << timestep << std::endl;
+            //std::cout << "T" << myTeam << "R" << myRankInTeam
+                      //<< " : Max Timestep = " << timestep << std::endl;
 
             for (auto& block : simulationBlocks) { block->maxTimestep = timestep; }
             for (auto& block : simulationBlocks) { block->updateUnknowns(timestep); }
