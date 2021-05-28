@@ -123,6 +123,16 @@ public:
     /* injects a random bit flip into a data array, for debugging */
     void injectRandomBitflip_intoData();
 
+    /* These injections are for tests */
+    void injectNaN_intoData();
+    void injectNegativeWaterHeight_intoData();
+    void injectBathymetryChange_intoData();
+    void injectNaN_intoUpdates();
+    void injectNegativeWaterHeight_intoUpdates();
+
+    /* Redundant bathymetry data storage for SDC detection */
+    Float2DNative b_replica;
+
     struct blockData_s
     {
         float t;
@@ -179,6 +189,14 @@ public:
 
     void sendBathymetry();
     void recvBathymetry();
+
+    /* redundant saving of the bathymetry for SDC check */
+    void saveBathymetry();
+
+    /* Printer functions to stdout for bitflip injections */
+    void print_injectionIntoData(int rand_index, int rand_float, float oldValue, float newValue);
+    void print_injectionIntoUpdates(int rand_index, int rand_float, float oldValue, float newValue);
+    void print_injectionRandom(int rand_index, int rand_float, float oldValue, float newValue);
 };
 
 #endif // SWE_DIM_SPLIT_MPI_OVERDECOMP_HPP

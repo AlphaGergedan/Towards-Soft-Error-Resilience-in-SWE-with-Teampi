@@ -52,6 +52,7 @@
 #include "blocks/DimSplitMPIOverdecomp.hpp"
 
 #include <bitset>
+#include <limits>
 #include <mpi.h>
 #include <ostream>
 #include <unistd.h>
@@ -117,7 +118,10 @@ SWE_DimensionalSplittingMPIOverdecomp::SWE_DimensionalSplittingMPIOverdecomp(
       hNetUpdatesAbove(nx + 1, ny + 2),
 
       hvNetUpdatesBelow(nx + 1, ny + 2),
-      hvNetUpdatesAbove(nx + 1, ny + 2) {
+      hvNetUpdatesAbove(nx + 1, ny + 2),
+
+      // for SDC detection
+      b_replica(nx + 2, ny + 2) {
     MPI_Type_vector(nx, 1, ny + 2, MPI_FLOAT, &HORIZONTAL_BOUNDARY);
     MPI_Type_commit(&HORIZONTAL_BOUNDARY);
     if (write) {
@@ -615,11 +619,19 @@ void SWE_DimensionalSplittingMPIOverdecomp::updateUnknowns(float dt) {
 }
 
 /**
+ * Redundantly saves bathymetry data to check for SDC during computation
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::saveBathymetry() {
+    /* Copy the bathymetry data into redundant storage for SDC detection */
+    std::memcpy(b_replica.getRawPointer(), b.getRawPointer(), ((nx+2) * (ny+2)) * sizeof(float));
+}
+
+/**
  * validates the following physical and numerical admissability
  * criteria, should be called after the computeNumericalFluxes
  * but before the updateUnknowns method:
  *   1. Physcial Admissability
- *      - Bathymetry should not be changed TODO
+ *      - Bathymetry should not be changed
  *      - No negative water height
  *   2. Numerical Admissability
  *      - No NaN values
@@ -646,36 +658,29 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep)
 
     for (int i = 0; i < nx + 2; i++) {
         for (int j = 0; j < ny + 2; j++) {
-
             /* Check for NaN values */
-
             /* Condition for field X */
-            if ( i != (nx + 1) ) {
-                updatesAdmissable &= !std::isnan(hNetUpdatesLeft[i][j]);
-                updatesAdmissable &= !std::isnan(hNetUpdatesRight[i][j]);
+            if ( i < (nx + 1) ) {
                 updatesAdmissable &= !std::isnan(hNetUpdatesAbove[i][j]);
                 updatesAdmissable &= !std::isnan(hNetUpdatesBelow[i][j]);
-                updatesAdmissable &= !std::isnan(huNetUpdatesLeft[i][j]);
-                updatesAdmissable &= !std::isnan(huNetUpdatesRight[i][j]);
                 updatesAdmissable &= !std::isnan(hvNetUpdatesAbove[i][j]);
                 updatesAdmissable &= !std::isnan(hvNetUpdatesBelow[i][j]);
-
-                /* This check not necessary? We already share the result if it
-                 * is correct, so in this error we can't do anything but we can
-                 * detect it if we check it
-                 */
-                dataAdmissable &= !std::isnan(b[i][j]);
-                dataAdmissable &= !std::isnan(h[i][j]);
-                dataAdmissable &= !std::isnan(hv[i][j]);
-                dataAdmissable &= !std::isnan(hu[i][j]);
-            } else {
-                updatesAdmissable &= !std::isnan(hNetUpdatesLeft[i][j]);
-                updatesAdmissable &= !std::isnan(hNetUpdatesRight[i][j]);
-                updatesAdmissable &= !std::isnan(huNetUpdatesLeft[i][j]);
-                updatesAdmissable &= !std::isnan(huNetUpdatesRight[i][j]);
             }
 
-            /* TODO condition for height */
+            updatesAdmissable &= !std::isnan(hNetUpdatesLeft[i][j]);
+            updatesAdmissable &= !std::isnan(hNetUpdatesRight[i][j]);
+            updatesAdmissable &= !std::isnan(huNetUpdatesLeft[i][j]);
+            updatesAdmissable &= !std::isnan(huNetUpdatesRight[i][j]);
+
+            /* In this error we can't fix it, but we can
+             * detect it if we check it
+             */
+            dataAdmissable &= !std::isnan(b[i][j]);
+            dataAdmissable &= !std::isnan(h[i][j]);
+            dataAdmissable &= !std::isnan(hv[i][j]);
+            dataAdmissable &= !std::isnan(hu[i][j]);
+
+            /* condition for height */
             if ( (i > 0) && (i < (nx + 1)) && (j > 0) && (j < (ny + 1)) ) {
                 float temp = h[i][j] - maxTimestep / dx * (hNetUpdatesRight[i - 1][j - 1]
                                      + hNetUpdatesLeft[i][j - 1])
@@ -686,7 +691,8 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep)
                 dataAdmissable &= temp >= 0;
             }
 
-            // TODO bathymetry check if changed
+            // bathymetry check if changed
+            dataAdmissable &= b[i][j] == b_replica[i][j];
         }
     }
 
@@ -696,6 +702,8 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep)
     admissable += updatesAdmissable ? 0 : 1;
     return admissable;
 }
+
+//------------------------------------------------------------------------------
 
 
 /**
@@ -708,7 +716,6 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissability(float timestep)
  * The array, element and bit to corrupt is selected randomly.
  */
 void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip() {
-
     float* data_arrays[12] = {
         /* arrays with size (nx+2)*(ny+2) */
         b.getRawPointer(), h.getRawPointer(),
@@ -718,7 +725,6 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip() {
         /* arrays with size (nx+1)*(ny+2) */
         hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
         hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
-
     unsigned int arraySize;
 
     /* randomly select the data array */
@@ -733,18 +739,12 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip() {
     std::bitset<32> *targetFloat =
         reinterpret_cast<std::bitset<32> *>(data_arrays[rand_index] + rand_float);
 
-    std::cout << "\n............Injecting..a..bit..flip.................\n"
-              << "  Corruption at array index " << rand_index << " of [b, h, hv, hu, "
-              << "hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft, huNetUpdatesRight, "
-              << "hNetUpdatesAbove, hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow]\n"
-              << "             at element index " << rand_float << "\n"
-              << "  --> old value : " << (data_arrays[rand_index])[rand_float] << "\n";
-
+    float oldValue = data_arrays[rand_index][rand_float];
     /* flip the bit */
     targetFloat->flip(rand_bit);
+    float newValue = data_arrays[rand_index][rand_float];
 
-    std::cout << "  --> new value : " << (data_arrays[rand_index])[rand_float] << "\n"
-              << std::endl;
+    print_injectionRandom(rand_index, rand_float, oldValue, newValue);
 }
 
 
@@ -756,27 +756,33 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip() {
  *      hvNetUpdatesAbove, hvNetUpdatesBelow
  */
 void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoUpdates() {
+    float* data_arrays[8] = {
+        /* arrays with size (nx+2)*(ny+2) */
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
+    unsigned int arraySize;
 
-    //TODO for now we only make one fixed float to NaN for debugging .
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 8;
+    arraySize = (rand_index < 4) ? ((nx+2)*(ny+2)) : ((nx+1)*(ny+2));
 
-    /* index of the float we want to corrupt */
-    size_t flipAt_float = ((nx+2)*(ny+2)) / 2;
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
 
-    float *calculated_huNetUpdatesLeft = huNetUpdatesLeft.getRawPointer();
+    std::bitset<32> *targetFloat =
+        reinterpret_cast<std::bitset<32> *>(data_arrays[rand_index] + rand_float);
 
-    std::cout << "\n............Injecting..a..bit..flip.................\n"
-              << "old value : " <<     calculated_huNetUpdatesLeft[flipAt_float]
-              << "\n...............DATA..CORRUPTED......................\n"
-              << "\n";
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* flip the bit */
+    targetFloat->flip(rand_bit);
+    float newValue = data_arrays[rand_index][rand_float];
 
-    /* flip only the first bit with the XOR operation */
-    //((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
-
-    calculated_huNetUpdatesLeft[flipAt_float] = NAN;
-
-    std::cout << "new value : " << calculated_huNetUpdatesLeft[flipAt_float]
-              << "\n"
-              << std::endl;
+    print_injectionIntoUpdates(rand_index, rand_float, oldValue, newValue);
 }
 
 
@@ -788,54 +794,208 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoUpdates() {
  * The array, element and bit to corrupt is selected randomly.
  */
 void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoData() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = (nx+2) * (ny+2);
 
-    //TODO for now we only make one fixed float to NaN for debugging .
-
-    /* index of the float we want to corrupt */
-    size_t flipAt_float = ((nx+2)*(ny+2)) / 2;
-
-    float *waterHeight = h.getRawPointer();
-
-    std::cout << "\n............Injecting..a..bit..flip.................\n"
-              << "  Corruption at array index " << 1 << " of [b, h, hv, hu]\n"
-              << "             at element index " << flipAt_float << "\n"
-              << "  --> old value : " << waterHeight[flipAt_float] << "\n";
-
-    /* flip only the first bit with the XOR operation */
-    //((unsigned int *)calculated_huNetUpdatesLeft)[flipAt_float] ^= 0x80000000;
-
-    waterHeight[flipAt_float] = NAN;
-
-    std::cout << "new value : " << waterHeight[flipAt_float]
-              << "\n"
-              << std::endl;
-
-    /*
-
-    float* data_arrays[4] = {b.getRawPointer(), h.getRawPointer(),
-                             hv.getRawPointer(), hu.getRawPointer()};
-    unsigned int arraySize = (nx + 2) * (ny + 2);
-
+    /* randomly select the data array */
     srand (static_cast <unsigned> (time(NULL)));
     int rand_index = std::rand() % 4;
+
+    /* randomly select the float index and bit to flip */
     int rand_float = std::rand() % arraySize;
     int rand_bit = std::rand() % 32;
 
     std::bitset<32> *targetFloat =
         reinterpret_cast<std::bitset<32> *>(data_arrays[rand_index] + rand_float);
 
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* flip the bit */
+    targetFloat->flip(rand_bit);
+    float newValue = data_arrays[rand_index][rand_float];
+
+    print_injectionIntoData(rand_index, rand_float, oldValue, newValue);
+}
+
+// -- FOR TESTS  -- //
+
+/**
+ * Injects a NaN into one of the following arrays:
+ *
+ *  --> b, h, hv, hu
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectNaN_intoData() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = (nx+2) * (ny+2);
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 4;
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject NaN */
+    data_arrays[rand_index][rand_float] = NAN;
+    float newValue = data_arrays[rand_index][rand_float];
+
+    print_injectionIntoData(rand_index, rand_float, oldValue, newValue);
+}
+
+/**
+ * Injects negative water height into the array h
+ *
+ * The element in the array is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectNegativeWaterHeight_intoData() {
+    float* data_array = h.getRawPointer();
+    unsigned int arraySize = (nx+2) * (ny+2);
+
+    /* randomly select the float index */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_float = std::rand() % arraySize;
+
+    std::bitset<32> *targetFloat =
+        reinterpret_cast<std::bitset<32> *>(data_array + rand_float);
+
+    float oldValue = data_array[rand_float];
+    /* flip the sign bit */
+    targetFloat->flip(0);
+    float newValue = data_array[rand_float];
+    print_injectionIntoData(1, rand_float, oldValue, newValue);
+}
+
+/**
+ * Injects random bitflip into the array b
+ *
+ * The element in the array and the bit is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectBathymetryChange_intoData() {
+    float* data_array = b.getRawPointer();
+    unsigned int arraySize = (nx+2) * (ny+2);
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    std::bitset<32> *targetFloat =
+        reinterpret_cast<std::bitset<32> *>(data_array + rand_float);
+
+    float oldValue = data_array[rand_float];
+    /* flip the bit */
+    targetFloat->flip(rand_bit);
+    float newValue = data_array[rand_float];
+
+    print_injectionIntoData(0, rand_float, oldValue, newValue);
+}
+
+/**
+ * Injects a NaN into one of the following arrays:
+ *
+ *  --> hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft,
+ *      huNetUpdatesRight, hNetUpdatesAbove, hNetUpdatesBelow,
+ *      hvNetUpdatesAbove, hvNetUpdatesBelow
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectNaN_intoUpdates() {
+    float* data_arrays[8] = {
+        /* arrays with size (nx+2)*(ny+2) */
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
+    unsigned int arraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 8;
+    arraySize = (rand_index < 4) ? ((nx+2)*(ny+2)) : ((nx+1)*(ny+2));
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject NaN */
+    data_arrays[rand_index][rand_float] = NAN;
+    float newValue = data_arrays[rand_index][rand_float];
+
+    print_injectionIntoUpdates(rand_index, rand_float, oldValue, newValue);
+}
+
+/**
+ * Injects an update that leads to negative water height into one of the
+ * following arrays:
+ *
+ *  --> hNetUpdatesLeft, hNetUpdatesBelow
+ *
+ * The array is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectNegativeWaterHeight_intoUpdates() {
+    float* data_arrays[2] = {
+        /* arrays with size (nx+2)*(ny+2) */
+        hNetUpdatesLeft.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesBelow.getRawPointer()};
+    unsigned int arraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 2;
+    arraySize = (rand_index < 1) ? ((nx+2)*(ny+2)) : ((nx+1)*(ny+2));
+
+    /* float index */
+    int index_float = arraySize / 2;
+
+    float oldValue = data_arrays[rand_index][index_float];
+    /* assign negative infinity to set the height negative */
+    data_arrays[rand_index][index_float] = -INFINITY;
+    float newValue = data_arrays[rand_index][index_float];
+
+    int real_index = (rand_index == 0) ? 0 : 5;
+    print_injectionIntoUpdates(real_index, index_float, oldValue, newValue);
+}
+
+
+//------------------------------------------------------------------------------
+/* Printer Implementations */
+
+void SWE_DimensionalSplittingMPIOverdecomp::print_injectionIntoData(int rand_index, int rand_float, float oldValue, float newValue) {
     std::cout << "\n............Injecting..a..bit..flip.................\n"
               << "  Corruption at array index " << rand_index << " of [b, h, hv, hu]\n"
               << "             at element index " << rand_float << "\n"
-              << "  --> old value : " << (data_arrays[rand_index])[rand_float] << "\n";
-
-    targetFloat->flip(rand_bit);
-
-    std::cout << "  --> new value : " << (data_arrays[rand_index])[rand_float] << "\n"
+              << "  --> old value : " << oldValue << "\n"
+              << "  --> new value : " << newValue << "\n"
               << std::endl;
-
-    */
 }
+
+void SWE_DimensionalSplittingMPIOverdecomp::print_injectionIntoUpdates(int rand_index, int rand_float, float oldValue, float newValue) {
+    std::cout << "\n............Injecting..a..bit..flip.................\n"
+              << "  Corruption at array index " << rand_index << " of "
+              << "[hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft, huNetUpdatesRight, "
+              << "hNetUpdatesAbove, hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow]\n"
+              << "             at element index " << rand_float << "\n"
+              << "  --> old value : " << oldValue << "\n"
+              << "  --> new value : " << newValue << "\n"
+              << std::endl;
+}
+
+void SWE_DimensionalSplittingMPIOverdecomp::print_injectionRandom(int rand_index, int rand_float, float oldValue, float newValue) {
+    std::cout << "\n............Injecting..a..bit..flip.................\n"
+              << "  Corruption at array index " << rand_index << " of [b, h, hv, hu, "
+              << "hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft, huNetUpdatesRight, "
+              << "hNetUpdatesAbove, hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow]\n"
+              << "             at element index " << rand_float << "\n"
+              << "  --> old value : " << oldValue << "\n"
+              << "  --> new value : " << newValue << "\n"
+              << std::endl;
+}
+//------------------------------------------------------------------------------
 
 
 MPI_Datatype SWE_DimensionalSplittingMPIOverdecomp::getBlockMPIType() { return blockData_t; }
