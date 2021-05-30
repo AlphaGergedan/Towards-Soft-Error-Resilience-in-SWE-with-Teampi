@@ -37,3 +37,11 @@ target_sources(swe_checkpointRestart PRIVATE
   NetCDFWriter.hpp
   Reader.cpp
   Reader.hpp)
+
+target_sources(swe_tests PRIVATE
+  Writer.cpp
+  Writer.hpp
+  NetCDFWriter.cpp
+  NetCDFWriter.hpp
+  Reader.cpp
+  Reader.hpp)

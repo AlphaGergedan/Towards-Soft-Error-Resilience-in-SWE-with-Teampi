@@ -27,3 +27,9 @@ target_sources(swe_checkpointRestart PRIVATE
   simple_scenarios.hpp
   LoadNetCDFScenario.cpp
   LoadNetCDFScenario.hpp)
+
+target_sources(swe_tests PRIVATE
+  Scenario.hpp
+  simple_scenarios.hpp
+  LoadNetCDFScenario.cpp
+  LoadNetCDFScenario.hpp)
