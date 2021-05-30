@@ -108,7 +108,7 @@ int main(int argc, char** argv)
     args.addOption("resolution-y", 'y', "Number of simulated cells in y-direction");
     args.addOption("output-basepath", 'o', "Output base file name");
     args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
-    args.addOption("hash-method", 'm', "Which hashing method to use: ( 0=NONE | 1=stdhash | 2=SHA1 ), default: 1", args.Required, false);
+    args.addOption("hash-method", 'm', "Which hashing method to use: ( 0=NONE | 1=stdhash ), default: 1", args.Required, false);
     args.addOption("hash-count", 'c', "Number of total hashes to send to the replica", args.Required, true);
     args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
@@ -341,18 +341,9 @@ int main(int argc, char** argv)
     const int fieldSizeX{(simulationBlock->nx + 2) * (simulationBlock->ny + 2)};
     const int fieldSizeY{(simulationBlock->nx + 1) * (simulationBlock->ny + 2)};
 
+    // TODO also hash the data arrays here
     /* for hashing the calculated updates to detect silent data corruptions */
-    Hasher swe_hasher = Hasher(
-      fieldSizeX, fieldSizeY,
-      simulationBlock->hNetUpdatesLeft.getRawPointer(),
-      simulationBlock->hNetUpdatesRight.getRawPointer(),
-      simulationBlock->huNetUpdatesLeft.getRawPointer(),
-      simulationBlock->huNetUpdatesRight.getRawPointer(),
-      simulationBlock->hNetUpdatesBelow.getRawPointer(),
-      simulationBlock->hNetUpdatesAbove.getRawPointer(),
-      simulationBlock->hvNetUpdatesBelow.getRawPointer(),
-      simulationBlock->hvNetUpdatesAbove.getRawPointer(),
-      &(simulationBlock->maxTimestep));
+    Hasher swe_hasher = Hasher(fieldSizeX, fieldSizeY, simulationBlock.get());
 
 
     for (unsigned int i = 0; i < numberOfHashes; i++) {
@@ -388,9 +379,6 @@ int main(int argc, char** argv)
             }
             else if (hashOption == 1) {
                 swe_hasher.update_stdHash();
-            }
-            else if (hashOption == 2) {
-                swe_hasher.update_SHA1();
             }
             else {
                 std::cout << "Unknown hash method.. something went wrong\n"
@@ -453,43 +441,6 @@ int main(int argc, char** argv)
                          0,                         /* Receive tag      */
                          MPI_COMM_SELF,             /* Communicator     */
                          MPI_STATUS_IGNORE);        /* Status object    */
-        }
-        else if (hashOption == 2) {
-
-            /* get 20 bytes from SHA1 hasher
-             * SHA1 has a fixed output size of 120 bits == 20 bytes */
-            unsigned char *total_hash = swe_hasher.finalize_SHA1();
-            std::cout << "\nsorry.. but SHA1 hashing is still in development :(\n"
-                      << std::endl;
-
-            // TODO
-            assert(false);
-
-            if(verbose) {
-                /* print heartbeat for debugging */
-                std::cout << "\n\t+++++++++ " << heartbeatCounter << ". "
-                          << "HEARTBEAT HASH ++++++++\n\t"
-                          << "  - team:\t\t" << myTeam << "\n\t"
-                          << "  - rank:\t\t" << myRankInTeam << "\n\t"
-                          << "  - unsigned char total_hash (" << 20
-                          << " bytes)" << " : " << total_hash
-                          << " at t = " << t << std::endl;
-            }
-
-            /* single heartbeat with hash */
-            MPI_Sendrecv(total_hash,                /* Send buffer      */
-                         20,                        /* Send count       */
-                         MPI_CHAR,                  /* Send type        */
-                         MPI_PROC_NULL,             /* Destination      */
-                         0,                         /* Send tag         */
-                         MPI_IN_PLACE,              /* Receive buffer   */
-                         0,                         /* Receive count    */
-                         MPI_BYTE,                  /* Receive type     */
-                         MPI_PROC_NULL,             /* Source           */
-                         0,                         /* Receive tag      */
-                         MPI_COMM_SELF,             /* Communicator     */
-                         MPI_STATUS_IGNORE);        /* Status object    */
-
         }
         else {
             std::cout << "Unknown hash method.. something went wrong\n"

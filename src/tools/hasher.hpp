@@ -4,14 +4,14 @@
  * @brief Small header for hashing calculated variables to be used in tolerance
  *
  * Generates and finalizes hashes for swe blocks. The pointers should not be
- * empty and the hasher should be calles after the compute net updates.
+ * empty and the hasher should be called after the compute net updates.
  */
 
 
 #ifndef HASHER_HPP
 #define HASHER_HPP
 
-#include "tools/sha1.hpp"
+#include <blocks/DimSplitMPIOverdecomp.hpp>
 #include <string.h>
 #include <assert.h>
 
@@ -21,22 +21,12 @@ class Hasher {
 public:
 
     /* Constructor */
-    Hasher(int fieldSizeX, int fieldSizeY,
-           float* hNetUpdatesLeft, float* hNetUpdatesRight,
-           float* huNetUpdatesLeft, float* huNetUpdatesRight,
-           float* hNetUpdatesBelow, float* hNetUpdatesAbove,
-           float* hvNetUpdatesBelow, float* hvNetUpdatesAbove,
-           float* maxTimeStep);
+    Hasher(int fieldSizeX, int fieldSizeY, SWE_DimensionalSplittingMPIOverdecomp *currentBlock);
 
     /* hashes with std::hash */
     void update_stdHash();
     void update_stdHash_float();
     size_t finalize_stdHash();
-
-    /* hashes with SHA-1 */
-    void update_SHA1();
-    unsigned char* finalize_SHA1();
-
 
 private:
 
@@ -56,29 +46,23 @@ private:
     float *hvNetUpdatesBelow, *hvNetUpdatesAbove;
 
     /* max time step to hash, with size 1 */
-    float* maxTimeStep;
+    float *maxTimeStep;
 
-    /* Strings values to hash
-     * TODO Conversion is expensive.. strings are also expensive.
-     *      change to std::hash<float> or something if possbible
-     */
+    /* data arrays, we also need to hash them */
+    float *h, *hv, *hu, *b;
+
+    /* Strings values to hash, converting to strings may sound expensive but
+     * float hasher seems not be optimized very well by compiler */
     std::string str_hLeft, str_hRight, str_huLeft, str_huRight, str_hBelow,
-        str_hAbove, str_hvBelow, str_hvAbove, str_maxTimeStep;
+        str_hAbove, str_hvBelow, str_hvAbove, str_maxTimeStep,
+        str_h, str_hu, str_hv, str_b;
 
-    /* hash function and hash storage
-     *
-     * TODO calculate this hash using a float hash function,
-     *      this way we must convert them to strings first !
-     */
+    /* hash function and hash storage */
     std::hash<std::string> hash_fn;
-    std::hash<float> hash_fn_float;
+    std::hash<float> hash_fn_float; // Seems to be slower !
     std::size_t total_hash;
 
-    /* sha1 hash */
-    SHA1 checksum;
-
-    /* Converts the datas to strings for easy hashing.. should be avoided for
-     * performance reasons TODO */
+    /* Converts the datas to strings for easy hashing */
     void updateStrings();
 };
 

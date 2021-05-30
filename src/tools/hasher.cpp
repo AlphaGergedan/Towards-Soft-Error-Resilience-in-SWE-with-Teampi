@@ -4,7 +4,7 @@
  * @brief Implementation of src/tools/hasher.hpp
  *
  * TODO XOR operation is used when combining hashes but see boost::hash_combine
- *      it might be better?
+ *      as it might be better/faster
  */
 
 
@@ -17,39 +17,33 @@
  *
  * @param fieldSizeX
  * @param fieldSizeY
- * @param hNetUpdatesLeft
- * @param hNetUpdatesRight
- * @param huNetUpdatesLeft
- * @param huNetUpdatesRight
- * @param hNetUpdatesBelow
- * @param hNetUpdatesAbove
- * @param hvNetUpdatesBelow
- * @param hvNetUpdatesAbove
- * @param maxTimeStep
+ * @param currentBlock Current dimensional splitting block that we want to hash
  */
-Hasher::Hasher(int fieldSizeX, int fieldSizeY,
-                      float* hNetUpdatesLeft, float* hNetUpdatesRight,
-                      float* huNetUpdatesLeft, float* huNetUpdatesRight,
-                      float* hNetUpdatesBelow, float* hNetUpdatesAbove,
-                      float* hvNetUpdatesBelow, float* hvNetUpdatesAbove,
-                      float* maxTimeStep) {
+Hasher::Hasher(int fieldSizeX, int fieldSizeY, SWE_DimensionalSplittingMPIOverdecomp *currentBlock) {
 
     Hasher::fieldSizeX = fieldSizeX;
     Hasher::fieldSizeY = fieldSizeY;
 
-    Hasher::hNetUpdatesLeft = hNetUpdatesLeft;
-    Hasher::hNetUpdatesRight = hNetUpdatesRight;
+    /* Update arrays */
+    Hasher::hNetUpdatesLeft = currentBlock->hNetUpdatesLeft.getRawPointer();
+    Hasher::hNetUpdatesRight = currentBlock->hNetUpdatesRight.getRawPointer();
 
-    Hasher::huNetUpdatesLeft = huNetUpdatesLeft;
-    Hasher::huNetUpdatesRight = huNetUpdatesRight;
+    Hasher::huNetUpdatesLeft = currentBlock->huNetUpdatesLeft.getRawPointer();
+    Hasher::huNetUpdatesRight = currentBlock->huNetUpdatesRight.getRawPointer();
 
-    Hasher::hNetUpdatesBelow = hNetUpdatesBelow;
-    Hasher::hNetUpdatesAbove = hNetUpdatesAbove;
+    Hasher::hNetUpdatesBelow = currentBlock->hNetUpdatesBelow.getRawPointer();
+    Hasher::hNetUpdatesAbove = currentBlock->hNetUpdatesAbove.getRawPointer();
 
-    Hasher::hvNetUpdatesBelow = hvNetUpdatesBelow;
-    Hasher::hvNetUpdatesAbove = hvNetUpdatesAbove;
+    Hasher::hvNetUpdatesBelow = currentBlock->hvNetUpdatesBelow.getRawPointer();
+    Hasher::hvNetUpdatesAbove = currentBlock->hvNetUpdatesAbove.getRawPointer();
 
-    Hasher::maxTimeStep = maxTimeStep;
+    Hasher::maxTimeStep = &(currentBlock->maxTimestep);
+
+    /* Data arrays */
+    Hasher::h = currentBlock->getWaterHeight().getRawPointer();
+    Hasher::hv = currentBlock->getMomentumVertical().getRawPointer();
+    Hasher::hu = currentBlock->getMomentumHorizontal().getRawPointer();
+    Hasher::b = currentBlock->getBathymetry().getRawPointer();
 
     /* initialized as 0 because we want the first xor operation with the
      * first hash to give the hash itself
@@ -69,28 +63,6 @@ size_t Hasher::finalize_stdHash() {
     return r;
 }
 
-/**
- * TODO
- * https://stackoverflow.com/questions/3221170/how-to-turn-a-hex-string-into-an-unsigned-char-array
- *
- * @return
- */
-unsigned char* Hasher::finalize_SHA1() {
-
-    /* returns the final SHA1 hash as string */
-    std::string final_sha1 = checksum.final();
-    assert(final_sha1.size() == 40);
-    const char *s = (const char*) final_sha1.data();
-
-    /* we will return this */
-    unsigned char resultOfsha1[20];
-
-    for (int i = 0; i < 4; i++) {
-        // TODO
-    }
-    return resultOfsha1;
-}
-
 /* hash with std::hash */
 void Hasher::update_stdHash() {
 
@@ -107,60 +79,59 @@ void Hasher::update_stdHash() {
     total_hash ^= hash_fn(str_hvBelow);
     total_hash ^= hash_fn(str_hvAbove);
     total_hash ^= hash_fn(str_maxTimeStep);
+
+    total_hash ^= hash_fn(str_h);
+    total_hash ^= hash_fn(str_hv);
+    total_hash ^= hash_fn(str_hu);
+    total_hash ^= hash_fn(str_b);
 }
 
-/* TODO tries to improve hashing by not converting them to strings */
+/* Tries to improve hashing by not converting them to strings
+ * However this method seems to be slower than string hashing..
+ * Compiler is able to optimize the hasher::update_stdHash() better
+ *
+ * Warning: this method seems to be slower than update_stdHash(). Do not use this one */
 void Hasher::update_stdHash_float() {
-
     /* update the hash using float hasher  */
-
-    // iterate through float arrays with the size fielSizeX
-    for (int i = 0; i < fieldSizeX; i++) {
+    int i = 0;
+    while (i < fieldSizeY) {
+        /* fieldSizeX length arrays */
         total_hash ^= hash_fn_float(hNetUpdatesLeft[i]);
         total_hash ^= hash_fn_float(hNetUpdatesRight[i]);
         total_hash ^= hash_fn_float(huNetUpdatesLeft[i]);
         total_hash ^= hash_fn_float(huNetUpdatesRight[i]);
-    }
+        total_hash ^= hash_fn_float(h[i]);
+        total_hash ^= hash_fn_float(hv[i]);
+        total_hash ^= hash_fn_float(hu[i]);
+        total_hash ^= hash_fn_float(b[i]);
+        /* fieldSizeY length arrays */
+        total_hash ^= hash_fn_float(hNetUpdatesBelow[i]);
+        total_hash ^= hash_fn_float(hNetUpdatesAbove[i]);
+        total_hash ^= hash_fn_float(hvNetUpdatesBelow[i]);
+        total_hash ^= hash_fn_float(hvNetUpdatesAbove[i]);
 
-    // iterate through float arrays with the size fieldSizeY
-    for (int j = 0; j < fieldSizeY; j++) {
-        total_hash ^= hash_fn_float(hNetUpdatesBelow[j]);
-        total_hash ^= hash_fn_float(hNetUpdatesAbove[j]);
-        total_hash ^= hash_fn_float(hvNetUpdatesBelow[j]);
-        total_hash ^= hash_fn_float(hvNetUpdatesAbove[j]);
+        i++;
     }
+    while (i < fieldSizeX) {
+        /* fieldSizeX length arrays */
+        total_hash ^= hash_fn_float(hNetUpdatesLeft[i]);
+        total_hash ^= hash_fn_float(hNetUpdatesRight[i]);
+        total_hash ^= hash_fn_float(huNetUpdatesLeft[i]);
+        total_hash ^= hash_fn_float(huNetUpdatesRight[i]);
+        total_hash ^= hash_fn_float(h[i]);
+        total_hash ^= hash_fn_float(hv[i]);
+        total_hash ^= hash_fn_float(hu[i]);
+        total_hash ^= hash_fn_float(b[i]);
 
-    // lastly hash the max time step
+        i++;
+    }
+    /* lastly hash the max time step */
     total_hash ^= hash_fn_float(*maxTimeStep);
 }
 
 /**
- * hash with SHA-1
- * TODO
- */
-void Hasher::update_SHA1() {
-
-    /* update the strings */
-    updateStrings();
-
-    /* concat the strings */
-
-    /* hash the strings TODO don't hash them one by one ! */
-    checksum.update(str_hLeft);
-    checksum.update(str_hRight);
-    checksum.update(str_huLeft);
-    checksum.update(str_huRight);
-    checksum.update(str_hBelow);
-    checksum.update(str_hAbove);
-    checksum.update(str_hvBelow);
-    checksum.update(str_hvAbove);
-    checksum.update(str_maxTimeStep);
-}
-
-
-/**
  * Converts the float arrays to strings to be hashed later
- * TODO create a single string to avoid overhead maybe ? But more collisions?
+ * creating a single string seems to be slower than xor operations
  */
 void Hasher::updateStrings() {
     str_hLeft = std::string((const char*) hNetUpdatesLeft, sizeof(float) * fieldSizeX);
@@ -174,4 +145,9 @@ void Hasher::updateStrings() {
     str_hvAbove = std::string((const char*) hvNetUpdatesAbove, sizeof(float) * fieldSizeY);
 
     str_maxTimeStep = std::string((const char*) maxTimeStep, sizeof(float));
+
+    str_h = std::string((const char*) h, sizeof(float) * fieldSizeX);
+    str_hv = std::string((const char*) hv, sizeof(float) * fieldSizeX);
+    str_hu = std::string((const char*) hu, sizeof(float) * fieldSizeX);
+    str_b = std::string((const char*) b, sizeof(float) * fieldSizeX);
 }
