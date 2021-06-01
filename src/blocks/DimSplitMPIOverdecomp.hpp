@@ -111,8 +111,8 @@ public:
     void writeTimestep(float timestep);
     void createCheckpoint(float t, std::string backupMetadataName, int checkpointsLeft);
 
-    /* validates physical and numerical admissability criteria */
-    int validateAdmissability(float timestep);
+    /* validates physical and numerical admissibility criteria */
+    int validateAdmissibility(float timestep);
 
     /* injects a random bit flip into a random array */
     void injectRandomBitflip();
@@ -130,8 +130,11 @@ public:
     void injectNaN_intoUpdates();
     void injectNegativeWaterHeight_intoUpdates();
 
-    /* Redundant bathymetry data storage for SDC detection */
-    Float2DNative b_replica;
+    /** TODO For bitflip information for tests */
+    struct bitflipInfo {
+        //!
+    };
+
 
     struct blockData_s
     {
@@ -193,10 +196,29 @@ public:
     /* redundant saving of the bathymetry for SDC check */
     void saveBathymetry();
 
+    /* saves previous h, hv, hu for admissibility checks */
+    void savePreviousData();
+
+private:
+    /* Indicates that we can check for Discrete Maximum Principle (DMP) */
+    int iterationNumber = 0;
+
+    /* Data arrays size */
+    size_t dataArraySize;
+
+    /* Update arrays size */
+    size_t fieldSizeX, fieldSizeY;
+
+    /* Redundant bathymetry data storage for SDC detection */
+    Float2DNative b_replica;
+
+    /* Redundant storage of the previous results for */
+    Float2DNative h_prev, hv_prev, hu_prev;
+
     /* Printer functions to stdout for bitflip injections */
-    void print_injectionIntoData(int rand_index, int rand_float, float oldValue, float newValue);
-    void print_injectionIntoUpdates(int rand_index, int rand_float, float oldValue, float newValue);
-    void print_injectionRandom(int rand_index, int rand_float, float oldValue, float newValue);
+    void print_injectionIntoData(int rand_index, int rand_float, int rand_bit, float oldValue, float newValue);
+    void print_injectionIntoUpdates(int rand_index, int rand_float, int rand_bit, float oldValue, float newValue);
+    void print_injectionRandom(int rand_index, int rand_float, int rand_bit, float oldValue, float newValue);
 };
 
 #endif // SWE_DIM_SPLIT_MPI_OVERDECOMP_HPP
