@@ -10,33 +10,45 @@ library. See the original [SWE](https://github.com/TUM-I5/SWE) and
 Increased error rates in high performance computing due to multiple cores and
 memories may lead to silent data corruptions. In such a case, we are unable to
 detect the error without observing the application's results. In order to
-provide such resilience, we need to use replication and compare the results of
-the replicated processes. A naive method would be to run 2 teams computing the
-same application and then compare their results at the end. We try to improve
-this by hashing the 'tasks' computed by the replicas and share them across the
-replicas. We test 2 different hash functions:
-1. The function object std::hash<>, which according to
-[this](https://stackoverflow.com/questions/19411742/what-is-the-default-hash-function-used-in-c-stdunordered-map)
-page is based on MurmurHashUnaligned2 for the specialization for std::strings.
-It is 8 bytes long
-2. SHA-1, which is relatively slower but 20 bytes long
-
-We implemented following methods to provide soft error resilience to SWE
-applications.
+provide such resilience, we either need to use redundancy and compare the
+results of the replicated processes, or we need to check if our results are
+"sane" enough to proceed (like checking for absence of NaNs etc.). A naive
+method would be to run 2 teams computing the same application and then compare
+their results at the end. We try to improve this approach with the following
+techniques, and still try to provide soft resilient HPC applications using
+teaMPI.
 
 ### Single Heartbeats with Hashes ###
 
-This is a soft error resilience technique, where we compute one block per rank
-in team. So we divide the SWE domain into `number_of_ranks_in_a_team` blocks.
-Each rank computes it's own block and issues a single heartbeat in each
-`heartbeat-interval` in simulation time. In each single heartbeat they send the
-hashes of the computed updates to their replicas. TeaMPI handles the comparison
-of the hashes, and therefore an early detection of a silent data corruption is
-possible. This method however does not guarantee any hard failure resilience as
-the heartbeat intervals depend on the time steps.
+We first try to hash the 'tasks' computed by the replicas of 2 teams and share
+the hashes across them. This provides early SDC detection. We use std::hash for
+better performance, as bitflips tend to occur very rare and so are collisions of
+corrupted results. According to
+[this stackoverflow page](https://stackoverflow.com/questions/19411742/what-is-the-default-hash-function-used-in-c-stdunordered-map)
+the function object std::hash<> is based on MurmurHashUnaligned2 for the
+specialization for std::strings, and it is 8 bytes long. Other hash functions
+like SHA-1 could also be used but it is expected to be slower due to its
+increased length.
+
+We compute one block per rank in team. So we divide the SWE domain into
+`number_of_ranks_in_a_team` blocks. Each rank computes it's own block and issues
+a single heartbeat in each `heartbeat-interval` in simulation time. In each
+single heartbeat they send the hashes of the computed updates to their replicas.
+TeaMPI handles the comparison of the hashes, and therefore an early detection of
+an SDC is possible. This method however does not guarantee any hard failure
+resilience as the heartbeat intervals depend on the time steps.
 (See
 [swe\_softRes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes.cpp)
 for the implementation and [its executable](#running) for usage examples)
+
+We assume that any bitflip occurs in our data will eventually be detected by the
+hash comparison. This provides us to detect any SDC that may occur in our data
+arrays that we are hashing. But this method uses replication, which loses half
+of our computation power, and even if an SDC is detected we must restart the
+application again for recalculation since we can not decide which replica has
+the SDC with only using 2 teams. This can be avoided with more than 2 teams and
+with a voting mechanism to choose the healthy team. It can then write reactive
+checkpoint for the other teams and the application can continue.
 
 ### TODO Integrating Single Heratbeats to Hard Failure Resilience ###
 
@@ -55,17 +67,17 @@ We already had hard error resilience using warm spares with task sharing in
 with teaMPI. Integrating soft error resilience to task sharing using hashes is
 not possible in theory, hence hashes need to be validated after redundant
 computations. Fortunately we can still validate the task computations by
-prechecking admissability criteria of the task computations, which are usually
+prechecking admissibility criteria of the task computations, which are usually
 not transparent to applications. In this version of SWE, we share a computed
 task, only if it is validated using the following 2 criteria:
-1. ***Physical Admissability*** : Computations are within some certain physical
+1. ***Physical Admissibility*** : Computations are within some certain physical
 constraints, like no negative water height or bathymetry data is constant. These
 criteria are higly application specific
-2. ***Numerical Admissability*** : No floating point errors are present (NaN)
+2. ***Numerical Admissibility*** : No floating point errors are present (NaN)
 and relaxed discrete maximum principle TODO
 
 If any data array, that can suffer from a bit flip, doesn't meet a predefined
-admissability criterion, then we assume that an SDC is present. Unfortunately
+admissibility criterion, then we assume that an SDC is present. Unfortunately
 we can not assume that any SDC occurred in the data will be detected in the
 future because of the computations depend on the data, if we want to use task
 sharing. This means, we have to check all the data array and share our computed
@@ -123,7 +135,7 @@ For soft error resilience we have the following executables:
   - `-y RESOLUTION_Y`: number of simulated cells in y-direction
   - `-o OUTPUT_BASEPATH`: output base file name
   - `-w`: write output using netcdf writer to the specified output base file
-  - `-m HASH_METHOD`: which hash function to use: (0=NONE | 1=stdhash | 2=SHA1),
+  - `-m HASH_METHOD`: which hash function to use: (0=NONE | 1=stdhash),
   default: 1
   - `-c HASH_COUNT`: number of total hashes to send to the replica
   - `-f INJECT_BITFLIP`: injects a bit-flip to the first rank right after the
