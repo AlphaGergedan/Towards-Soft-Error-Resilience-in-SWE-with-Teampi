@@ -10,8 +10,7 @@ target_sources(swe_softRes PRIVATE
   ftLogger.hpp
   ftLogger.cpp
   hasher.cpp
-  hasher.hpp
-  sha1.hpp)
+  hasher.hpp)
 
 target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
   help.hpp
@@ -19,8 +18,7 @@ target_sources(swe_softRes_and_hardRes_woutTaskSharing PRIVATE
   ftLogger.hpp
   ftLogger.cpp
   hasher.cpp
-  hasher.hpp
-  sha1.hpp)
+  hasher.hpp)
 
 target_sources(swe_softRes_and_hardRes_wTaskSharing PRIVATE
   help.hpp
