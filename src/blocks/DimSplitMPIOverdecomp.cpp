@@ -52,7 +52,9 @@
 #include "blocks/DimSplitMPIOverdecomp.hpp"
 
 #include <bitset>
+#include <cmath>
 #include <limits>
+#include <math.h>
 #include <mpi.h>
 #include <ostream>
 #include <unistd.h>
@@ -649,7 +651,7 @@ void SWE_DimensionalSplittingMPIOverdecomp::savePreviousData() {
 }
 
 /**
- * validates the following physical and numerical admissibility
+ * Validates the following physical and numerical admissibility
  * criteria, should be called after the computeNumericalFluxes
  * but before the updateUnknowns method:
  *   1. Physical Admissibility
@@ -664,14 +666,12 @@ void SWE_DimensionalSplittingMPIOverdecomp::savePreviousData() {
  *          checks can reduce this probability even more
  *          This check only validates the update and data arrays stored in this block
  *
- * @param timeStep
- * @return admissibilityTag returns 0 if admissible,
- *                            1 if only updates not admissible, >1 otherwise
+ * @param timeStep current timestep of the simulation
+ * @return admissible returns true if admissible
  */
-int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep) {
-
+bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep) {
     /* return value */
-    int admissibilityTag = 0;
+    bool admissible = true;
 
     /* admissibility */
     bool updatesAdmissible = true;
@@ -679,8 +679,7 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep)
 
     float dt = maxTimestep;
 
-    admissibilityTag &= !std::isnan(maxTimestep);
-
+    admissible &= !std::isnan(maxTimestep);
     /* loop over the computation domain only */
     for (int i = 1; i < nx + 1; i++) {
         for (int j = 1; j < ny + 2; j++) {
@@ -699,10 +698,9 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep)
             dataAdmissible &= !std::isnan(h[i][j]);
             dataAdmissible &= !std::isnan(hv[i][j]);
             dataAdmissible &= !std::isnan(hu[i][j]);
-            // TODO check the replicated arrays as well | we don't need this because we can recover anyway
 
             /**********************************************
-              2. NUMERICAL ADMISSIBILITY : TODO DMP
+              2. NUMERICAL ADMISSIBILITY : DMP
              **********************************************/
             /* get the neigbours max and min */
             float h_max = std::max({h_prev[i][j-1], h_prev[i][j+1], h_prev[i-1][j], h_prev[i+1][j]});
@@ -713,93 +711,63 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep)
             float hu_min = std::min({hu_prev[i][j-1], hu_prev[i][j+1], hu_prev[i-1][j], hu_prev[i+1][j]});
 
             /* Relaxation factor d */
-            float d = 75.f;
+            float d = 100.f;
 
             /*
-             * TODO desc.
-             *
-             *
-             *
              * check Discrete Maximum Principle holding only if we already have
              * a previous solution. Previous solution must be saved by calling
              * the function savePreviousData by the application before writing
              * the results with updateUnknowns
              *
-             * These are all data admissibility checks and cannot be recomputed,
-             * because
-             *
-             * TODO optimize by reusing this calculation to write to data arrays
-             *
+             * TODO add DMP checks to update arrays as well
+             *      alternative: save the previous updates and try to 'guess' the next update interval
              */
             /* check the current data arrays */
             if (iterationNumber > 0) {
-                bool cond1 = h_min-d <= h[i][j] && h[i][j] <= h_max+d;
-                bool cond2 = hv_min-d <= hv[i][j] && hv[i][j] <= hv_max+d;
-                bool cond3 = hu_min-d <= hu[i][j] && hu[i][j] <= hu_max+d;
-                // TODO for debugging
-                if (!cond1) {
-                    std::cout << "\n\nh neighbours : [" << h_prev[i][j-1] << ", "
-                              << h_prev[i][j+1] << ", " << h_prev[i-1][j] << ", "
-                              << h_prev[i+1][j] << "]\n"
-                              << "h_min < h < h_max\n" << h_min << " < " << h[i][j] << " < " << h_max
-                              << std::endl;
-                }
-                if (!cond2) {
-                    std::cout << "\n\nhv neighbours : [" << hv_prev[i][j-1] << ", "
-                              << hv_prev[i][j+1] << ", " << hv_prev[i-1][j] << ", "
-                              << hv_prev[i+1][j] << "]\n"
-                              << "hv_min < hv < hv_max\n" << hv_min << " < " << hv[i][j] << " < " << hv_max
-                              << std::endl;
-                }
-                if (!cond3) {
-                    std::cout << "\n\nhu neighbours : [" << hu_prev[i][j-1] << ", "
-                              << hu_prev[i][j+1] << ", " << hu_prev[i-1][j] << ", "
-                              << hu_prev[i+1][j] << "]\n"
-                              << "hu_min < hu < hu_max\n" << hu_min << " < " << hu[i][j] << " < " << hu_max
-                              << std::endl;
-                }
-                dataAdmissible &= cond1 && cond2 && cond3;
+                //bool cond1 = h_min - d <= h[i][j] && h[i][j] <= h_max + d;
+                //bool cond2 = hv_min - d <= hv[i][j] && hv[i][j] <= hv_max + d;
+                //bool cond3 = hu_min - d <= hu[i][j] && hu[i][j] <= hu_max + d;
+                //// TODO for debugging
+                //if (!cond1) {
+                    //std::cout << "\n\nh neighbours : [" << h_prev[i][j-1] << ", "
+                              //<< h_prev[i][j+1] << ", " << h_prev[i-1][j] << ", "
+                              //<< h_prev[i+1][j] << "]\n"
+                              //<< "h_min-d  < h < h_max+d\n" << h_min-d << " < " << h[i][j] << " < " << h_max+d
+                              //<< std::endl;
+                //}
+                //if (!cond2) {
+                    //std::cout << "\n\nhv neighbours : [" << hv_prev[i][j-1] << ", "
+                              //<< hv_prev[i][j+1] << ", " << hv_prev[i-1][j] << ", "
+                              //<< hv_prev[i+1][j] << "]\n"
+                              //<< "hv_min-d < hv < hv_max+d\n" << hv_min-d << " < " << hv[i][j] << " < " << hv_max+d
+                              //<< std::endl;
+                //}
+                //if (!cond3) {
+                    //std::cout << "\n\nhu neighbours : [" << hu_prev[i][j-1] << ", "
+                              //<< hu_prev[i][j+1] << ", " << hu_prev[i-1][j] << ", "
+                              //<< hu_prev[i+1][j] << "]\n"
+                              //<< "hu_min-d < hu < hu_max+d\n" << hu_min-d << " < " << hu[i][j] << " < " << hu_max+d
+                              //<< std::endl;
+                //}
 
-                /* DMP (TODO use relaxed with delta if error occurs) */
-                //dataAdmissible &= (std::min_element(h_neighboursInPrev, h_neighboursInPrev + 4)) && ();
+                dataAdmissible &= h_min - d <= h[i][j] && h[i][j] <= h_max + d;
+                dataAdmissible &= hv_min - d <= hv[i][j] && hv[i][j] <= hv_max + d;
+                dataAdmissible &= hu_min - d <= hu[i][j] && hu[i][j] <= hu_max + d;
             }
-
-            // TODO
-            /* DMP check for the update arrays h, hv and hu */
-            /* calculate the values hv and hu in the next time step */
-            //float h_temp = h[i][j] - dt / dx * (hNetUpdatesRight[i - 1][j - 1]
-                                   //+ hNetUpdatesLeft[i][j - 1])
-                                   //+ dt / dy * (hNetUpdatesAbove[i - 1][j - 1]
-                                   //+ hNetUpdatesBelow[i - 1][j]);
-            //float hv_temp = hv[i][j] - dt / dy * (hvNetUpdatesAbove[i - 1][j - 1]
-                                     //+ hvNetUpdatesBelow[i - 1][j]);
-            //float hu_temp = hu[i][j] - dt / dx * (huNetUpdatesRight[i - 1][j - 1]
-                                     //+ huNetUpdatesLeft[i][j - 1]);
-//
-            //updatesAdmissible &= h_min-d <= h_temp && h_temp <= h_max+d;
-            //updatesAdmissible &= hv_min-d <= hv_temp && hv_temp <= hv_max+d;
-            //updatesAdmissible &= hu_min-d <= hu_temp && hu_temp <= hu_max+d;
 
             /******************************************************
               1. PHYSICAL ADMISSIBILITY : bathymetry is unchanged
              ******************************************************/
-            dataAdmissible &= (b[i][j] == b_replica[i][j]);
+            dataAdmissible &= b[i][j] == b_replica[i][j];
 
 
             /******************************************************
               2. PHYSICAL ADMISSIBILITY : no negative water height
              ******************************************************/
             dataAdmissible &= h[i][j] >= 0;
-            /* calculate the value h in the next time step TODO reuse this */
-            //updatesAdmissible &= h_temp >= 0; /* SDC can also be in data but
-                                                 //we give it another chance and
-                                                 //recompute */
         }
     }
-
-
     /* Check NaNs in the ghost layers */
-    /* TODO what else we can check? */
 
     /* loop over the ghost layers with indices
      * i = 0 and i = nx + 1 */
@@ -827,7 +795,6 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep)
         dataAdmissible &= !std::isnan(hv[nx + 1][j]);
         dataAdmissible &= !std::isnan(hu[nx + 1][j]);
     }
-
     /* loop over the ghost layers with indices
      * j = 0 and j = nx + 1 */
     for (int i = 1; i < nx + 1; i++) {
@@ -858,14 +825,9 @@ int SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep)
         dataAdmissible &= !std::isnan(hv[i][ny + 1]);
         dataAdmissible &= !std::isnan(hu[i][ny + 1]);
     }
-
-    /* TODO also check for errors in the previous data arrays */
-
     /* is data admissible */
-    if (!dataAdmissible) return 2;
-
-    admissibilityTag += updatesAdmissible ? 0 : 1;
-    return admissibilityTag;
+    admissible = updatesAdmissible && dataAdmissible;
+    return admissible ;
 }
 
 //------------------------------------------------------------------------------
@@ -975,6 +937,17 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoData() {
     int rand_float = std::rand() % arraySize;
     int rand_bit = std::rand() % 32;
 
+    /* this was for the propagation test */
+    ///* float to flip */
+    //float target = (data_arrays[3])[200];
+    //std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
+//
+    //float oldValue = (data_arrays[3])[200];
+    ///* flip the bit and write it */
+    //targetFloat->flip(15); (data_arrays[3])[200] = target;
+    //float newValue = (data_arrays[3])[200];
+    //assert(target == newValue);
+
     /* float to flip */
     float target = (data_arrays[rand_index])[rand_float];
     std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
@@ -988,7 +961,7 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoData() {
     print_injectionIntoData(rand_index, rand_float, rand_bit, oldValue, newValue);
 }
 
-// -- FOR TESTS  -- //
+// ------------ FOR TESTS  --------------- //
 
 /**
  * Injects a NaN into one of the following arrays:
@@ -1071,6 +1044,131 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectBathymetryChange_intoData() {
 }
 
 /**
+ * Injects infinity into one of the following arrays:
+ *
+ *  --> b, h, hv, hu
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectInf_intoData() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 4;
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject Inf */
+    data_arrays[rand_index][rand_float] = INFINITY;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == INFINITY);
+
+    print_injectionIntoData(rand_index, rand_float, -1, oldValue, newValue);
+}
+
+/**
+ * Injects -infinity into one of the following arrays:
+ *
+ *  --> b, h, hv, hu
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectnInf_intoData() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 4;
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject -Inf */
+    data_arrays[rand_index][rand_float] = -INFINITY;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == -INFINITY);
+
+    print_injectionIntoData(rand_index, rand_float, -1, oldValue, newValue);
+}
+
+/**
+ * Injects a big number into one of the following arrays:
+ *
+ *  --> b, h, hv, hu
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectBigNumber_intoData() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 4;
+
+    ///* randomly select the float index */
+    //int rand_float = std::rand() % arraySize;
+//
+    //float oldValue = data_arrays[3][200];
+    ///* inject big number */
+    //data_arrays[3][200] = 4294967296.f;
+    //float newValue = data_arrays[3][200];
+    //assert(newValue == 4294967296.f);
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject big number */
+    data_arrays[rand_index][rand_float] = 4294967296.f;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == 4294967296.f);
+
+
+    print_injectionIntoData(rand_index, rand_float, -1, oldValue, newValue);
+}
+
+/**
+ * Injects a small number into one of the following arrays:
+ *
+ *  --> b, h, hv, hu
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectSmallNumber_intoData() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 4;
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject small number */
+    data_arrays[rand_index][rand_float] = -4294967296.f;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == -4294967296.f);
+
+    print_injectionIntoData(rand_index, rand_float, -1, oldValue, newValue);
+}
+
+//-------------------------------------------------------
+
+
+/**
  * Injects a NaN into one of the following arrays:
  *
  *  --> hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft,
@@ -1107,36 +1205,147 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectNaN_intoUpdates() {
 }
 
 /**
- * Injects an update that leads to negative water height into one of the
- * following arrays:
+ * Injects Inf into one of the following arrays:
  *
- *  --> hNetUpdatesLeft, hNetUpdatesBelow
+ *  --> hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft,
+ *      huNetUpdatesRight, hNetUpdatesAbove, hNetUpdatesBelow,
+ *      hvNetUpdatesAbove, hvNetUpdatesBelow
  *
- * The array is selected randomly.
+ * The array and its element is selected randomly.
  */
-void SWE_DimensionalSplittingMPIOverdecomp::injectNegativeWaterHeight_intoUpdates() {
-    float* data_arrays[2] = {
+void SWE_DimensionalSplittingMPIOverdecomp::injectInf_intoUpdates() {
+    float* data_arrays[8] = {
         /* arrays with size (nx+2)*(ny+2) */
-        hNetUpdatesLeft.getRawPointer(),
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
         /* arrays with size (nx+1)*(ny+2) */
-        hNetUpdatesBelow.getRawPointer()};
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
     unsigned int arraySize;
 
     /* randomly select the data array */
     srand (static_cast <unsigned> (time(NULL)));
-    int rand_index = std::rand() % 2;
-    arraySize = (rand_index < 1) ? fieldSizeX : fieldSizeY;
+    int rand_index = std::rand() % 8;
+    arraySize = (rand_index < 4) ? fieldSizeX : fieldSizeY;
 
-    /* float index */
-    int index_float = arraySize / 2;
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
 
-    float oldValue = data_arrays[rand_index][index_float];
-    /* assign negative infinity to set the height negative */
-    data_arrays[rand_index][index_float] = -INFINITY;
-    float newValue = data_arrays[rand_index][index_float];
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject Inf */
+    data_arrays[rand_index][rand_float] = INFINITY;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == INFINITY);
 
-    int real_index = (rand_index == 0) ? 0 : 5;
-    print_injectionIntoUpdates(real_index, index_float, -1, oldValue, newValue);
+    print_injectionIntoUpdates(rand_index, rand_float, -1, oldValue, newValue);
+}
+
+/**
+ * Injects -Inf into one of the following arrays:
+ *
+ *  --> hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft,
+ *      huNetUpdatesRight, hNetUpdatesAbove, hNetUpdatesBelow,
+ *      hvNetUpdatesAbove, hvNetUpdatesBelow
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectnInf_intoUpdates() {
+    float* data_arrays[8] = {
+        /* arrays with size (nx+2)*(ny+2) */
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
+    unsigned int arraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 8;
+    arraySize = (rand_index < 4) ? fieldSizeX : fieldSizeY;
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject -Inf */
+    data_arrays[rand_index][rand_float] = -INFINITY;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == -INFINITY);
+
+    print_injectionIntoUpdates(rand_index, rand_float, -1, oldValue, newValue);
+}
+
+/**
+ * Injects a big number into one of the following arrays:
+ *
+ *  --> hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft,
+ *      huNetUpdatesRight, hNetUpdatesAbove, hNetUpdatesBelow,
+ *      hvNetUpdatesAbove, hvNetUpdatesBelow
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectBigNumber_intoUpdates() {
+    float* data_arrays[8] = {
+        /* arrays with size (nx+2)*(ny+2) */
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
+    unsigned int arraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 8;
+    arraySize = (rand_index < 4) ? fieldSizeX : fieldSizeY;
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject big number */
+    data_arrays[rand_index][rand_float] = 4294967296.f;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == 4294967296.f);
+
+    print_injectionIntoUpdates(rand_index, rand_float, -1, oldValue, newValue);
+}
+
+/**
+ * Injects a small number into one of the following arrays:
+ *
+ *  --> hNetUpdatesLeft, hNetUpdatesRight, huNetUpdatesLeft,
+ *      huNetUpdatesRight, hNetUpdatesAbove, hNetUpdatesBelow,
+ *      hvNetUpdatesAbove, hvNetUpdatesBelow
+ *
+ * The array and its element is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectSmallNumber_intoUpdates() {
+    float* data_arrays[8] = {
+        /* arrays with size (nx+2)*(ny+2) */
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
+    unsigned int arraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 8;
+    arraySize = (rand_index < 4) ? fieldSizeX : fieldSizeY;
+
+    /* randomly select the float index */
+    int rand_float = std::rand() % arraySize;
+
+    float oldValue = data_arrays[rand_index][rand_float];
+    /* inject small number */
+    data_arrays[rand_index][rand_float] = -4294967296.f;
+    float newValue = data_arrays[rand_index][rand_float];
+    assert(newValue == -4294967296.f);
+
+    print_injectionIntoUpdates(rand_index, rand_float, -1, oldValue, newValue);
 }
 
 

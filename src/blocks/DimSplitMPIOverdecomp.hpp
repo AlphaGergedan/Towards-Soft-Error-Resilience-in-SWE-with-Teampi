@@ -112,7 +112,7 @@ public:
     void createCheckpoint(float t, std::string backupMetadataName, int checkpointsLeft);
 
     /* validates physical and numerical admissibility criteria */
-    int validateAdmissibility(float timestep);
+    bool validateAdmissibility(float timestep);
 
     /* injects a random bit flip into a random array */
     void injectRandomBitflip();
@@ -125,15 +125,18 @@ public:
 
     /* These injections are for tests */
     void injectNaN_intoData();
+    void injectInf_intoData();
+    void injectnInf_intoData();
+    void injectBigNumber_intoData();
+    void injectSmallNumber_intoData();
     void injectNegativeWaterHeight_intoData();
     void injectBathymetryChange_intoData();
-    void injectNaN_intoUpdates();
-    void injectNegativeWaterHeight_intoUpdates();
 
-    /** TODO For bitflip information for tests */
-    struct bitflipInfo {
-        //!
-    };
+    void injectNaN_intoUpdates();
+    void injectInf_intoUpdates();
+    void injectnInf_intoUpdates();
+    void injectBigNumber_intoUpdates();
+    void injectSmallNumber_intoUpdates();
 
 
     struct blockData_s
