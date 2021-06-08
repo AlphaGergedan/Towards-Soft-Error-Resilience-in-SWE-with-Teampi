@@ -228,6 +228,32 @@ if (USE_DEBUG)
     target_compile_options(swe_checkpointRestart PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
     )
+elseif (USE_PROFILING)
+    target_compile_options(tmpi PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+    target_compile_options(swe_noRes PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+    target_compile_options(swe_hardRes_wTaskSharing PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+    target_compile_options(swe_softRes_hashes PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+    target_compile_options(swe_softRes_hardRes_hashes PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+    target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+    # TODO new alg
+    target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+    target_compile_options(swe_checkpointRestart PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
 else ()
     target_compile_options(tmpi PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>: -O3 >
