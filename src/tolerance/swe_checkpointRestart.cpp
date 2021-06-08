@@ -7,8 +7,6 @@
  * running with checkpoints without writing output.
  *
  * TODO
- *  - add support for soft resilience, see literature,
- *
  *  - don't allow -r and -c at the same time (also x,y and t)
  *
  *  - tested with 1, 2 and 4 processes but with 6 processes..
@@ -16,8 +14,6 @@
  *  known issues
  *    checkpoints slow down due to copying as the data gets larger
  *    checkpoints writes a timestep to the output file which causes them to slow down as well
- *
- *
  */
 
 

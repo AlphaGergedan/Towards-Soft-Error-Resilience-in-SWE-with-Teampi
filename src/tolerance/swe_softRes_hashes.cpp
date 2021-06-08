@@ -1,5 +1,5 @@
 /**
- * @file src/tolerance/swe_softRes.cpp
+ * @file src/tolerance/swe_softRes_hashes.cpp
  *
  * @brief Soft error detection using hashes
  *
@@ -25,11 +25,7 @@
  *          // send hash with heartbeat
  *      }
  *
- *
- *
- * TODO fix hashing method with sha1
- * TODO randomize the bit flip into dimensionalsplitting block
- *
+ * @author Atamert Rahma rahma@in.tum.de
  */
 
 
@@ -341,9 +337,8 @@ int main(int argc, char** argv)
     const int fieldSizeX{(simulationBlock->nx + 2) * (simulationBlock->ny + 2)};
     const int fieldSizeY{(simulationBlock->nx + 1) * (simulationBlock->ny + 2)};
 
-    // TODO also hash the data arrays here
     /* for hashing the calculated updates to detect silent data corruptions */
-    Hasher swe_hasher = Hasher(fieldSizeX, fieldSizeY, simulationBlock.get());
+    tools::Hasher swe_hasher = tools::Hasher(fieldSizeX, fieldSizeY, simulationBlock.get());
 
 
     for (unsigned int i = 0; i < numberOfHashes; i++) {
@@ -374,11 +369,11 @@ int main(int argc, char** argv)
             }
 
             /* update the hash */
-            if (hashOption == 0) {
-                /* don't hash. 0 is for 'no hashing' */
-            }
-            else if (hashOption == 1) {
+            if (hashOption == 1) {
                 swe_hasher.update_stdHash();
+            }
+            else if (hashOption == 0) {
+                /* don't hash. 0 is for 'no hashing' */
             }
             else {
                 std::cout << "Unknown hash method.. something went wrong\n"
@@ -394,9 +389,6 @@ int main(int argc, char** argv)
             simulationBlock->maxTimestep = agreed_timestep;
             simulationBlock->updateUnknowns(agreed_timestep);
 
-            /* TODO hash here ! This version does not check over all the
-             * h,b,hu,hv data domain ! */
-
             t += agreed_timestep;
 
             if(writeOutput) {
@@ -410,13 +402,8 @@ int main(int argc, char** argv)
         } // end of t < sendHashAt[i]
 
         /* Finalize hash computation */
-        if (hashOption == 0) {
-            /* don't hash. 0 is for 'no hashing' */
-        }
-        else if (hashOption == 1) {
-
+        if (hashOption == 1) {
             size_t total_hash = swe_hasher.finalize_stdHash();
-
             if(verbose) {
                 /* print heartbeat for debugging */
                 std::cout << "\n\t+++++++++ " << heartbeatCounter << ". "
@@ -442,14 +429,15 @@ int main(int argc, char** argv)
                          MPI_COMM_SELF,             /* Communicator     */
                          MPI_STATUS_IGNORE);        /* Status object    */
         }
+        else if (hashOption == 0) {
+            /* don't hash. 0 is for 'no hashing' */
+        }
         else {
             std::cout << "Unknown hash method.. something went wrong\n"
                       << std::endl;
             MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
         }
-
         heartbeatCounter++;
-
     } // for (unsigned int i = 0; i < numberOfHashes; i++)
 
     delete[] sendHashAt;
@@ -459,7 +447,6 @@ int main(int argc, char** argv)
     simulationBlock->freeMpiType();
 
 /*
-    // TODO trying to fix the error
     PMPI_Comm_set_errhandler(TMPI_GetInterTeamComm(), MPI_ERRORS_RETURN);
     PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
 

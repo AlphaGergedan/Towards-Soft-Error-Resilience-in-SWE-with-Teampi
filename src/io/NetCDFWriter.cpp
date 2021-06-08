@@ -275,6 +275,11 @@ void io::NetCdfWriter::writeTimeStep(const Float2D& i_h, const Float2D& i_hu, co
 // Copies the data from the current output-file to the backup-file
 void io::NetCdfWriter::commitBackup()
 {
+    if (backupName == "") {
+        std::cout << "No backup name provided, cannot commit backup!"
+                  << std::endl;
+         assert(false);
+    }
     std::cout << "commiting backup" << std::endl;
     nc_close(dataFile);
     std::ifstream src(fileName, std::ios::binary);

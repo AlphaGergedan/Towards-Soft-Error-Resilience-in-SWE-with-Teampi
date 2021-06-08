@@ -1,11 +1,11 @@
 /**
- * @file src/tolerance/swe_softRes_and_hardRes_wTaskSharing.cpp
+ * @file src/tolerance/swe_softRes_admiss_useShared_v1.cpp
  *
  * @brief soft and hard error resilience with task sharing
  *
- * Checks for admissability of the computations (also see validateAdmissability
+ * Checks for admissibility of the computations (also see validateAdmissibility
  * in src/blocks/DimSplitMPIOverdecomp.cpp) and only share the results if they
- * are admissable. If they are not, all the teams goes into a recovery mode until
+ * are admissible. If they are not, all the teams goes into a recovery mode until
  * all the teams have been recovered.
  *
  * Here is a short pseudo-code for the computation loop:
@@ -18,7 +18,7 @@
  *           t < simulationDuration) {
  *
  *      for each block in primaryBlocks
- *        // computeNumericalFluxes + validate Admissability criteria
+ *        // computeNumericalFluxes + validate Admissibility criteria
  *
  *      // report to myTeam with allReduce
  *      // rank 0 of myTeam sends MPI_Send to its replicas (the reduced report)
@@ -47,6 +47,8 @@
  *      for each block in blocks
  *        if (block is primaryBlock) // send block to replicas
  *        else // receive block from the replicas
+ *
+ *      TODO validate secondary blocks
  *    }
  *
  *    // end Heartbeat
@@ -55,11 +57,12 @@
  *
  *
  * TODO integrate hard resilience using warmSpares
- * TODO adding more admissability criteria
+ * TODO adding more admissibility criteria
  * TODO warm spares integration for also activating hard error resilience
  */
 
 
+#include <limits>
 #include <mpi.h>
 #include <string>
 #include <teaMPI.h>
@@ -285,6 +288,8 @@ int main(int argc, char** argv) {
     if (restartNameInput == "")
     {
         scenario = new SWE_RadialBathymetryDamBreakScenario{};
+        // TODO testing the propagation of SDC
+        //scenario = new SWE_SeaAtRestScenario();
         int widthScenario = scenario->getBoundaryPos(BND_RIGHT) - scenario->getBoundaryPos(BND_LEFT);
         int heightScenario = scenario->getBoundaryPos(BND_TOP) - scenario->getBoundaryPos(BND_BOTTOM);
 
@@ -508,6 +513,7 @@ int main(int argc, char** argv) {
     }
     for (auto& block : simulationBlocks) block->sendBathymetry();
     for (auto& block : simulationBlocks) block->recvBathymetry();
+    for (auto& block : simulationBlocks) block->saveBathymetry();
 
     std::vector<float> timesteps;
     // Simulated time
@@ -561,8 +567,7 @@ int main(int argc, char** argv) {
             for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
             for (auto& currentBlock : simulationBlocks) { currentBlock->receiveGhostLayer(); }
             const MPI_Comm interTeamComm{TMPI_GetInterTeamComm()};
-            if (!hasRecovered && !recoveredFromSDC)
-            {
+            if (!hasRecovered && !recoveredFromSDC) {
                 // Avoid overwriting an old send buffer before everyone reaches this point
                 MPI_Barrier(interTeamComm);
             }
@@ -582,8 +587,10 @@ int main(int argc, char** argv) {
 
                 /* inject bitflip if desired */
                 if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
+                    //currentBlock.injectBigNumber_intoData();
+                    currentBlock.injectNaN_intoData();
                     //currentBlock.injectRandomBitflip();
-                    currentBlock.injectRandomBitflip_intoData();
+                    //currentBlock.injectRandomBitflip_intoData();
                     //currentBlock.injectRandomBitflip_intoUpdates();
 
                     /* prevent any other bitflip */
@@ -591,43 +598,31 @@ int main(int argc, char** argv) {
                 }
 
                 /* check for soft errors */
-                int admissable = currentBlock.validateAdmissability(t);
+                bool admissible = currentBlock.validateAdmissibility(t);
+                // TODO propagation of SDC is being checked.. no errors !
+                //bool admissible = true;
 
                 /* handle soft errors
                  * if SDC detected in updates only, then recompute */
-                if (admissable == 0) {
-                    //if (verbose) ft_logger.ft_SDC_notDetected();
-                }
-                else if (admissable == 1) {
-                    // TODO add some tests to validate / show that you are able to fix the errorrs
+                if (!admissible) {
+                    /* try to fix SDC by recomputing */
                     currentBlock.computeNumericalFluxes();
 
                     /* check if SDC is still present */
-                    if (currentBlock.validateAdmissability(t) != 0) {
+                    admissible = currentBlock.validateAdmissibility(t);
+                    if (!admissible) {
                         std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but cannot be fixed..\n"
                                   << "             Warning the rest of my team and all my replicas"
                                   << std::endl;
+                        /* set the report flag to reload from another team */
                         reportFlag = 1;
                     } else {
                         std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but it is fixed.."
                                   << std::endl;
-                        reportFlag = 1;
                     }
                 }
-                // soft error in data, turn on the recovery mode
-                else if (admissable == 2) {
-                    std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but cannot be fixed..\n"
-                              << "             Warning the rest of my team and all my replicas"
-                              << std::endl;
-                    reportFlag = 1;
-                }
-                else {
-                    std::cout << "Unknown error (admissability)" << std::endl;
-                    assert(false);
-                }
-
                 //if (verbose) ft_logger.ft_block_calculatingTask(currentBlockNr, currentBlock.maxTimestep);
-            } // primary block computation + admissability checks for SDCs are finished
+            } // primary block computation + admissibility checks for SDCs are finished
 
             unsigned char teamCheck = 0;
             /* Report to my team */
@@ -720,7 +715,7 @@ int main(int argc, char** argv) {
                 }
             }
 
-            /* Primary Block computation + Admissability checks + SDC Reports
+            /* Primary Block computation + Admissibility checks + SDC Reports
              * are finished */
 
             std::vector<MPI_Request> send_reqs(11 * numTeams, MPI_REQUEST_NULL);
@@ -967,15 +962,13 @@ int main(int argc, char** argv) {
                         }
                         currentBlock.computeNumericalFluxes();
 
-                        /* TODO handle this part, we should again check SDC, or
-                         *      what should we do ? */
 
-//--------------------TODO maybe move the block to a header, we have the same block above -----------------------
-
-                        /* check for soft errors */
-
-//--------------------TODO maybe move the block to a header, we have the same block above -----------------------
-
+                        /* TODO handle this part, we should again check SDC
+                         *
+                         * This is very difficult with checkpointing..
+                         * if we checkpoint then we need to skip computation
+                         * ---> just share with replicas and try to receive
+                         *      secondary block information via MPI */
                     }
                     else {
                         // currentBlock.computeNumericalFluxes();
@@ -997,12 +990,18 @@ int main(int argc, char** argv) {
                           //<< std::endl;
             }
             float minTimestep = *std::min_element(timesteps.begin(), timesteps.end());
+            float test = *std::min_element(timesteps.begin(), timesteps.end()); // TODO for debugging WE DON'T NEED TO ALLLREDUCE  IF WE DON'T COMPUTE SECOND TASKS OURSELVES
             MPI_Allreduce(&minTimestep, &timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
             //std::cout << "T" << myTeam << "R" << myRankInTeam
                       //<< " : Max Timestep = " << timestep << std::endl;
+            assert(test == minTimestep);
 
-            for (auto& block : simulationBlocks) { block->maxTimestep = timestep; }
-            for (auto& block : simulationBlocks) { block->updateUnknowns(timestep); }
+            for (auto& block : simulationBlocks) block->maxTimestep = timestep;
+
+            /* redundant saving of the previous results for admissibility checks */
+            for (auto& block : simulationBlocks) block->savePreviousData();
+            for (auto& block : simulationBlocks) block->updateUnknowns(timestep);
+
             t += timestep;
 
             /* write output */

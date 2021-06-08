@@ -36,9 +36,29 @@
 #include "tools/ftLogger.hpp"
 #include "types/Boundary.hpp"
 
+#include "tools/hasher.hpp"
+#include "tests/bitflip_injection_tests.hpp"
+
+/* Size of size_t to decide which MPI_Datatype we need */
+#if SIZE_MAX == UCHAR_MAX
+   #define MPI_SIZE_T MPI_UNSIGNED_CHAR             /* 1 byte. a little extreme ? */
+#elif SIZE_MAX == USHRT_MAX
+   #define MPI_SIZE_T MPI_UNSIGNED_SHORT            /* 2 bytes */
+#elif SIZE_MAX == UINT_MAX
+   #define MPI_SIZE_T MPI_UNSIGNED                  /* 4 bytes */
+#elif SIZE_MAX == ULONG_MAX
+   #define MPI_SIZE_T MPI_UNSIGNED_LONG             /* 8 bytes */
+#elif SIZE_MAX == ULLONG_MAX
+   #define MPI_SIZE_T MPI_UNSIGNED_LONG_LONG        /* 8 bytes */
+#else
+    #error "Size of size_t unknown."
+#endif
+
+
 /* -- GLOBAL DECLARATIONS -- */
 bool SDC_injected = false;
-size_t testsPassed = 0;
+bool jumpedForLoad = false;
+size_t currentTestIndex = 0;
 
 std::string lightShade = "\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591";
 std::string doubleVertical = "\u2551";
@@ -80,7 +100,7 @@ void loadCheckpointCallback2_softErrorRecovery(int reloadTeam) {
     simulationBlocks.clear();
     delete scenario;
     scenario = nullptr;
-    restartNameInput = "TEST_" + std::to_string(testsPassed+1) + "_" +
+    restartNameInput = "TEST_" + std::to_string(currentTestIndex+1) + "_" +
                      backupNameInput + "_t" + std::to_string(reloadTeam);
     //hasRecovered = true;
     recoveredFromSDC = true;
@@ -119,59 +139,525 @@ std::array<int, 4> getNeighbours(int localBlockPositionX,
     return myNeighbours;
 }
 
-/* Data sturcture for easier syntax on arguments passed by tests */
-struct TestArguments {
-    float simulationDuration;
-    clock_t heartbeatInterval;
-    int nxRequested;
-    int nyRequested;
-    unsigned int decompFactor;
-    bool writeOutput;
-    double bitflip_at;          /* simulation time to inject the bitflip */
-
-    /* Constructor */
-    TestArguments(float simulationDuration_, clock_t heartbeatInterval_,
-                  int nxRequested_, int nyRequested_, unsigned int decompFactor_,
-                  bool writeOutput_, double bitflip_at_) {
-        simulationDuration = simulationDuration_;
-        heartbeatInterval = heartbeatInterval_;
-        nxRequested = nxRequested_;
-        nyRequested = nyRequested_;
-        decompFactor = decompFactor_;
-        writeOutput = writeOutput_;
-        bitflip_at = bitflip_at_;
-    }
-};
-
-
 //------------------------------------------------------------------------------
 
 
 /**
- * Runs the simulation hard coded, and injects
- * a desired bitflip at a random location.
- * Location can be either updates, data or
- * both.
+ * METHOD 1 : NO ERROR RESILIENCE
  *
- * Information usually obtained over the
- * command line is hardcoded here, using
- * \f$nxRequested = nyRequested = 500\f$.
+ * No error resilience for benchmarking. However this can provide
+ * a naive soft error detection if we run the application twice,
+ * and even soft error resilience (detection + correction) if we
+ * run the application 3 times (assuming that we would have at least
+ * 2 equal solutions)
  *
- * @param simulationDuration
- * @param heartbeatInterval
- * @param nxRequested
- * @param nyRequested
- * @param decompFactor
- * @param writeOutput
- * @param bitflip_at
- * @param bitflipLocation 0 for updates, 1 for data, 2 for random
- * @param bitflipType 0 for NaN, 1 for negative water height
- * @param rankToCorrupt
- *
- * @return value of the corrupted number
+ * @see tolerance/swe_noRes.cpp tests/bitflip_injection_tests.hpp
  */
-int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCorrupt) {
+void swe_noRes_run(FT_tests::TestArguments *args, int bitflipLocation, int bitflipType, int rankToCorrupt) {
+    /* Parameters to read */
+    float simulationDuration;
+    int nxRequested, nyRequested;
 
+    /* whether to write output */
+    bool writeOutput = false;
+
+    // Read in command line arguments
+    simulationDuration = args->simulationDuration;
+    nxRequested = args->nxRequested;
+    nyRequested = args->nyRequested;
+    writeOutput = args->writeOutput;
+
+    /* one block per rank */
+    std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp> simulationBlock;
+
+    /* Simulation time */
+    float t = 0.f;
+
+    /* init MPI */
+    int ranksPerTeam = 1;
+    int myRankInTeam;
+    MPI_Comm_size(MPI_COMM_WORLD, &ranksPerTeam);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
+    const int myTeam = 0;
+    int numTeams = 1;
+    unsigned int blocksPerRank = 1;
+
+    outputTeamName = outputNameInput + "_t" + std::to_string(myTeam);
+
+    // Print status NOT IN TESTING MODE
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    double startTime = MPI_Wtime();
+
+    /* int totalBlocks = blocksPerRank * ranksPerTeam; */
+    int totalBlocks = ranksPerTeam; // actually total number of global ranks
+                                    // (there is only one team)
+
+    // number of SWE-Blocks in x- and y-direction
+    int blockCountY = std::sqrt(totalBlocks);
+    while (totalBlocks % blockCountY != 0) blockCountY--;
+    int blockCountX = totalBlocks / blockCountY;
+
+    /* We have only one team, meaning blocksPerRank equals to 1*/
+    /* int startPoint = myRankInTeam * blocksPerRank; */
+    int startPoint = myRankInTeam;
+
+    float simulationStart = 0.f;
+
+    SWE_Scenario *scenario = new SWE_RadialBathymetryDamBreakScenario{};
+    int widthScenario = scenario->getBoundaryPos(BND_RIGHT) - scenario->getBoundaryPos(BND_LEFT);
+    int heightScenario = scenario->getBoundaryPos(BND_TOP) - scenario->getBoundaryPos(BND_BOTTOM);
+
+    float dxSimulation = (float)widthScenario / nxRequested;
+    float dySimulation = (float)heightScenario / nyRequested;
+
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    /* Loop over the rank's block number in its team. */
+
+    int localBlockPositionX = startPoint / blockCountY;
+    int localBlockPositionY = startPoint % blockCountY;
+
+    //compute local number of cells for each SWE_Block w.r.t. the
+    // simulation domain (particularly not the original scenario
+    // domain, which might be finer in resolution) (blocks at the
+    // domain boundary are assigned the "remainder" of cells)
+
+    int nxBlockSimulation = (nxRequested) / blockCountX;
+    int nxRemainderSimulation = nxRequested - (blockCountX - 1) * nxBlockSimulation;
+    int nyBlockSimulation = nyRequested / blockCountY;
+    int nyRemainderSimulation = nyRequested - (blockCountY - 1) * nyBlockSimulation;
+
+    int nxLocal = (localBlockPositionX < blockCountX - 1) ? nxBlockSimulation : nxRemainderSimulation;
+    int nyLocal = (localBlockPositionY < blockCountY - 1) ? nyBlockSimulation : nyRemainderSimulation;
+
+    // Compute the origin of the local simulation block w.r.t. the
+    // original scenario domain.
+    float localOriginX =
+        scenario->getBoundaryPos(BND_LEFT) + localBlockPositionX * dxSimulation * nxBlockSimulation;
+    float localOriginY =
+        scenario->getBoundaryPos(BND_BOTTOM) + localBlockPositionY * dySimulation * nyBlockSimulation;
+
+    std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
+
+    simulationBlock = std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
+        new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
+                                                  nyLocal,
+                                                  dxSimulation,
+                                                  dySimulation,
+                                                  localOriginX,
+                                                  localOriginY,
+                                                  0,
+                                                  outputTeamPosName,
+                                                  "",
+                                                  true, // always write for checkpointing
+                                                  false));
+
+
+    std::array<int, 4> myNeighbours =
+        getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, startPoint);
+
+    int refinedNeighbours[4];
+    int realNeighbours[4];
+    std::array<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>, 4> neighbourBlocks;
+    std::array<BoundaryType, 4> boundaries;
+
+    /* For all my neighbours. */
+    for (int j = 0; j < 4; j++) {
+        if (myNeighbours[j] >= startPoint && myNeighbours[j] < (startPoint + blocksPerRank))
+        {
+            refinedNeighbours[j] = -2;
+            realNeighbours[j] = myNeighbours[j];
+            // neighbourBlocks[j] = simulationBlocks[myNeighbours[j] - startPoint];
+            neighbourBlocks[j] = simulationBlock;
+            boundaries[j] = CONNECT_WITHIN_RANK;
+        }
+        else if (myNeighbours[j] == -1)
+        {
+            boundaries[j] = scenario->getBoundaryType((Boundary)j);
+            refinedNeighbours[j] = -1;
+            realNeighbours[j] = -1;
+        }
+        else
+        {
+            realNeighbours[j] = myNeighbours[j];
+            refinedNeighbours[j] = myNeighbours[j] / blocksPerRank;
+            boundaries[j] = CONNECT;
+        }
+    }
+    simulationBlock->initScenario(*scenario, boundaries.data());
+    simulationBlock->connectNeighbourLocalities(refinedNeighbours);
+    simulationBlock->connectNeighbours(realNeighbours);
+    simulationBlock->connectLocalNeighbours(neighbourBlocks);
+    simulationBlock->setRank(startPoint);
+    simulationBlock->setDuration(simulationDuration);
+
+    //------------------------------------------------------------------------------
+    simulationBlock->sendBathymetry();
+    simulationBlock->recvBathymetry();
+
+    std::vector<float> timesteps;
+    // Simulated time
+    t = simulationStart;
+
+    float timestep;
+
+    /**
+     * Contains the block numbers that needs to be calculated on the specific
+     * rank. There are 'numTeams * decompFactor * ranksPerTeam' blocks in total
+     * when sharing (each block es a complete 'task') so this helps us to order
+     * the blocks by their numbers across this rank's replicas to compute and
+     * share the results.
+     *
+     * In the naiv case, we have only one block per rank. So there is no
+     * sharing.
+     */
+    std::vector<int> myBlockOrder{};
+    myBlockOrder.push_back(0); /* We have only one block */
+
+//------------------------------------------------------------------------------
+
+    // Write zero timestep
+    simulationBlock->writeTimestep(0.f);
+
+    auto& currentBlock = *simulationBlock;
+
+    while (t < simulationDuration) {
+        // exchange boundaries between blocks
+        currentBlock.setGhostLayer();
+        currentBlock.receiveGhostLayer();
+
+        currentBlock.computeNumericalFluxes();
+
+        /* Agree on a timestep */
+        timestep = currentBlock.maxTimestep;
+        float agreed_timestep;
+        MPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+
+        currentBlock.maxTimestep = agreed_timestep;
+        currentBlock.updateUnknowns(agreed_timestep);
+
+        t += agreed_timestep;
+
+        if (writeOutput) {
+            currentBlock.writeTimestep(t);
+        }
+    }
+    simulationBlock->freeMpiType();
+    // maybe useful for benchmarking
+    double totalTime = MPI_Wtime() - startTime;
+    for (auto& block : simulationBlocks) { block->freeMpiType(); block.reset(); }
+    /* delete the pointers as well */
+    simulationBlocks.clear();
+    //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing scenario" << std::endl;
+    delete scenario; scenario = nullptr;
+    //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing t" << std::endl;
+    t = 0.f;
+    //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing backupMetadataNames" << std::endl;
+    for (auto& data : backupMetadataNames) { data.clear(); }
+    backupMetadataNames.clear(); outputTeamName.clear(); backupTeamName.clear();
+    //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing restartnameinput" << std::endl;
+    restartNameInput.clear();
+}
+
+/**
+ * METHOD 2 : SOFT ERROR DETECTION USING HASHES
+ *
+ * Provides soft error detection by comparing the results of two
+ * teams computing the same run redundantly by sending hashes in
+ * the hearbeat messages during teaMPI communication. It can also
+ * run 3 teams and kill the faulty team if a soft error occurs.
+ * This would provide soft error resilience.
+ *
+ * @see tolerance/swe_softRes_hashes.cpp tests/bitflip_injection_tests.hpp
+ */
+void swe_softRes_hashes_run(FT_tests::TestArguments *args, int bitflipLocation, int bitflipType, int rankToCorrupt) {
+    /* Arguments to read */
+    float simulationDuration = args->simulationDuration;
+    int nxRequested = args->nxRequested;
+    int nyRequested = args->nyRequested;
+    bool writeOutput = args->writeOutput;
+    int hashOption = 1;
+    unsigned int numberOfHashes = args->numberOfHashes;
+    double bitflip_at = args->bitflip_at;
+
+    /* Simulation time */
+    t = 0.0F;
+
+    /* one block per rank */
+    std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp> simulationBlock;
+
+    /* Compute when the hash intervals are reached */
+    float *sendHashAt = new float[numberOfHashes];
+    /* Time delta between sending hashes */
+    float sendHashDelta = simulationDuration / numberOfHashes;
+    /* The first hash is sent after 0 + delta t */
+    sendHashAt[0] = sendHashDelta;
+    for (unsigned int i = 1; i < numberOfHashes; i++) {
+        sendHashAt[i] = sendHashAt[i - 1] + sendHashDelta;
+    }
+
+    // init MPI
+    int myRankInTeam;
+    int ranksPerTeam;
+    MPI_Comm_size(MPI_COMM_WORLD, &ranksPerTeam);
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
+    const int myTeam{TMPI_GetTeamNumber()};
+    int numTeams = TMPI_GetInterTeamCommSize();
+    assert(numTeams == 2);
+
+    /* Since we are doing the first option naively, we will not share any
+     * blocks. Which means it is best that we have only one block per replica */
+    unsigned int blocksPerRank = 1;
+
+    outputTeamName = outputNameInput + "_t" + std::to_string(myTeam);
+
+    int totalBlocks = blocksPerRank * ranksPerTeam;
+
+    // number of SWE-Blocks in x- and y-direction
+    int blockCountY = std::sqrt(totalBlocks);
+    while (totalBlocks % blockCountY != 0) blockCountY--;
+    int blockCountX = totalBlocks / blockCountY;
+
+    int startPoint = myRankInTeam * blocksPerRank;
+
+    float simulationStart{0.0f};
+
+    // not loading from a checkpoint
+    SWE_Scenario *scenario = new SWE_RadialBathymetryDamBreakScenario{};
+    int widthScenario = scenario->getBoundaryPos(BND_RIGHT) - scenario->getBoundaryPos(BND_LEFT);
+    int heightScenario = scenario->getBoundaryPos(BND_TOP) - scenario->getBoundaryPos(BND_BOTTOM);
+
+    float dxSimulation = (float)widthScenario / nxRequested;
+    float dySimulation = (float)heightScenario / nyRequested;
+
+    int localBlockPositionX = startPoint / blockCountY;
+    int localBlockPositionY = startPoint % blockCountY;
+
+    // compute local number of cells for each SWE_Block w.r.t. the
+    // simulation domain (particularly not the original scenario
+    // domain, which might be finer in resolution) (blocks at the
+    // domain boundary are assigned the "remainder" of cells)
+
+    int nxBlockSimulation = (nxRequested) / blockCountX;
+    int nxRemainderSimulation = nxRequested - (blockCountX - 1) * nxBlockSimulation;
+    int nyBlockSimulation = nyRequested / blockCountY;
+    int nyRemainderSimulation = nyRequested - (blockCountY - 1) * nyBlockSimulation;
+
+    int nxLocal = (localBlockPositionX < blockCountX - 1) ? nxBlockSimulation : nxRemainderSimulation;
+    int nyLocal = (localBlockPositionY < blockCountY - 1) ? nyBlockSimulation : nyRemainderSimulation;
+
+    // Compute the origin of the local simulation block w.r.t. the
+    // original scenario domain.
+    float localOriginX =
+        scenario->getBoundaryPos(BND_LEFT) + localBlockPositionX * dxSimulation * nxBlockSimulation;
+    float localOriginY =
+        scenario->getBoundaryPos(BND_BOTTOM) + localBlockPositionY * dySimulation * nyBlockSimulation;
+
+    std::string outputTeamPosName = genTeamPosName(outputTeamName, localBlockPositionX, localBlockPositionY);
+
+    /* we keep a backup file for constructor, we don't use them */
+    std::string backupTeamPosName = genTeamPosName("BACKUP_" + outputTeamName, localBlockPositionX, localBlockPositionY);
+
+    /* Add the block to be calculated by this rank. */
+    simulationBlock = std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>(
+        new SWE_DimensionalSplittingMPIOverdecomp(nxLocal,
+                                                  nyLocal,
+                                                  dxSimulation,
+                                                  dySimulation,
+                                                  localOriginX,
+                                                  localOriginY,
+                                                  0,
+                                                  outputTeamPosName,
+                                                  backupTeamPosName,
+                                                  true,
+                                                  false));
+
+    /* no metadata in this version */
+    //backupMetadataNames.push_back(backupTeamPosName + "_metadata");
+
+    std::array<int, 4> myNeighbours =
+        getNeighbours(localBlockPositionX, localBlockPositionY, blockCountX, blockCountY, startPoint);
+
+    int refinedNeighbours[4];
+    int realNeighbours[4];
+    std::array<std::shared_ptr<SWE_DimensionalSplittingMPIOverdecomp>, 4> neighbourBlocks;
+    std::array<BoundaryType, 4> boundaries;
+
+    /* For all my neighbours. */
+    for (int j = 0; j < 4; j++) {
+        if (myNeighbours[j] >= startPoint && myNeighbours[j] < (startPoint + blocksPerRank)) {
+            refinedNeighbours[j] = -2;
+            realNeighbours[j] = myNeighbours[j];
+            neighbourBlocks[j] = simulationBlock;
+            boundaries[j] = CONNECT_WITHIN_RANK;
+        }
+        else if (myNeighbours[j] == -1) {
+            boundaries[j] = scenario->getBoundaryType((Boundary)j);
+            refinedNeighbours[j] = -1;
+            realNeighbours[j] = -1;
+        }
+        else {
+            realNeighbours[j] = myNeighbours[j];
+            refinedNeighbours[j] = myNeighbours[j] / blocksPerRank;
+            boundaries[j] = CONNECT;
+        }
+    }
+
+    simulationBlock->initScenario(*scenario, boundaries.data());
+    simulationBlock->connectNeighbourLocalities(refinedNeighbours);
+    simulationBlock->connectNeighbours(realNeighbours);
+    simulationBlock->connectLocalNeighbours(neighbourBlocks);
+    simulationBlock->setRank(startPoint);
+    simulationBlock->setDuration(simulationDuration);
+
+
+    simulationBlock->sendBathymetry();
+    simulationBlock->recvBathymetry();
+
+    // Simulated time
+    t = simulationStart;
+
+    float timestep;
+
+    /**
+     * Contains the block numbers that needs to be calculated on the specific
+     * rank. There are 'numTeams * decompFactor * ranksPerTeam' blocks in total
+     * when sharing (each block es a complete 'task') so this helps us to order
+     * the blocks by their numbers across this rank's replicas to compute and
+     * share the results.
+     */
+    std::vector<int> myBlockOrder{};
+
+    /* In the naiv case, we have only one block per rank. So there is no
+     * sharing.
+     */
+    myBlockOrder.push_back(0);
+
+//------------------------------------------------------------------------------
+    // Write zero timestep
+    if (writeOutput) {
+        simulationBlock->writeTimestep(0.f);
+    }
+//------------------------------------------------------------------------------
+
+    unsigned int heartbeatCounter = 0;
+
+    // Size of the update fields incl. ghost layer
+    const int fieldSizeX{(simulationBlock->nx + 2) * (simulationBlock->ny + 2)};
+    const int fieldSizeY{(simulationBlock->nx + 1) * (simulationBlock->ny + 2)};
+
+    // TODO also hash the data arrays here
+    /* for hashing the calculated updates to detect silent data corruptions */
+    tools::Hasher swe_hasher = tools::Hasher(fieldSizeX, fieldSizeY, simulationBlock.get());
+
+
+    for (unsigned int i = 0; i < numberOfHashes; i++) {
+
+        /* Simulate until the next sending is reached */
+        while (t < sendHashAt[i]) {
+
+            // exchange boundaries between blocks
+            simulationBlock->setGhostLayer();
+            simulationBlock->receiveGhostLayer();
+
+            auto& currentBlock = *simulationBlock;
+
+            /* compute current updates */
+            currentBlock.computeNumericalFluxes();
+
+            /* Inject a bitflip at team 0 at rank 0 */
+            if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
+                simulationBlock->injectRandomBitflip();
+                /* prevent any other bitflip */
+                bitflip_at = -1.f;
+            }
+
+            /* update the hash */
+            if (hashOption == 1) {
+                swe_hasher.update_stdHash();
+            }
+            else if (hashOption == 0) {
+                /* don't hash. 0 is for 'no hashing' */
+            }
+            else {
+                std::cout << "Unknown hash method.. something went wrong\n"
+                          << std::endl;
+                MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
+            }
+
+            /* Agree on a timestep */
+            timestep = simulationBlock->maxTimestep;
+            float agreed_timestep;
+            MPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+
+            simulationBlock->maxTimestep = agreed_timestep;
+            simulationBlock->updateUnknowns(agreed_timestep);
+
+            t += agreed_timestep;
+
+            if(writeOutput) {
+                simulationBlock->writeTimestep(t);
+            }
+        } // end of t < sendHashAt[i]
+
+        /* Finalize hash computation */
+        if (hashOption == 1) {
+            size_t total_hash = swe_hasher.finalize_stdHash();
+
+            /* single heartbeat with hash */
+            MPI_Sendrecv(&total_hash,               /* Send buffer      */
+                         1,                         /* Send count       */
+                         MPI_SIZE_T,                /* Send type        */
+                         MPI_PROC_NULL,             /* Destination      */
+                         0,                         /* Send tag         */
+                         MPI_IN_PLACE,              /* Receive buffer   */
+                         0,                         /* Receive count    */
+                         MPI_BYTE,                  /* Receive type     */
+                         MPI_PROC_NULL,             /* Source           */
+                         0,                         /* Receive tag      */
+                         MPI_COMM_SELF,             /* Communicator     */
+                         MPI_STATUS_IGNORE);        /* Status object    */
+        }
+        else if (hashOption == 0) {
+            /* don't hash. 0 is for 'no hashing' */
+        }
+        else {
+            std::cout << "Unknown hash method.. something went wrong\n"
+                      << std::endl;
+            MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
+        }
+        heartbeatCounter++;
+    } // for (unsigned int i = 0; i < numberOfHashes; i++)
+
+    delete[] sendHashAt;
+    delete scenario;
+
+    simulationBlock->freeMpiType();
+    for (auto& block : simulationBlocks) { block->freeMpiType(); block.reset(); }
+    /* delete the pointers as well */
+    simulationBlocks.clear();
+    delete scenario; scenario = nullptr;
+    t = 0.f;
+    for (auto& data : backupMetadataNames) { data.clear(); }
+    backupMetadataNames.clear(); outputTeamName.clear(); backupTeamName.clear();
+    restartNameInput.clear();
+}
+
+/**
+ * METHOD 3.1 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND
+ *              TASK SHARING + USING SHARED TASKS IMMEDIATELY
+ *
+ * First version of soft error resilience by checking the results with
+ * admissibility checks and reporting the other replicas + myTeam.
+ * This version also uses reactive checkpoint restart, however
+ * this brings a lot of overhead because of the team synchronization
+ * with MPI_Allreduce in reporting.
+ *
+ * This needs to be improved TODO new version is coming soon..
+ *
+ * @see tolerance/swe_softRes_admiss_useShared_v1.cpp tests/bitflip_injection_tests.hpp
+ */
+void swe_softRes_admiss_useShared_v1_run(FT_tests::TestArguments *args, int bitflipLocation, int bitflipType, int rankToCorrupt) {
     /* read the hard coded user arguments */
     float simulationDuration = args->simulationDuration;
     clock_t heartbeatInterval = args->heartbeatInterval;
@@ -192,10 +678,10 @@ int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCor
     unsigned int blocksPerRank = numTeams * decompFactor;
 
     outputTeamName.clear();
-    outputTeamName = "TEST_" + std::to_string(testsPassed+1) + "_" +
+    outputTeamName = "TEST_" + std::to_string(currentTestIndex+1) + "_" +
                      outputNameInput + "_t" + std::to_string(myTeam);
     backupTeamName.clear();
-    backupTeamName = "TEST_" + std::to_string(testsPassed+1) + "_" +
+    backupTeamName = "TEST_" + std::to_string(currentTestIndex+1) + "_" +
                      backupNameInput + "_t" + std::to_string(myTeam);
     /* in recovery, the team name is already added to restart name in load function */
 
@@ -520,14 +1006,32 @@ int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCor
                         /* inject NaN */
                         if (bitflipType == 0) {
                             currentBlock.injectNaN_intoUpdates();
+                            std::cout << " # NaN is injected into updates #" << std::endl;
                         }
-                        /* negative water height */
+                        /* inject Inf */
                         else if (bitflipType == 1) {
-                            currentBlock.injectNegativeWaterHeight_intoUpdates();
+                            currentBlock.injectInf_intoUpdates();
+                            std::cout << " # Infinity is injected into updates #" << std::endl;
+                        }
+                        /* inject -Inf */
+                        else if (bitflipType == 2) {
+                            currentBlock.injectnInf_intoUpdates();
+                            std::cout << " # -Infinity is injected into updates #" << std::endl;
+                        }
+                        /* inject a big number */
+                        else if (bitflipType == 3) {
+                            currentBlock.injectBigNumber_intoUpdates();
+                            std::cout << " # A big number is injected into updates #" << std::endl;
+                        }
+                        /* inject a small number */
+                        else if (bitflipType == 4) {
+                            currentBlock.injectSmallNumber_intoUpdates();
+                            std::cout << " # A small number is injected into updates #" << std::endl;
                         }
                         /* random injection */
                         else {
                             currentBlock.injectRandomBitflip_intoUpdates();
+                            std::cout << " # Random bitflip is injected into updates #" << std::endl;
                         }
                     }
                     /* bitflip location at data */
@@ -535,66 +1039,80 @@ int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCor
                         /* inject NaN */
                         if (bitflipType == 0) {
                             currentBlock.injectNaN_intoData();
+                            std::cout << " # NaN is injected into data #" << std::endl;
+                        }
+                        /* inject Inf */
+                        else if (bitflipType == 1) {
+                            currentBlock.injectInf_intoData();
+                            std::cout << " # Infinity is injected into data #" << std::endl;
+                        }
+                        /* inject -Inf */
+                        else if (bitflipType == 2) {
+                            currentBlock.injectnInf_intoData();
+                            std::cout << " # -Infinity is injected into data #" << std::endl;
+                        }
+                        /* inject a big number */
+                        else if (bitflipType == 3) {
+                            currentBlock.injectBigNumber_intoData();
+                            std::cout << " # A big number is injected into data #" << std::endl;
+                        }
+                        /* inject a small number */
+                        else if (bitflipType == 4) {
+                            currentBlock.injectSmallNumber_intoData();
+                            std::cout << " # A small number is injected into data #" << std::endl;
                         }
                         /* negative water height */
-                        else if (bitflipType == 1) {
+                        else if (bitflipType == 5) {
                             currentBlock.injectNegativeWaterHeight_intoData();
+                            std::cout << " # Negative water height is injected into data #" << std::endl;
                         }
                         /* bathymetry change */
-                        else if (bitflipType == 2) {
+                        else if (bitflipType == 6) {
                             currentBlock.injectBathymetryChange_intoData();
+                            std::cout << " # Bathymetry change is injected into data #" << std::endl;
                         }
                         /* random injection */
                         else {
                             currentBlock.injectRandomBitflip_intoData();
+                            std::cout << " # Random bitflip is injected into data #" << std::endl;
                         }
                     }
                     /* random location and random bitflip */
                     else {
                         currentBlock.injectRandomBitflip();
+                            std::cout << " # Random bitflip is injected into a random array #" << std::endl;
                     }
 
                     /* prevent any other bitflip */
                     bitflip_at = -1.f;
+                    /* also prevent any other bitflip in the reload */
+                    SDC_injected = true;
                 }
 
                 /* check for soft errors */
-                int admissable = currentBlock.validateAdmissability(t);
+                bool admissible = currentBlock.validateAdmissibility(t);
 
                 /* handle soft errors
                  * if SDC detected in updates only, then recompute */
-                if (admissable == 0) {
-                    //ft_logger.ft_SDC_notDetected();
-                }
-                else if (admissable == 1) {
+                if (!admissible) {
+                    /* try to fix SDC by recomputing */
                     currentBlock.computeNumericalFluxes();
 
                     /* check if SDC is still present */
-                    if (currentBlock.validateAdmissability(t) != 0) {
+                    admissible = currentBlock.validateAdmissibility(t);
+                    if (!admissible) {
                         std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but cannot be fixed..\n"
                                   << "             Warning the rest of my team and all my replicas"
                                   << std::endl;
+                        /* set the report flag to reload from another team */
                         reportFlag = 1;
                     } else {
                         std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but it is fixed.."
                                   << std::endl;
-                        reportFlag = 1;
                     }
                 }
-                // soft error in data, turn on the recovery mode
-                else if (admissable == 2) {
-                    std::cout << "-- TEAM " << myTeam << ", Rank " << myRankInTeam << " Warning : SDC detected but cannot be fixed..\n"
-                              << "             Warning the rest of my team and all my replicas"
-                              << std::endl;
-                    reportFlag = 1;
-                }
-                else {
-                    std::cout << "Unknown error (admissability)" << std::endl;
-                    assert(false);
-                }
-
                 //if (verbose) ft_logger.ft_block_calculatingTask(currentBlockNr, currentBlock.maxTimestep);
-            } // primary block computation + admissability checks for SDCs are finished
+            } // primary block computation + admissibility checks for SDCs are finished
 
             unsigned char teamCheck = 0;
             /* Report to my team */
@@ -689,7 +1207,7 @@ int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCor
                 }
             }
 
-            /* Primary Block computation + Admissability checks + SDC Reports
+            /* Primary Block computation + Admissibility checks + SDC Reports
              * are finished */
 
             std::vector<MPI_Request> send_reqs(11 * numTeams, MPI_REQUEST_NULL);
@@ -927,11 +1445,15 @@ int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCor
                           //<< std::endl;
             }
             float minTimestep = *std::min_element(timesteps.begin(), timesteps.end());
+            float test = *std::min_element(timesteps.begin(), timesteps.end()); // TODO for debugging WE DON'T NEED TO ALLLREDUCE  IF WE DON'T COMPUTE SECOND TASKS OURSELVES
             MPI_Allreduce(&minTimestep, &timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
             //std::cout << "T" << myTeam << "R" << myRankInTeam
                       //<< " : Max Timestep = " << timestep << std::endl;
+            assert(test == minTimestep);
 
             for (auto& block : simulationBlocks) { block->maxTimestep = timestep; }
+            /* redundant saving of the previous results for admissibility checks */
+            for (auto& block : simulationBlocks) block->savePreviousData();
             for (auto& block : simulationBlocks) { block->updateUnknowns(timestep); }
             t += timestep;
 
@@ -964,7 +1486,7 @@ int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCor
     /* delete the pointers as well */
     simulationBlocks.clear();
     //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing scenario" << std::endl;
-    if (!SDC_injected) delete scenario; scenario = nullptr;
+    if (!jumpedForLoad) delete scenario; scenario = nullptr;
     //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing t" << std::endl;
     t = 0.f;
     //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing backupMetadataNames" << std::endl;
@@ -972,112 +1494,162 @@ int run(TestArguments *args, int bitflipLocation, int bitflipType, int rankToCor
     backupMetadataNames.clear(); outputTeamName.clear(); backupTeamName.clear();
     //std::cout << "T" << myTeam << "R" << myRankInTeam << " clearing restartnameinput" << std::endl;
     restartNameInput.clear();
-
-    // TODO return meaningful things like 3.14.. JOKING! HAH! but you can return TestResults struct for example..
-    return 0;
 }
 
-/* -- TESTS -- */
+/**
+ * TODO
+ * METHOD 3.2 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND
+ *              TASK SHARING + USING SHARED TASKS IMMEDIATELY
+ * Second version of soft error resilience by checking the results with
+ * admissibility checks and reporting the other replicas only. This
+ * improves performance a lot since it reduces the MPI communication
+ * overhead by not reporting to the other teams
+ *
+ * This needs to be improved TODO new version is coming soon..
+ *
+ * @see tolerance/swe_softRes_admiss_useShared_v2.cpp tests/bitflip_injection_tests.hpp
+ */
+void swe_softRes_admiss_useShared_v2_run(FT_tests::TestArguments *args, int bitflipLocation, int bitflipType, int rankToCorrupt) {
 
-        /* TODO inject bitflip into udpates
-         *      inject a very big value / small value
-         */
-
-/* NaN injection */
-int TEST_bitflipIntoUpdates_1(TestArguments *args, int rankToCorrupt) {
-    return run(args, 0, 0, rankToCorrupt);
 }
 
-/* Negative water height injection */
-int TEST_bitflipIntoUpdates_2(TestArguments *args, int rankToCorrupt) {
-    return run(args, 0, 1, rankToCorrupt);
+/**
+ * TODO
+ * METHOD 4 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND
+ *            TASK SHARING + ONLY USING SHARED TASKS IF SDC IS DETECTED
+ *
+ * Soft error resilience by checking the results with admissibility checks
+ * and use task sharing. However this method avoids reporting and its
+ * synchonrization/communication overhead, however it does not use the shared
+ * tasks immediately. Only use shared tasks if an SDC is detected. Otherwise
+ * throw it away. This makes the computation redundant, however this method
+ * does not immediately spread the error and therefore resilient to some of the
+ * SDCs that cannot be detected by the admissibility checks right away.
+ *
+ * TODO expecting better SDC detection/correction but worse runtime
+ *
+ * @see tolerance/swe_softRes_hashes.cpp tests/bitflip_injection_tests.hpp
+ */
+void swe_softRes_admiss_redundant_run(FT_tests::TestArguments *args, int bitflipLocation, int bitflipType, int rankToCorrupt) {
 }
-
-/* NaN injection */
-int TEST_bitflipIntoData_1(TestArguments *args, int rankToCorrupt) {
-    return run(args, 1, 0, rankToCorrupt);
-}
-
-/* Negative water height injection */
-int TEST_bitflipIntoData_2(TestArguments *args, int rankToCorrupt) {
-    return run(args, 1, 1, rankToCorrupt);
-}
-
-/* Bathymetry change injection */
-int TEST_bitflipIntoData_3(TestArguments *args, int rankToCorrupt) {
-    return run(args, 1, 2, rankToCorrupt);
-}
-
-
-        /* TODO inject bitflip into data
-         *      inject a very big / small value
-         */
 
 //------------------------------------------------------------------------------
 
 /**
- * TODO Description
- *
- * TODO introduce injection information and different ranks / teams injecting SDCs, not just rank 0
- * TODO introduce TestResults struct to return the corrupted result and check if it is
- *      really corrected, and return FAILED if correction failed!
+ * run all the tests for method 1
  */
-void run_all_tests(TestArguments *args,
-        std::vector<std::function<int(TestArguments*,int)>*> tests_data,
-        std::vector<std::function<int(TestArguments*,int)>*> tests_updates) {
-    int worldRank;
-    int worldSize;
-    int myTeam;
-    int myRankInTeam;
-    int jumped = 0; // TODO can be removed after debugging ?
-    int rankToCorrupt;
+void runTests_swe_noRes_run(
+        FT_tests::TestArguments *args,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_data,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_updates) {
+}
+/**
+ * run all the tests for method 2
+ */
+void runTests_swe_softRes_hashes_run(
+        FT_tests::TestArguments *args,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_data,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_updates) {
+}
+/**
+ * run all the tests for method 3.1
+ */
+void runTests_swe_softRes_admiss_useShared_v1_run(
+        FT_tests::TestArguments *args,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_data,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_updates) {
+    /* set the main run function*/
+    std::function<void(FT_tests::TestArguments*,int,int,int)> currentRun(swe_softRes_admiss_useShared_v1_run);
+    FT_tests::setRun(&currentRun);
+    int worldRank, worldSize, myTeam, myRankInTeam;
     PMPI_Comm_rank(TMPI_GetWorldComm(), &worldRank);
     PMPI_Comm_size(TMPI_GetWorldComm(), &worldSize);
     MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
     myTeam = TMPI_GetTeamNumber();
+    int jumped = 0; // TODO can be removed after debugging ?
+    int rankToCorrupt;
+    bool passed = true;
+    size_t testsPassed = 0;
 
     /* Seed the random generator */
     std::srand (static_cast <unsigned> (time(NULL)));
     rankToCorrupt = 0; // TODO change this after debugging
 
     /* iterate through all the tests and run them */
+    // TODO compare the results of the tests everytime!!
 
     /* tests for SDCs in data arrays */
-    for (std::function<int(TestArguments*,int)> *test : tests_data) {
-        if (worldRank == 0) std::cout << color_blue << "\n" << markRightArrow << " TEST " << (testsPassed+1) << " IS RUNNING..\n" << color_norm << std::endl;
+    for (std::function<void(FT_tests::TestArguments*,int)> *test : tests_data) {
+        if (worldRank == 0) std::cout << color_blue << "\n" << markRightArrow << " TEST " << (currentTestIndex+1) << " IS RUNNING..\n" << color_norm << std::endl;
         //rankToCorrupt = std::rand() % worldSize; TODO do this after debugging
-        SDC_injected = false; jumped = 0;
+        SDC_injected = false; jumpedForLoad = false;
         PMPI_Barrier(TMPI_GetWorldComm()); /* wait here for the other ranks */
 
         jumped = setjmp(jumpBuffer);
-        if (jumped == 1) SDC_injected = true;
+        if (jumped == 1) jumpedForLoad = true;
 
         (*test)(args,rankToCorrupt);
 
-        if(worldRank == 0) std::cout << color_green << "\n-- TEST " << (testsPassed+1) << " HAVE PASSED!\t\t" << markPassed << "\n" << color_norm << std::endl;
-        testsPassed++;
+        passed = jumpedForLoad;
+
+        if (worldRank == 0) { // TODO write output on the corrupt rank
+            if(worldRank == 0 && passed) {
+                std::cout << color_green << "\n-- TEST " << (currentTestIndex+1) << " HAVE PASSED!\t\t" << markPassed << "\n" << color_norm << std::endl;
+                testsPassed++;
+            }
+            else {
+                std::cout << color_red << "\n-- TEST " << (currentTestIndex+1) << " FAILED!\t\t" << markFailed << "\n" << color_norm << std::endl;
+            }
+        }
+        currentTestIndex++;
     }
 
-    std::cout << "\n\n DATA ARRAY TESTS PASSED ! NOW TESTING WITH UPDATE ARRAYS.." << std::endl;
+    if (worldRank == 0) std::cout << "\n\n DATA ARRAY TESTS PASSED ! NOW TESTING WITH UPDATE ARRAYS.." << std::endl; // TODO write output on the corrupt rank
 
     /* tests for SDCs in update arrays */
-    for (std::function<int(TestArguments*,int)> *test : tests_updates) {
-        if (worldRank == 0) std::cout << color_blue << "\n" << markRightArrow << " TEST " << (testsPassed+1) << " IS RUNNING..\n" << color_norm << std::endl;
+    for (std::function<void(FT_tests::TestArguments*,int)> *test : tests_updates) {
+        if (worldRank == 0) std::cout << color_blue << "\n" << markRightArrow << " TEST " << (currentTestIndex+1) << " IS RUNNING..\n" << color_norm << std::endl;
         //rankToCorrupt = std::rand() % worldSize; TODO do this after debugging
-        SDC_injected = false; jumped = 0;
+        SDC_injected = false; jumpedForLoad = false;
         PMPI_Barrier(TMPI_GetWorldComm()); /* wait here for the other ranks */
 
         jumped = setjmp(jumpBuffer);
-        if (jumped == 1) SDC_injected = true;
+        if (jumped == 1) jumpedForLoad = true;
 
         (*test)(args,rankToCorrupt);
 
-        if(worldRank == 0) std::cout << color_green << "\n-- TEST " << (testsPassed+1) << " HAVE PASSED!\t\t" << markPassed << "\n" << color_norm << std::endl;
-        testsPassed++;
+        passed = jumpedForLoad;
+
+        if (worldRank == 0) { // TODO write output on the corrupt rank
+            if(worldRank == 0 && passed) {
+                std::cout << color_green << "\n-- TEST " << (currentTestIndex+1) << " HAVE PASSED!\t\t" << markPassed << "\n" << color_norm << std::endl;
+                testsPassed++;
+            }
+            else {
+                std::cout << color_red << "\n-- TEST " << (currentTestIndex+1) << " FAILED!\t\t" << markFailed << "\n" << color_norm << std::endl;
+            }
+        }
+        currentTestIndex++;
     }
 }
+/**
+ * run all the tests for method 3.2
+ */
+void runTests_swe_softRes_admiss_useShared_v2_run(
+        FT_tests::TestArguments *args,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_data,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_updates) {
+}
+/**
+ * run all the tests for method 4
+ */
+void runTests_swe_softRes_admiss_redundant_run(
+        FT_tests::TestArguments *args,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_data,
+        std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_updates) {
+}
 
-
+/********************************************************************************/
 /* Initializes MPI and runs the tests
  *
  * @return result Returns 0 if all tests have passed
@@ -1086,7 +1658,7 @@ int main(int argc, char** argv) {
 
     /* Some variables for tests */
     int result = 0;
-    size_t testsPassed = 0;
+    size_t currentTestIndex = 0;
 
     /* set string names */
     outputNameInput = "swe_tests";
@@ -1100,32 +1672,49 @@ int main(int argc, char** argv) {
     bool writeOutput = false;
     double bitflip_at = 2.5f;
 
-    TestArguments *args = new TestArguments(simulationDuration,
-                                            heartbeatInterval,
-                                            nxRequested, nyRequested,
-                                            decompFactor,
-                                            writeOutput,
-                                            bitflip_at);
+    FT_tests::TestArguments *args =
+        new FT_tests::TestArguments(simulationDuration,
+                                    heartbeatInterval,
+                                    nxRequested, nyRequested,
+                                    decompFactor,
+                                    writeOutput,
+                                    bitflip_at);
 
     /* all the test cases */
-    std::vector<std::function<int(TestArguments*,int)>*> tests_data;
-    std::vector<std::function<int(TestArguments*,int)>*> tests_updates;
+    std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_data;
+    std::vector<std::function<void(FT_tests::TestArguments*,int)>*> tests_updates;
 
     /* add more tests cases here */
     // test functions for SDC in the data arrays
-    std::function<int(TestArguments*,int)> t_data_1(TEST_bitflipIntoData_1);
-    std::function<int(TestArguments*,int)> t_data_2(TEST_bitflipIntoData_2);
-    std::function<int(TestArguments*,int)> t_data_3(TEST_bitflipIntoData_3);
+    std::function<void(FT_tests::TestArguments*,int)> t_data_1(FT_tests::TEST_bitflipIntoData_1);
+    std::function<void(FT_tests::TestArguments*,int)> t_data_2(FT_tests::TEST_bitflipIntoData_2);
+    std::function<void(FT_tests::TestArguments*,int)> t_data_3(FT_tests::TEST_bitflipIntoData_3);
+    std::function<void(FT_tests::TestArguments*,int)> t_data_4(FT_tests::TEST_bitflipIntoData_4);
+    std::function<void(FT_tests::TestArguments*,int)> t_data_5(FT_tests::TEST_bitflipIntoData_5);
+    std::function<void(FT_tests::TestArguments*,int)> t_data_6(FT_tests::TEST_bitflipIntoData_6);
+    std::function<void(FT_tests::TestArguments*,int)> t_data_7(FT_tests::TEST_bitflipIntoData_7);
     // test functions for SDC in the update arrays
-    std::function<int(TestArguments*,int)> t_updates_1(TEST_bitflipIntoUpdates_1);
-    std::function<int(TestArguments*,int)> t_updates_2(TEST_bitflipIntoUpdates_2);
+    std::function<void(FT_tests::TestArguments*,int)> t_updates_1(FT_tests::TEST_bitflipIntoUpdates_1);
+    std::function<void(FT_tests::TestArguments*,int)> t_updates_2(FT_tests::TEST_bitflipIntoUpdates_2);
+    std::function<void(FT_tests::TestArguments*,int)> t_updates_3(FT_tests::TEST_bitflipIntoUpdates_3);
+    std::function<void(FT_tests::TestArguments*,int)> t_updates_4(FT_tests::TEST_bitflipIntoUpdates_4);
+    std::function<void(FT_tests::TestArguments*,int)> t_updates_5(FT_tests::TEST_bitflipIntoUpdates_5);
+
     // deploy test functions for testing!
     tests_data.push_back(&t_data_1);        // NaN injection
-    tests_data.push_back(&t_data_2);        // Negative water height injection
-    tests_data.push_back(&t_data_3);        // Bathymetry change injection
+    tests_data.push_back(&t_data_2);        // Inf injection
+    tests_data.push_back(&t_data_3);        // -Inf injection
+    tests_data.push_back(&t_data_4);        // Big number injection for DMP
+    tests_data.push_back(&t_data_5);        // Small number injection for DMP
+    tests_data.push_back(&t_data_6);        // Negative water height injection
+    tests_data.push_back(&t_data_7);        // Bathymetry change injection
+
     tests_updates.push_back(&t_updates_1);  // NaN injection
-    // TODO add more tests : discrete maximum criteria (very big or very small values)
-    //                       negative water height on updates...
+    //tests_updates.push_back(&t_updates_2);  // Inf injection
+    //tests_updates.push_back(&t_updates_3);  // -Inf injection
+    //tests_updates.push_back(&t_updates_4);  // Big number injection for DMP
+    //tests_updates.push_back(&t_updates_5);  // Small number injection for DMP
+
 
     /*************** START INITIALIZING ***************/
     /* Init teaMPI
@@ -1133,12 +1722,12 @@ int main(int argc, char** argv) {
     TMPI_SetErrorHandlingStrategy(TMPI_NoErrorHandler);
     /* Init MPI */
     MPI_Init(&argc, &argv);
-    /* TODO also print something fancy */
-    // TODO change this so that we can have all the tests in one for loop
 
-    // TODO move these variables to global or something.. they are used everywhere !
+    /* TODO move some variables to global */
     int worldRank;
     PMPI_Comm_rank(TMPI_GetWorldComm(), &worldRank);
+
+    /****** BASELINE RUN FOR A REFERENCE SOLUTION ******/
 
     /*************** RUN ALL THE TESTS  ***************/
     if (worldRank == 0) {
@@ -1146,7 +1735,8 @@ int main(int argc, char** argv) {
                   << " STARTING TESTS "
                   << lightShade << color_norm << std::endl;
     }
-    run_all_tests(args, tests_data, tests_updates);
+    //run_all_tests(args, tests_data, tests_updates); TODO add specific tests for each method
+    runTests_swe_softRes_admiss_useShared_v1_run(args, tests_data, tests_updates);
     MPI_Finalize();
     /*************** TEST RUNS FINISHED ***************/
     if (worldRank == 0) {

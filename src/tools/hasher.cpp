@@ -5,6 +5,8 @@
  *
  * TODO XOR operation is used when combining hashes but see boost::hash_combine
  *      as it might be better/faster
+ *
+ * @author Atamert Rahma rahma@in.tum.de
  */
 
 
@@ -19,7 +21,7 @@
  * @param fieldSizeY
  * @param currentBlock Current dimensional splitting block that we want to hash
  */
-Hasher::Hasher(int fieldSizeX, int fieldSizeY, SWE_DimensionalSplittingMPIOverdecomp *currentBlock) {
+tools::Hasher::Hasher(int fieldSizeX, int fieldSizeY, SWE_DimensionalSplittingMPIOverdecomp *currentBlock) {
 
     Hasher::fieldSizeX = fieldSizeX;
     Hasher::fieldSizeY = fieldSizeY;
@@ -57,14 +59,14 @@ Hasher::Hasher(int fieldSizeX, int fieldSizeY, SWE_DimensionalSplittingMPIOverde
  *
  * @return r Final hash value
  */
-size_t Hasher::finalize_stdHash() {
+size_t tools::Hasher::finalize_stdHash() {
     size_t r = total_hash;
     total_hash = 0;
     return r;
 }
 
 /* hash with std::hash */
-void Hasher::update_stdHash() {
+void tools::Hasher::update_stdHash() {
 
     /* update the strings */
     updateStrings();
@@ -91,7 +93,7 @@ void Hasher::update_stdHash() {
  * Compiler is able to optimize the hasher::update_stdHash() better
  *
  * Warning: this method seems to be slower than update_stdHash(). Do not use this one */
-void Hasher::update_stdHash_float() {
+void tools::Hasher::update_stdHash_float() {
     /* update the hash using float hasher  */
     int i = 0;
     while (i < fieldSizeY) {
@@ -133,7 +135,7 @@ void Hasher::update_stdHash_float() {
  * Converts the float arrays to strings to be hashed later
  * creating a single string seems to be slower than xor operations
  */
-void Hasher::updateStrings() {
+void tools::Hasher::updateStrings() {
     str_hLeft = std::string((const char*) hNetUpdatesLeft, sizeof(float) * fieldSizeX);
     str_hRight = std::string((const char*) hNetUpdatesRight, sizeof(float) * fieldSizeX);
     str_huLeft = std::string((const char*) huNetUpdatesLeft, sizeof(float) * fieldSizeX);

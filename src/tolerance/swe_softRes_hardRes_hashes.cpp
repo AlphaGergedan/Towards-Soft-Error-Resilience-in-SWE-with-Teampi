@@ -1,5 +1,5 @@
 /**
- * @file src/tolerance/swe_softRes_and_hardRes_woutTaskSharing.cpp
+ * @file src/tolerance/swe_softRes_hardRes_hashes.cpp
  *
  * @brief hard error resiliency with soft error detection without task sharing
  *
@@ -549,7 +549,7 @@ int main(int argc, char** argv)
     const int fieldSizeY = (simulationBlock->nx + 1) * (simulationBlock->ny + 2);
 
     /* for hashing the calculated updates to detect silent data corruptions */
-    Hasher swe_hasher = Hasher(fieldSizeX, fieldSizeY, simulationBlock.get());
+    tools::Hasher swe_hasher = tools::Hasher(fieldSizeX, fieldSizeY, simulationBlock.get());
 
 
     /* start the very first hearbeat */
