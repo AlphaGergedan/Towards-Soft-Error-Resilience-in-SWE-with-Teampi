@@ -533,7 +533,7 @@ int main(int argc, char** argv)
     float timestep;
 
     /* write zero timestep, if not restoring */
-    if (simulationStart == 0.f) {
+    if (writeOutput && simulationStart == 0.f) {
         simulationBlock->writeTimestep(0.f);
     }
 

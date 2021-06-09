@@ -534,7 +534,7 @@ int main(int argc, char** argv) {
     }
 
     /* Write zero timestep if not restarting */
-    if (simulationStart == 0.f) {
+    if (writeOutput && simulationStart == 0.f) {
         for (auto& block : simulationBlocks) { block->writeTimestep(0.f); }
     }
 

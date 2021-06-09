@@ -1,7 +1,7 @@
 /**
  * @file src/tolerance/swe_noRes.cpp
  *
- * @brief No resilience for benchmarking
+ * @brief METHOD 1 : No resilience for benchmarking
  *
  * No error resilience for benchmarking. However this can provide
  * a naive soft error detection if we run the application twice,
@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
 //------------------------------------------------------------------------------
 
     // Write zero timestep
-    simulationBlock->writeTimestep(0.f);
+    if (writeOutput) simulationBlock->writeTimestep(0.f);
 
     if (verbose) {
     std::cout << "+---------------------+\n"

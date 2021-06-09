@@ -548,7 +548,7 @@ int main(int argc, char** argv) {
     }
 
     /* Write zero timestep if not restarting */
-    if (simulationStart == 0.f) {
+    if (writeOutput && simulationStart == 0.f) {
         for (auto& block : simulationBlocks) { block->writeTimestep(0.f); }
     }
 
@@ -601,8 +601,8 @@ int main(int argc, char** argv) {
                 /* inject bitflip if desired */
                 if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
                     //currentBlock.injectBigNumber_intoData();
-                    currentBlock.injectNaN_intoData();
-                    //currentBlock.injectRandomBitflip();
+                    //currentBlock.injectNaN_intoData();
+                    currentBlock.injectRandomBitflip();
                     //currentBlock.injectRandomBitflip_intoData();
                     //currentBlock.injectRandomBitflip_intoUpdates();
 
@@ -996,14 +996,6 @@ int main(int argc, char** argv) {
                                       << code << '\n';
                         }
                         currentBlock.computeNumericalFluxes();
-
-
-                        /* TODO handle this part, we should again check SDC
-                         *
-                         * This is very difficult with checkpointing..
-                         * if we checkpoint then we need to skip computation
-                         * ---> just share with replicas and try to receive
-                         *      secondary block information via MPI */
                     }
                     else {
                         // currentBlock.computeNumericalFluxes();

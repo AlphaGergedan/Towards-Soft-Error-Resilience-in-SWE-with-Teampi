@@ -1,9 +1,15 @@
 /**
  * @file src/tolerance/swe_softRes_hashes.cpp
  *
- * @brief Soft error detection using hashes
+ * @brief METHOD 2 : Soft error detection using hashes
  *
- * This file tries to integrate hashes to the heartbeats used in
+ * Provides soft error detection by comparing the results of two
+ * teams computing the same run redundantly by sending hashes in
+ * the hearbeat messages during teaMPI communication. It can also
+ * be improved to run 3 teams and kill the faulty team if a soft
+ * error occurs. This would provide soft error resilience.
+ *
+ * Hashes are tried to be integrated to the heartbeats used in
  * the tmpi library, which helps us to compare the results of the
  * replicas.
  *

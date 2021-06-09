@@ -194,10 +194,13 @@ target_include_directories(swe_softRes_admiss_useShared_v1 PRIVATE teampi-soft-e
 target_include_directories(swe_softRes_admiss_useShared_v2 PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_tests PRIVATE teampi-soft-error-resilience/include)
 
-
 #*******************************************************************************
-# add unit tests for fault tolerant swe
-#add_subdirectory(tests)
+# Boost for testing
+#find_package(Boost)
+#if(Boost_FOUND)
+#    target_include_directories(swe_tests PRIVATE ${Boost_INCLUDE_DIRS})
+#    target_link_libraries(swe_tests PRIVATE ${Boost_LIBRARIES})
+#endif()
 
 #*******************************************************************************
 # Warnings & Flags
