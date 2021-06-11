@@ -376,7 +376,7 @@ int main(int argc, char** argv)
 
             /* update the hash */
             if (hashOption == 1) {
-                swe_hasher.update_stdHash();
+                swe_hasher.update_stdHash(); // TODO update the hash at the very end! So we just have to hash the main data arrays, not the updates!!
             }
             else if (hashOption == 0) {
                 /* don't hash. 0 is for 'no hashing' */
@@ -390,7 +390,7 @@ int main(int argc, char** argv)
             /* Agree on a timestep */
             timestep = simulationBlock->maxTimestep;
             float agreed_timestep;
-            MPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+            PMPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 
             simulationBlock->maxTimestep = agreed_timestep;
             simulationBlock->updateUnknowns(agreed_timestep);
