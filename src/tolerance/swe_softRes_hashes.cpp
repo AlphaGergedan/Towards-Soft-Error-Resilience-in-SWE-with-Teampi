@@ -374,6 +374,16 @@ int main(int argc, char** argv)
                 bitflip_at = -1.f;
             }
 
+            /* Agree on a timestep */
+            timestep = simulationBlock->maxTimestep;
+            float agreed_timestep;
+            PMPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+
+            simulationBlock->maxTimestep = agreed_timestep;
+            simulationBlock->updateUnknowns(agreed_timestep);
+
+            t += agreed_timestep;
+
             /* update the hash */
             if (hashOption == 1) {
                 swe_hasher.update_stdHash(); // TODO update the hash at the very end! So we just have to hash the main data arrays, not the updates!!
@@ -387,15 +397,6 @@ int main(int argc, char** argv)
                 MPI_Abort(TMPI_GetWorldComm(), MPI_ERR_UNKNOWN);
             }
 
-            /* Agree on a timestep */
-            timestep = simulationBlock->maxTimestep;
-            float agreed_timestep;
-            PMPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-
-            simulationBlock->maxTimestep = agreed_timestep;
-            simulationBlock->updateUnknowns(agreed_timestep);
-
-            t += agreed_timestep;
 
             if(writeOutput) {
                 if(verbose) {
