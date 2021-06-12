@@ -597,6 +597,7 @@ int main(int argc, char** argv) {
 
             /* indicates if the primary block is corrupted */
             unsigned char primaryBlocksCorrupted[decompFactor];
+            MPI_Request reportSendReqs[decompFactor * numTeams];
             unsigned char SDC = 0;
 
             /* compute and validate the primary blocks */
@@ -638,12 +639,16 @@ int main(int argc, char** argv) {
                 /* report to all replicas */
                 for (int destTeam = 0; destTeam < numTeams; destTeam++) {
                     // primaryblock validation starts by tag 100 : TODO Isend integration is easy
-                    if (destTeam != myTeam) MPI_Send(primaryBlocksCorrupted+i, 1, MPI_BYTE, destTeam, 100, interTeamComm);
+                    if (destTeam != myTeam) {
+                        MPI_Isend(primaryBlocksCorrupted+i, 1, MPI_BYTE, destTeam,
+                                  100, interTeamComm, &reportSendReqs[(decompFactor * destTeam) + i]);
+                    }
                 }
             }
 
             /* go into recovery mode to receive */
             while (SDC) {
+                MPI_Waitall(decompFactor * numTeams, reportSendReqs, MPI_STATUSES_IGNORE);
                 // TODO debugging
                 std::cout << "T" << myTeam << "R" << myRankInTeam
                           << " : SDC detected in my primary blocks"
@@ -707,18 +712,21 @@ int main(int argc, char** argv) {
 
             /* indicates if the secondary block is corrupted in replica */
             unsigned char secondaryBlocksCorrupted[blocksPerRank - decompFactor];
+            MPI_Request reportRecvReqs[blocksPerRank - decompFactor];
             unsigned char SDC_secondary= 0;
             /* receive report from other replicas */
             for (unsigned int i = decompFactor; i < blocksPerRank; i++) {
                 /* Get a reference to the current corrupted block */
                 const int& currentBlockNr = myBlockOrder[i];
                 int source_rank = currentBlockNr % numTeams;
-                MPI_Recv(secondaryBlocksCorrupted+(i-decompFactor), 1, MPI_BYTE,
-                         source_rank, 100, interTeamComm, MPI_STATUS_IGNORE);
+                MPI_Irecv(secondaryBlocksCorrupted+(i-decompFactor), 1, MPI_BYTE,
+                          source_rank, 100, interTeamComm, &reportRecvReqs[i-decompFactor]);
                 if (secondaryBlocksCorrupted[i-decompFactor] == 1) SDC_secondary = 1;
             }
+            MPI_Waitall(blocksPerRank - decompFactor, reportRecvReqs, MPI_STATUSES_IGNORE);
             /* if an error is present */
             if (SDC_secondary) {
+                // TODO debugging
                 std::cout << "T" << myTeam << "R" << myRankInTeam
                           << " : SDC reported from other replicas" << std::endl;
                 /* recovery mode */
@@ -733,6 +741,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 if (lowestHealthyReplica) {
+                    // TODO debugging
                     std::cout << "T" << myTeam << "R" << myRankInTeam
                               << " : I will send the blocks to corrupted replicas " << std::endl;
                     /* send b,h,hv,hu to all the corrupted replicas */
@@ -744,6 +753,7 @@ int main(int argc, char** argv) {
                             /* Size of the arrays b,h,hv,hu */
                             const int dataArraySize = (currentSecondaryBlock.nx + 2) * (currentSecondaryBlock.ny + 2);
                             int source_rank = currentBlockNr % numTeams;
+                            // TODO debugging
                             std::cout << "T" << myTeam << "R" << myRankInTeam
                                       << " : sending to replica in team " << source_rank
                                       << std::endl;
@@ -762,6 +772,7 @@ int main(int argc, char** argv) {
                             MPI_Send(currentSecondaryBlock.hu.getRawPointer(),
                                      dataArraySize, MPI_FLOAT, source_rank, 21,
                                      interTeamComm);
+                            // TODO debugging
                             std::cout << "T" << myTeam << "R" << myRankInTeam
                                       << " : sent to replica in team " << source_rank
                                       << std::endl;
@@ -990,7 +1001,7 @@ int main(int argc, char** argv) {
                     }
 
                     //std::cout << "T" << myTeam << "R" << myRankInTeam << " MPI_Waitall start" << std::endl;
-                    int code = MPI_Waitall(11, reqs.data(), stats.data());
+                    int code = MPI_Waitall(11, reqs.data(), MPI_STATUSES_IGNORE);
                     //std::cout << "T" << myTeam << "R" << myRankInTeam << " MPI_Waitall end ^^" << std::endl;
                     if (code != MPI_SUCCESS || hasRecovered) {
                         std::cout << "*#*#*#*#*#*# unknown error ?  " << std::endl;
@@ -1012,6 +1023,7 @@ int main(int argc, char** argv) {
             }
 
             unsigned char receivedBlocksCorrupted[blocksPerRank - decompFactor];
+            MPI_Request reportSendReqs_second[blocksPerRank - decompFactor];
             unsigned char SDC_received = 0;
             /* validate the received secondary blocks */
             for (unsigned int i = decompFactor; i < blocksPerRank; i++) {
@@ -1033,11 +1045,14 @@ int main(int argc, char** argv) {
 
                 /* report to the owner of the received block */
                 // receivedBlock validation starts by tag 200 : TODO Isend integration is easy
-                MPI_Send(receivedBlocksCorrupted+(i-decompFactor), 1, MPI_BYTE, source_rank, 200, interTeamComm);
+                MPI_Isend(receivedBlocksCorrupted+(i-decompFactor), 1, MPI_BYTE, source_rank,
+                          200, interTeamComm, &reportSendReqs_second[i-decompFactor]);
+                //MPI_Send(receivedBlocksCorrupted+i, 1, MPI_BYTE, source_rank, 200, interTeamComm);
             }
 
             /* go into recovery mode for receivedBlocks */
             while (SDC_received) {
+                MPI_Waitall(blocksPerRank - decompFactor, reportSendReqs_second, MPI_STATUSES_IGNORE);
                 /* we already know the reload replica, owner of the block
                  * TODO you can also handle more SDC cases where the owner also is
                  *      corrupted! This version assumes at this point that the owner
@@ -1094,6 +1109,7 @@ int main(int argc, char** argv) {
              *  replicaLowest_decompFactor, replica_secondLowest_decompFactor, .... , replica_highest_decompFactor]
              */
             unsigned char sentBlocksCorrupted[(numTeams-1)*decompFactor];
+            MPI_Request reportRecvReqs_second[(numTeams-1)*decompFactor];
             unsigned char SDC_sent = 0;
             /* receive report for all my primary blocks that I sent */
             int index = 0;
@@ -1101,13 +1117,16 @@ int main(int argc, char** argv) {
                 for (int replica = 0; replica < numTeams; replica++) {
                     if (replica != myTeam) {
                         /* receive report */
-                        MPI_Recv(sentBlocksCorrupted+index, 1, MPI_BYTE, replica, 200,
-                                 interTeamComm, MPI_STATUS_IGNORE);
+                        MPI_Irecv(sentBlocksCorrupted+index, 1, MPI_BYTE, replica,
+                                  200, interTeamComm, reportRecvReqs_second+index);
+                        //MPI_Recv(sentBlocksCorrupted+index, 1, MPI_BYTE, replica, 200,
+                                 //interTeamComm, MPI_STATUS_IGNORE);
                         if (sentBlocksCorrupted[index] == 1) SDC_sent = 1;
                         index++;
                     }
                 }
             }
+            MPI_Waitall((numTeams-1) * decompFactor, reportRecvReqs_second, MPI_STATUSES_IGNORE);
             /* if error is reported */
             if (SDC_sent) {
                 /* recovery mode */

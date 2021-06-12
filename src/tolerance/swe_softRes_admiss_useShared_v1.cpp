@@ -521,6 +521,16 @@ int main(int argc, char** argv) {
 
     float timestep;
 
+    /**
+     * Contains the block numbers that needs to be calculated on the specific
+     * rank. There are 'numTeams * decompFactor * ranksPerTeam' blocks in total
+     * when sharing (each block es a complete 'task') so this helps us to order
+     * the blocks by their numbers across this rank's replicas to compute and
+     * share the results.
+     *
+     * In the naiv case, we have only one block per rank. So there is no
+     * sharing.
+     */
     std::vector<int> myBlockOrder{};
     // Add my primary blocks first to block order
     for (int i = myTeam; i < blocksPerRank; i += numTeams) { myBlockOrder.push_back(i); }

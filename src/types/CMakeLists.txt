@@ -28,8 +28,14 @@ target_sources(swe_softRes_admiss_useShared_v1 PRIVATE
   Float2DNative.hpp
   Float2DBuffer.hpp)
 
-# TODO testing new algorithm
 target_sources(swe_softRes_admiss_useShared_v2 PRIVATE
+  Boundary.hpp
+  Float2D.hpp
+  Float2DNative.hpp
+  Float2DBuffer.hpp)
+
+# TODO testing new algorithm NONBLOCKING
+target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
   Boundary.hpp
   Float2D.hpp
   Float2DNative.hpp

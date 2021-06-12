@@ -39,8 +39,16 @@ target_sources(swe_softRes_admiss_useShared_v1 PRIVATE
   Reader.cpp
   Reader.hpp)
 
-# testing out new algorithm
 target_sources(swe_softRes_admiss_useShared_v2 PRIVATE
+  Writer.cpp
+  Writer.hpp
+  NetCDFWriter.cpp
+  NetCDFWriter.hpp
+  Reader.cpp
+  Reader.hpp)
+
+# TODO testing out new algorithm
+target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
   Writer.cpp
   Writer.hpp
   NetCDFWriter.cpp

@@ -5,8 +5,9 @@ if(SOLVER STREQUAL "hlle")
   target_compile_definitions(swe_softRes_hashes PRIVATE SOLVER=0)
   target_compile_definitions(swe_softRes_hardRes_hashes PRIVATE SOLVER=0)
   target_compile_definitions(swe_softRes_admiss_useShared_v1 PRIVATE SOLVER=0)
-  # TODO testing out new algorithm
   target_compile_definitions(swe_softRes_admiss_useShared_v2 PRIVATE SOLVER=0)
+  # TODO testing out new algorithm NONBLOCKING
+  target_compile_definitions(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE SOLVER=0)
   target_compile_definitions(swe_checkpointRestart PRIVATE SOLVER=0)
   target_compile_definitions(swe_tests PRIVATE SOLVER=0)
 else()
@@ -20,7 +21,8 @@ target_sources(swe_hardRes_wTaskSharing PRIVATE ${SOLVER_HEADER})
 target_sources(swe_softRes_hashes PRIVATE ${SOLVER_HEADER})
 target_sources(swe_softRes_hardRes_hashes PRIVATE ${SOLVER_HEADER})
 target_sources(swe_softRes_admiss_useShared_v1 PRIVATE ${SOLVER_HEADER})
-# TODO testing out new algorithm
 target_sources(swe_softRes_admiss_useShared_v2 PRIVATE ${SOLVER_HEADER})
+# TODO testing out new algorithm
+target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE ${SOLVER_HEADER})
 target_sources(swe_checkpointRestart PRIVATE ${SOLVER_HEADER})
 target_sources(swe_tests PRIVATE ${SOLVER_HEADER})

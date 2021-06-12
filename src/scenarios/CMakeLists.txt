@@ -28,8 +28,14 @@ target_sources(swe_softRes_admiss_useShared_v1 PRIVATE
   LoadNetCDFScenario.cpp
   LoadNetCDFScenario.hpp)
 
-# TODO testing out new algorithm
 target_sources(swe_softRes_admiss_useShared_v2 PRIVATE
+  Scenario.hpp
+  simple_scenarios.hpp
+  LoadNetCDFScenario.cpp
+  LoadNetCDFScenario.hpp)
+
+# TODO testing out new algorithm NONBLOCKING
+target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
   Scenario.hpp
   simple_scenarios.hpp
   LoadNetCDFScenario.cpp

@@ -43,6 +43,9 @@ add_executable(swe_softRes_admiss_useShared_v1)    # --> soft + hard error resil
 # METHOD 3.2 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + USING SHARED TASKS IMMEDIATELY
 add_executable(swe_softRes_admiss_useShared_v2 )
 
+# TESTING NON BLOCKING
+add_executable(swe_softRes_admiss_useShared_v2_NONBLOCKING)
+
 # METHOD 4   : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + ONLY USING SHARED TASKS IF SDC IS DETECTED
 # TODO
 
@@ -67,9 +70,12 @@ target_sources(swe_softRes_hardRes_hashes PRIVATE src/constants.hpp)
 target_sources(swe_softRes_admiss_useShared_v1 PRIVATE src/tolerance/swe_softRes_admiss_useShared_v1.cpp)
 target_sources(swe_softRes_admiss_useShared_v1 PRIVATE src/constants.hpp)
 
-# TODO in testing..
 target_sources(swe_softRes_admiss_useShared_v2 PRIVATE src/tolerance/swe_softRes_admiss_useShared_v2.cpp)
 target_sources(swe_softRes_admiss_useShared_v2 PRIVATE src/constants.hpp)
+
+# in for testing TODO
+target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src/tolerance/swe_softRes_admiss_useShared_v2_NONBLOCKING.cpp)
+target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src/constants.hpp)
 
 target_sources(swe_checkpointRestart PRIVATE src/tolerance/swe_checkpointRestart.cpp)
 target_sources(swe_checkpointRestart PRIVATE src/constants.hpp)
@@ -100,8 +106,10 @@ target_include_directories(swe_softRes_hardRes_hashes PRIVATE src)
 
 target_include_directories(swe_softRes_admiss_useShared_v1 PRIVATE src)
 
-# TODO testing out new algorithm
 target_include_directories(swe_softRes_admiss_useShared_v2 PRIVATE src)
+
+# TODO testing out new algorithm
+target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src)
 
 target_include_directories(swe_checkpointRestart PRIVATE src)
 
@@ -131,9 +139,12 @@ target_link_libraries(swe_softRes_hardRes_hashes PRIVATE ${NETCDF_LIBRARIES})
 target_include_directories(swe_softRes_admiss_useShared_v1 SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_softRes_admiss_useShared_v1 PRIVATE ${NETCDF_LIBRARIES})
 
-# TODO new alg
 target_include_directories(swe_softRes_admiss_useShared_v2 SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_softRes_admiss_useShared_v2 PRIVATE ${NETCDF_LIBRARIES})
+
+# TODO new alg NONBLOCKING
+target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE ${NETCDF_LIBRARIES})
 
 target_include_directories(swe_checkpointRestart SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_checkpointRestart PRIVATE ${NETCDF_LIBRARIES})
@@ -152,8 +163,9 @@ if (MPI_FOUND)
     target_link_libraries(swe_softRes_hardRes_hashes PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_softRes_admiss_useShared_v1 PUBLIC MPI::MPI_CXX)
 
-    # TODO new alg
     target_link_libraries(swe_softRes_admiss_useShared_v2 PUBLIC MPI::MPI_CXX)
+    # TODO new alg NONBLOCKING
+    target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_checkpointRestart PUBLIC MPI::MPI_CXX) # checkpointing doesn't need ulfm
     target_link_libraries(swe_tests PUBLIC MPI::MPI_CXX) # checkpointing doesn't need ulfm
 else()
@@ -181,8 +193,9 @@ target_link_libraries(swe_hardRes_wTaskSharing PRIVATE tmpi)
 target_link_libraries(swe_softRes_hashes PRIVATE tmpi)
 target_link_libraries(swe_softRes_hardRes_hashes PRIVATE tmpi)
 target_link_libraries(swe_softRes_admiss_useShared_v1 PRIVATE tmpi)
-# TODO new al
 target_link_libraries(swe_softRes_admiss_useShared_v2 PRIVATE tmpi)
+# TODO new al NONBLOCKING
+target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE tmpi)
 target_link_libraries(swe_tests PRIVATE tmpi)
 
 # include path
@@ -190,8 +203,9 @@ target_include_directories(swe_hardRes_wTaskSharing PRIVATE teampi-soft-error-re
 target_include_directories(swe_softRes_hashes PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_hardRes_hashes PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_admiss_useShared_v1 PRIVATE teampi-soft-error-resilience/include)
-# TODO new alg
 target_include_directories(swe_softRes_admiss_useShared_v2 PRIVATE teampi-soft-error-resilience/include)
+# TODO new alg
+target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_tests PRIVATE teampi-soft-error-resilience/include)
 
 #*******************************************************************************
@@ -224,8 +238,11 @@ if (USE_DEBUG)
     target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
     )
-    # TODO new alg
     target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+    )
+# TODO new alg NONBLOCKING
+    target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
     )
     target_compile_options(swe_checkpointRestart PRIVATE
@@ -250,8 +267,11 @@ elseif (USE_PROFILING)
     target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
     )
-    # TODO new alg
     target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+    )
+# TODO new alg NON BLOCKING
+    target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
     )
     target_compile_options(swe_checkpointRestart PRIVATE
@@ -276,8 +296,11 @@ else ()
     target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>: -O3 >
     )
-    # TODO new alg
     target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>: -O3 >
+    )
+# TODO new alg NONBLOCKING
+    target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>: -O3 >
     )
     target_compile_options(swe_checkpointRestart PRIVATE
