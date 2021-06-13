@@ -3,6 +3,8 @@
  *
  * @brief METHOD 2 : Soft error detection using hashes
  *
+ * @author Atamert Rahma rahma@in.tum.de
+ *
  * Provides soft error detection by comparing the results of two
  * teams computing the same run redundantly by sending hashes in
  * the hearbeat messages during teaMPI communication. It can also
@@ -28,38 +30,20 @@
  *
  *          }
  *
- *          // send hash with heartbeat
+ *          // send the hash with a heartbeat
  *      }
- *
- * @author Atamert Rahma rahma@in.tum.de
  */
 
 
-#include <bits/c++config.h>
-#include <bitset>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <mpi.h>
-#include <string>
-#include <system_error>
 #include <teaMPI.h>
-#include <type_traits>
+#include <memory>
+#include <string>
 #include <unistd.h>
-
-#include <algorithm>
 #include <climits>
-#include <csetjmp>
-#include <fstream>
 #include <iostream>
-#include <ostream>
-#include <sstream>
-#include <thread>
 
 #include "blocks/DimSplitMPIOverdecomp.hpp"
-#include "io/Reader.hpp"
 #include "io/Writer.hpp"
-#include "scenarios/LoadNetCDFScenario.hpp"
 #include "scenarios/simple_scenarios.hpp"
 #include "tools/Args.hpp"
 #include "types/Boundary.hpp"
@@ -68,7 +52,7 @@
 
 /* Size of size_t to decide which MPI_Datatype we need */
 #if SIZE_MAX == UCHAR_MAX
-   #define MPI_SIZE_T MPI_UNSIGNED_CHAR             /* 1 byte. a little extreme ? */
+   #define MPI_SIZE_T MPI_UNSIGNED_CHAR             /* 1 byte  */
 #elif SIZE_MAX == USHRT_MAX
    #define MPI_SIZE_T MPI_UNSIGNED_SHORT            /* 2 bytes */
 #elif SIZE_MAX == UINT_MAX
@@ -88,8 +72,7 @@ std::array<int, 4> getNeighbours(int localBlockPositionX,
                                  int localBlockPositionY,
                                  int blockCountX,
                                  int blockCountY,
-                                 int myRank)
-{
+                                 int myRank) {
     std::array<int, 4> myNeighbours;
     myNeighbours[BND_LEFT] = (localBlockPositionX > 0) ? myRank - blockCountY : -1;
     myNeighbours[BND_RIGHT] = (localBlockPositionX < blockCountX - 1) ? myRank + blockCountY : -1;
@@ -100,8 +83,9 @@ std::array<int, 4> getNeighbours(int localBlockPositionX,
 
 //******************************************************************************
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
+    double startTime = MPI_Wtime();
+
     // Define command line arguments
     tools::Args args;
 
@@ -154,10 +138,7 @@ int main(int argc, char** argv)
     hashOption = args.getArgument<int>("hash-method", 1);
     if (hashOption != 0 && hashOption != 1 && hashOption != 2) {
         std::cout << "Invalid hash method. It has to be either:\n"
-                  << "  0,\n"
-                  << "  i^420 or\n"
-                  << "  the number of which engineers think it's e"
-                  << std::endl;
+                  << "  0 or i^1024" << std::endl;
         return 1;
     }
     numberOfHashes = args.getArgument<unsigned int>("hash-count");
@@ -205,8 +186,7 @@ int main(int argc, char** argv)
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
 
-    std::printf("PID %d, Rank %i of Team %i spawned at %s\n", getpid(), myRankInTeam, myTeam, hostname);
-    fflush(stdout);
+    std::printf("PID %d, Rank %i of Team %i spawned at %s with start time %f\n", getpid(), myRankInTeam, myTeam, hostname, startTime);
 
     int totalBlocks = blocksPerRank * ranksPerTeam;
 
@@ -316,20 +296,6 @@ int main(int argc, char** argv)
 
     float timestep;
 
-    /**
-     * Contains the block numbers that needs to be calculated on the specific
-     * rank. There are 'numTeams * decompFactor * ranksPerTeam' blocks in total
-     * when sharing (each block es a complete 'task') so this helps us to order
-     * the blocks by their numbers across this rank's replicas to compute and
-     * share the results.
-     */
-    std::vector<int> myBlockOrder{};
-
-    /* In the naiv case, we have only one block per rank. So there is no
-     * sharing.
-     */
-    myBlockOrder.push_back(0);
-
 //------------------------------------------------------------------------------
     // Write zero timestep
     if (writeOutput) {
@@ -346,6 +312,7 @@ int main(int argc, char** argv)
     /* for hashing the calculated updates to detect silent data corruptions */
     tools::Hasher swe_hasher = tools::Hasher(fieldSizeX, fieldSizeY, simulationBlock.get());
 
+    auto& block = *simulationBlock;
 
     for (unsigned int i = 0; i < numberOfHashes; i++) {
 
@@ -353,10 +320,8 @@ int main(int argc, char** argv)
         while (t < sendHashAt[i]) {
 
             // exchange boundaries between blocks
-            simulationBlock->setGhostLayer();
-            simulationBlock->receiveGhostLayer();
-
-            auto& currentBlock = *simulationBlock;
+            block.setGhostLayer();
+            block.receiveGhostLayer();
 
             if(verbose) {
                 std::cout << "calculating.. t = " << t
@@ -365,28 +330,36 @@ int main(int argc, char** argv)
             }
 
             /* compute current updates */
-            currentBlock.computeNumericalFluxes();
+            block.computeNumericalFluxes();
 
-            /* Inject a bitflip at team 0 at rank 0 */
-            if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
-                simulationBlock->injectRandomBitflip();
+            /* Inject a bitflip at random team and random rank */
+            if (bitflip_at >= 0  && t > bitflip_at) {
+                /* Seed the random generator */
+                std::srand (static_cast <unsigned> (time(NULL)));
+                int teamToCorrupt = std::rand() % numTeams;
+                int rankToCorrupt = std::rand() % ranksPerTeam;
+                if (myTeam == teamToCorrupt && myRankInTeam == rankToCorrupt) {
+                    std::cout << "T" << myTeam << "R" << myRankInTeam
+                              << " : INJECTING A BITFLIP" << std::endl;
+                    block.injectRandomBitflip();
+                }
                 /* prevent any other bitflip */
                 bitflip_at = -1.f;
             }
 
             /* Agree on a timestep */
-            timestep = simulationBlock->maxTimestep;
+            timestep = block.maxTimestep;
             float agreed_timestep;
             PMPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 
-            simulationBlock->maxTimestep = agreed_timestep;
-            simulationBlock->updateUnknowns(agreed_timestep);
+            block.maxTimestep = agreed_timestep;
+            block.updateUnknowns(agreed_timestep);
 
             t += agreed_timestep;
 
             /* update the hash */
             if (hashOption == 1) {
-                swe_hasher.update_stdHash(); // TODO update the hash at the very end! So we just have to hash the main data arrays, not the updates!!
+                swe_hasher.update_stdHash();
             }
             else if (hashOption == 0) {
                 /* don't hash. 0 is for 'no hashing' */
@@ -404,7 +377,7 @@ int main(int argc, char** argv)
                               << " by team " << myTeam << ", rank " << myRankInTeam
                               << std::endl;
                 }
-                simulationBlock->writeTimestep(t);
+                block.writeTimestep(t);
             }
         } // end of t < sendHashAt[i]
 
@@ -449,21 +422,12 @@ int main(int argc, char** argv)
 
     delete[] sendHashAt;
     delete scenario;
-//    delete simulationBlock.get(); /* shared pointer issue */
 
     simulationBlock->freeMpiType();
 
-/*
-    PMPI_Comm_set_errhandler(TMPI_GetInterTeamComm(), MPI_ERRORS_RETURN);
-    PMPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI_ERRORS_RETURN);
-
-    int err = 1;
-
-    while(true) {
-        err = PMPI_Barrier(MPI_COMM_WORLD);
-        if (err == 0) break;
-    }
-*/
+    double totalTime = MPI_Wtime() - startTime;
+    std::cout << "Rank " << myRankInTeam << " from TEAM " << myTeam
+              << " total time : " << totalTime << std::endl;
 
     MPI_Finalize();
 

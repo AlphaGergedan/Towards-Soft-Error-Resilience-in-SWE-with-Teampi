@@ -3,34 +3,33 @@
  *
  * @brief METHOD 1 : No resilience for benchmarking
  *
+ * @author Atamert Rahma rahma@in.tum.de
+ *
  * No error resilience for benchmarking. However this can provide
  * a naive soft error detection if we run the application twice,
  * and even soft error resilience (detection + correction) if we
  * run the application 3 times (assuming that we would have at least
- * 2 equal solutions).
+ * 2 equal solutions). This can be used as a baseline model.
  *
- * @author Atamert Rahma rahma@in.tum.de
+ * Here is a short pseudo-code of the computation loop:
+ *
+ *      while (t < simulationDuration) {
+ *        compute
+ *        agreeOnTimestep
+ *        updateUnknowns
+ *      }
  */
 
 
 #include <memory>
 #include <mpi.h>
-#include <string>
-#include <unistd.h>
-
-#include <algorithm>
 #include <climits>
-#include <csetjmp>
-#include <fstream>
 #include <iostream>
-#include <ostream>
-#include <sstream>
-#include <thread>
+#include <unistd.h>
 
 #include "blocks/DimSplitMPIOverdecomp.hpp"
 #include "io/Reader.hpp"
 #include "io/Writer.hpp"
-#include "scenarios/LoadNetCDFScenario.hpp"
 #include "scenarios/simple_scenarios.hpp"
 #include "tools/Args.hpp"
 #include "types/Boundary.hpp"
@@ -42,8 +41,7 @@ std::array<int, 4> getNeighbours(int localBlockPositionX,
                                  int localBlockPositionY,
                                  int blockCountX,
                                  int blockCountY,
-                                 int myRank)
-{
+                                 int myRank) {
     std::array<int, 4> myNeighbours;
     myNeighbours[BND_LEFT] = (localBlockPositionX > 0) ? myRank - blockCountY : -1;
     myNeighbours[BND_RIGHT] = (localBlockPositionX < blockCountX - 1) ? myRank + blockCountY : -1;
@@ -55,6 +53,8 @@ std::array<int, 4> getNeighbours(int localBlockPositionX,
 //******************************************************************************
 
 int main(int argc, char** argv) {
+    double startTime = MPI_Wtime();
+
     // Define command line arguments
     tools::Args args;
 
@@ -116,9 +116,8 @@ int main(int argc, char** argv) {
     // Print status
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
-    double startTime = MPI_Wtime();
 
-    std::printf("Rank %i of Team %i spawned at %s with start time %f\n", myRankInTeam, myTeam, hostname, startTime);
+    std::printf("PID %d, Rank %i of Team %i spawned at %s with start time %f\n", getpid(), myRankInTeam, myTeam, hostname, startTime);
 
     /* int totalBlocks = blocksPerRank * ranksPerTeam; */
     int totalBlocks = ranksPerTeam; // actually total number of global ranks
@@ -225,7 +224,6 @@ int main(int argc, char** argv) {
     simulationBlock->sendBathymetry();
     simulationBlock->recvBathymetry();
 
-    std::vector<float> timesteps;
     // Simulated time
     t = simulationStart;
 
@@ -241,8 +239,6 @@ int main(int argc, char** argv) {
      * In the naiv case, we have only one block per rank. So there is no
      * sharing.
      */
-    std::vector<int> myBlockOrder{};
-    myBlockOrder.push_back(0); /* We have only one block */
 
 //------------------------------------------------------------------------------
 
@@ -258,12 +254,12 @@ int main(int argc, char** argv) {
               << std::endl;
     }
 
-    auto& currentBlock = *simulationBlock;
+    auto& block = *simulationBlock;
 
     while (t < simulationDuration) {
         // exchange boundaries between blocks
-        currentBlock.setGhostLayer();
-        currentBlock.receiveGhostLayer();
+        block.setGhostLayer();
+        block.receiveGhostLayer();
 
         if (verbose) {
             std::cout << "calculating.. t = " << t << "\t\t/ "
@@ -274,15 +270,15 @@ int main(int argc, char** argv) {
             std::cout << "\t\t\t\t---- Rank " << myRankInTeam << std::endl;
         }
 
-        currentBlock.computeNumericalFluxes();
+        block.computeNumericalFluxes();
 
         /* Agree on a timestep */
-        timestep = currentBlock.maxTimestep;
+        timestep = block.maxTimestep;
         float agreed_timestep;
         MPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 
-        currentBlock.maxTimestep = agreed_timestep;
-        currentBlock.updateUnknowns(agreed_timestep);
+        block.maxTimestep = agreed_timestep;
+        block.updateUnknowns(agreed_timestep);
 
         t += agreed_timestep;
 
@@ -292,13 +288,15 @@ int main(int argc, char** argv) {
                         << "\t\t\t\t---- Rank " << myRankInTeam /* equals global rank with one team */
                         << std::endl;
             }
-            currentBlock.writeTimestep(t);
+            block.writeTimestep(t);
         }
     }
 
     simulationBlock->freeMpiType();
     double totalTime = MPI_Wtime() - startTime;
     std::cout << "Rank " << myRankInTeam << " from TEAM " << myTeam
-              << " end time : " << totalTime << std::endl;
+              << " total time : " << totalTime << std::endl;
+
     MPI_Finalize();
+    return 0;
 }

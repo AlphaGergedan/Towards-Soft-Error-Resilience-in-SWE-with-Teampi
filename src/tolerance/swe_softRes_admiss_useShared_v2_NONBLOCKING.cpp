@@ -1,14 +1,16 @@
 /**
  * @file src/tolerance/swe_softRes_admiss_useShared_v2.cpp
  *
- * @brief soft and hard error resilience with task sharing
+ * @brief soft error resilience with admissibility checks and using shared tasks
  *
  * Checks for admissibility of the computations (also see validateAdmissibility
  * in src/blocks/DimSplitMPIOverdecomp.cpp) and only share the results if they
- * are admissible. If they are not, all the teams goes into a recovery mode until
- * all the teams have been recovered.
+ * are admissible. If they are not, a healthy replica sends its block data to
+ * the failed replicas. We use shared tasks immediately, and check
+ * them for admissibility in case of SDC during transmission (undetected SDC
+ * spreads immediately, but saves computation time for secondary blocks).
  *
- * Here is a short pseudo-code for the computation loop:
+ * Here is a short pseudo-code for the computation loop: TODO
  *
  *  while (t < simulationDuration) {
  *
@@ -154,27 +156,6 @@ void loadCheckpointCallback(int reloadTeam)
     longjmp(jumpBuffer, 1);
 }
 
-/* TODO currently in development ... only difference is that hasRecovered flag is not set !!! */
-void loadCheckpointCallback2_softErrorRecovery(int reloadTeam)
-{
-    int myRankInTeam;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
-    const int myTeam = TMPI_GetTeamNumber();
-    std::printf("Rank %i of Team %i loading checkpoint from Team %i.\n", myRankInTeam, myTeam, reloadTeam);
-    MPI_Status status;
-    int recv_buf;
-    MPI_Comm_rank(MPI_COMM_WORLD, &myRankInTeam);
-    MPI_Recv(&recv_buf, 1, MPI_INT, TMPI_TeamToWorldRank(myRankInTeam, reloadTeam), 0, TMPI_GetWorldComm(), &status);
-    simulationBlocks.clear();
-    delete scenario;
-    scenario = nullptr;
-    restartNameInput = backupNameInput + "_t" + std::to_string(reloadTeam);
-    //hasRecovered = true;
-    recoveredFromSDC = true;
-    longjmp(jumpBuffer, 1);
-}
-
-
 std::array<int, 4> getNeighbours(int localBlockPositionX,
                                  int localBlockPositionY,
                                  int blockCountX,
@@ -190,6 +171,8 @@ std::array<int, 4> getNeighbours(int localBlockPositionX,
 }
 
 int main(int argc, char** argv) {
+    double startTime = MPI_Wtime();
+
     // Define command line arguments
     tools::Args args;
 
@@ -203,10 +186,8 @@ int main(int argc, char** argv) {
                    tools::Args::Required,
                    false);
     args.addOption("output-basepath", 'o', "Output base file name");
-    args.addOption("backup-basepath", 'b', "Output base file name");
     args.addOption("restart-basepath", 'r', "Restart base file name", tools::Args::Required, false);
     args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
-    // TODO make bitflip at random time ?
     args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
     args.addOption("kill-rank", 'k', "Kills the rank 0 of team 0 at the specified simulation time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
@@ -250,7 +231,7 @@ int main(int argc, char** argv) {
         }
     }
     outputNameInput = args.getArgument<std::string>("output-basepath");
-    backupNameInput = args.getArgument<std::string>("backup-basepath");
+    backupNameInput = "BACKUP_" + outputNameInput;
     if (args.isSet("restart-basepath")) {
         restartNameInput = args.getArgument<std::string>("restart-basepath");
     }
@@ -284,7 +265,11 @@ int main(int argc, char** argv) {
 
     /* Begin the logger */
     tools::FtLogger ft_logger(myTeam, myRankInTeam);
-    ft_logger.ft_print_spawnStatus();
+    //ft_logger.ft_print_spawnStatus();
+    // Print status
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    std::printf("PID %d, Rank %i of Team %i spawned at %s with start time %f\n", getpid(), myRankInTeam, myTeam, hostname, startTime);
 
     int totalBlocks = blocksPerRank * ranksPerTeam;
 
@@ -608,17 +593,26 @@ int main(int argc, char** argv) {
 
                 currentBlock.computeNumericalFluxes();
 
-                /* inject bitflip if desired */
-                if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
-                    //currentBlock.injectBigNumber_intoData();
-                    currentBlock.injectNaN_intoData();
-                    //currentBlock.injectRandomBitflip();
-                    //currentBlock.injectRandomBitflip_intoData();
-                    //currentBlock.injectRandomBitflip_intoUpdates();
+                /* Inject a bitflip at random team and random rank */
+                if (bitflip_at >= 0  && t > bitflip_at) {
+                    /* Seed the random generator */
+                    std::srand (static_cast <unsigned> (time(NULL)));
+                    int teamToCorrupt = std::rand() % numTeams;
+                    int rankToCorrupt = std::rand() % ranksPerTeam;
+                    if (myTeam == teamToCorrupt && myRankInTeam == rankToCorrupt) {
+                        std::cout << "T" << myTeam << "R" << myRankInTeam
+                                << " : INJECTING A BITFLIP" << std::endl;
+                        //currentBlock.injectBigNumber_intoData();
+                        currentBlock.injectNaN_intoData();
+                        //currentBlock.injectRandomBitflip();
+                        //currentBlock.injectRandomBitflip_intoData();
+                        //currentBlock.injectRandomBitflip_intoUpdates();
+                    }
 
                     /* prevent any other bitflip */
                     bitflip_at = -1.f;
                 }
+
                 /* check for soft errors */
                 bool admissible = currentBlock.validateAdmissibility(t);
                 if (!admissible) {
@@ -1244,6 +1238,11 @@ int main(int argc, char** argv) {
 
     for (auto& block : simulationBlocks) { block->freeMpiType(); }
 
-    std::cout << "\n\n\nT" << myTeam << "R" << myRankInTeam << "calling finalize, yay ^^" << std::endl;
+    double totalTime = MPI_Wtime() - startTime;
+    std::cout << "Rank " << myRankInTeam << " from TEAM " << myTeam
+              << " total time : " << totalTime << std::endl;
+
     MPI_Finalize();
+
+    return 0;
 }
