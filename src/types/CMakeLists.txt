@@ -41,6 +41,12 @@ target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
   Float2DNative.hpp
   Float2DBuffer.hpp)
 
+target_sources(swe_softRes_admiss_redundant PRIVATE
+  Boundary.hpp
+  Float2D.hpp
+  Float2DNative.hpp
+  Float2DBuffer.hpp)
+
 target_sources(swe_checkpointRestart PRIVATE
   Boundary.hpp
   Float2D.hpp

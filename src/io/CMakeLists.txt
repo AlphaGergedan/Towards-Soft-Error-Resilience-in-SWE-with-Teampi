@@ -56,6 +56,14 @@ target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
   Reader.cpp
   Reader.hpp)
 
+target_sources(swe_softRes_admiss_redundant PRIVATE
+  Writer.cpp
+  Writer.hpp
+  NetCDFWriter.cpp
+  NetCDFWriter.hpp
+  Reader.cpp
+  Reader.hpp)
+
 target_sources(swe_checkpointRestart PRIVATE
   Writer.cpp
   Writer.hpp

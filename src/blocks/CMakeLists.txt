@@ -34,6 +34,11 @@ target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
   DimSplitMPIOverdecomp.cpp
   DimSplitMPIOverdecomp.hpp)
 
+target_sources(swe_softRes_admiss_redundant PRIVATE
+  Block.hpp
+  DimSplitMPIOverdecomp.cpp
+  DimSplitMPIOverdecomp.hpp)
+
 target_sources(swe_checkpointRestart PRIVATE
   Block.hpp
   DimSplitMPIOverdecomp.cpp

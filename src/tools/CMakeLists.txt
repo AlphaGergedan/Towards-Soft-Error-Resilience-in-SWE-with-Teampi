@@ -44,6 +44,12 @@ target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
   ftLogger.hpp
   ftLogger.cpp)
 
+target_sources(swe_softRes_admiss_redundant PRIVATE
+  help.hpp
+  Args.hpp
+  ftLogger.hpp
+  ftLogger.cpp)
+
 target_sources(swe_checkpointRestart PRIVATE
   help.hpp
   Args.hpp
