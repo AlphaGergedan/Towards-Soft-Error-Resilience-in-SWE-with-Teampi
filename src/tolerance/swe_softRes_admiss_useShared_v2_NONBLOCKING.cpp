@@ -597,7 +597,7 @@ int main(int argc, char** argv) {
 
             /* indicates if the primary block is corrupted */
             unsigned char primaryBlocksCorrupted[decompFactor];
-            MPI_Request reportSendReqs[decompFactor * numTeams];
+            std::vector<MPI_Request> reportSendReqs(decompFactor * numTeams, MPI_REQUEST_NULL);
             unsigned char SDC = 0;
 
             /* compute and validate the primary blocks */
@@ -611,8 +611,8 @@ int main(int argc, char** argv) {
                 /* inject bitflip if desired */
                 if (bitflip_at >= 0  && t > bitflip_at && myTeam == 0 && myRankInTeam == 0) {
                     //currentBlock.injectBigNumber_intoData();
-                    //currentBlock.injectNaN_intoData();
-                    currentBlock.injectRandomBitflip();
+                    currentBlock.injectNaN_intoData();
+                    //currentBlock.injectRandomBitflip();
                     //currentBlock.injectRandomBitflip_intoData();
                     //currentBlock.injectRandomBitflip_intoUpdates();
 
@@ -648,7 +648,7 @@ int main(int argc, char** argv) {
 
             /* go into recovery mode to receive */
             while (SDC) {
-                MPI_Waitall(decompFactor * numTeams, reportSendReqs, MPI_STATUSES_IGNORE);
+                MPI_Waitall(decompFactor * numTeams, reportSendReqs.data(), MPI_STATUSES_IGNORE);
                 // TODO debugging
                 std::cout << "T" << myTeam << "R" << myRankInTeam
                           << " : SDC detected in my primary blocks"
@@ -721,9 +721,13 @@ int main(int argc, char** argv) {
                 int source_rank = currentBlockNr % numTeams;
                 MPI_Irecv(secondaryBlocksCorrupted+(i-decompFactor), 1, MPI_BYTE,
                           source_rank, 100, interTeamComm, &reportRecvReqs[i-decompFactor]);
+            }
+            /* we must wait for all the reports */
+            MPI_Waitall(blocksPerRank - decompFactor, reportRecvReqs, MPI_STATUSES_IGNORE);
+            /* check all the received reports */
+            for (unsigned int i = decompFactor; i < blocksPerRank; i++) {
                 if (secondaryBlocksCorrupted[i-decompFactor] == 1) SDC_secondary = 1;
             }
-            MPI_Waitall(blocksPerRank - decompFactor, reportRecvReqs, MPI_STATUSES_IGNORE);
             /* if an error is present */
             if (SDC_secondary) {
                 // TODO debugging
@@ -1126,7 +1130,12 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+            /* we must wait for all the reports */
             MPI_Waitall((numTeams-1) * decompFactor, reportRecvReqs_second, MPI_STATUSES_IGNORE);
+            /* check all the received reports */
+            for (int i = 0; i < (numTeams-1)*decompFactor; i++) {
+                if (sentBlocksCorrupted[i] == 1) SDC_sent = 1;
+            }
             /* if error is reported */
             if (SDC_sent) {
                 /* recovery mode */
