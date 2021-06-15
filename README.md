@@ -1,29 +1,41 @@
 # Towards Soft Error Resilience in SWE with teaMPI #
-
 This repository tries to integrate soft error resilience in SWE using teaMPI
 library. See the original [SWE](https://github.com/TUM-I5/SWE) and
 [teaMPI](https://gitlab.lrz.de/hpcsoftware/teaMPI). Integration over
 [hard failure tolerance in teaMPI and SWE](https://github.com/xile273/SWE/tree/simon_task_sharing)
 
 ## Soft Error Resilience ##
-
 Increased error rates in high performance computing due to multiple cores and
-memories may lead to silent data corruptions. In such a case, we are unable to
-detect the error without observing the application's results. In order to
-provide such resilience, we either need to use redundancy and compare the
-results of the replicated processes, or we need to check if our results are
-"sane" enough to proceed (like checking for absence of NaNs etc.). A naive
-method would be to run 2 teams computing the same application and then compare
-their results at the end. We try to improve this approach with the following
-techniques, and still try to provide soft resilient HPC applications using
-teaMPI.
+memories may lead to silent data corruptions (SDCs) with bitflips. In such a
+case, we are unable to detect the error without observing the application's
+results because in case of an SDC the application seems to be running correctly
+and it doesn't instantly report an error when an SDC occurs. In order to provide
+detection and resilience for SDCs, we introduce the following methods.
 
-### Single Heartbeats with Hashes ###
+### Method 1 | No Resilience ###
+This method doesn't have any built in soft detection or resilience mechanism, so
+it also doesn't have their overheads. This method can be run to see the fastest
+possible computation and it represents our baseline model. A naive soft error
+detection can be done by running the application twice. For resilience we need
+to run it again in order to decide which one of the initial runs had an SDC by
+using voting.
 
-We first try to hash the 'tasks' computed by the replicas of 2 teams and share
-the hashes across them. This provides early SDC detection. We use std::hash for
-better performance, as bitflips tend to occur very rare and so are collisions of
-corrupted results. According to
+SWE domain is divided into `number_of_ranks` blocks and each rank computes its
+own block. (See
+[swe\_noRes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_noRes.cpp)
+for the implementation and [its executable](#running) for usage examples)
+
+We try to improve this naive method with the following techniques.
+
+### Method 2 | Soft Error Detection Using Hashes ###
+In this method we provide soft error detection by running the application
+redundantly twice. We hash the 'tasks' computed by the replicas of 2 Teams and
+share the hashes across them. This can provide an early SDC detection, however
+it cannot correct the soft errors. For soft resilience an additional run is
+required, or this method can be extended to work with 3 Teams with a voting
+mechanism.
+
+We use std::hash for better performance. According to
 [this stackoverflow page](https://stackoverflow.com/questions/19411742/what-is-the-default-hash-function-used-in-c-stdunordered-map)
 the function object std::hash<> is based on MurmurHashUnaligned2 for the
 specialization for std::strings, and it is 8 bytes long. Other hash functions
@@ -31,36 +43,46 @@ like SHA-1 could also be used but it is expected to be slower due to its
 increased length.
 
 We compute one block per rank in team. So we divide the SWE domain into
-`number_of_ranks_in_a_team` blocks. Each rank computes it's own block and issues
+`number_of_ranks_in_a_team` blocks. Each rank computes its own block and issues
 a single heartbeat in each `heartbeat-interval` in simulation time. In each
 single heartbeat they send the hashes of the computed updates to their replicas.
 TeaMPI handles the comparison of the hashes, and therefore an early detection of
 an SDC is possible. This method however does not guarantee any hard failure
 resilience as the heartbeat intervals depend on the time steps.
 (See
-[swe\_softRes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes.cpp)
+[swe\_softRes\_hashes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_hashes.cpp)
 for the implementation and [its executable](#running) for usage examples)
 
 We assume that any bitflip occurs in our data will eventually be detected by the
-hash comparison. This provides us to detect any SDC that may occur in our data
+hash comparisons. This allows us to detect any SDC that may occur in our data
 arrays that we are hashing. But this method uses replication, which loses half
 of our computation power, and even if an SDC is detected we must restart the
-application again for recalculation since we can not decide which replica has
-the SDC with only using 2 teams. This can be avoided with more than 2 teams and
-with a voting mechanism to choose the healthy team. It can then write reactive
-checkpoint for the other teams and the application can continue.
+application again for recalculation since we don't have a 3 Team support for
+this method yet. This can be done in further research with a voting mechanism
+to choose the healthy team. It can then write reactive checkpoint for the other
+teams and the application can continue.
 
-### TODO Integrating Single Heratbeats to Hard Failure Resilience ###
+### Method 3 | Soft Error Resilience Using Admissibility Checks and Task Sharing ###
+TODO
 
-One heartbeat pair is bound to the wall clock interval that user specifies for
-hard error resilience. And the other heartbeat interval is for the soft error
-detection, which only depends on the algorithm and only sending hashes
+soft error resilience with admissibility checks and using shared tasks
+Checks for admissibility of the computations (also see validateAdmissibility
+in src/blocks/DimSplitMPIOverdecomp.cpp) and only share the results if they
+are admissible. If they are not, a healthy replica sends its block data to
+the failed replicas. We use shared tasks immediately, and check
+them for admissibility in case of SDC during transmission (undetected SDC
+spreads immediately, but saves computation time for secondary blocks).
 
-Theoretically, correction of the data is possible in case of a soft error by
-running 3 teams at least, and by deploying a voting mechanism like in
-[redMPI](https://www.christian-engelmann.info/?page_id=1873).
+### Method 4 | Soft Error Resilience Using Admissibility Checks and Redundant Computation ###
+TODO
+
 
 ### Soft and Hard Error Resilience with Task Sharing ###
+or we need to check if our results are
+"sane" enough to proceed (like checking for absence of NaNs etc.).
+techniques, and still try to provide soft resilient HPC applications using
+teaMPI.
+
 
 We already had hard error resilience using warm spares with task sharing in
 [Simon's version](https://github.com/xile273/SWE/tree/simon_task_sharing) of SWE
@@ -78,12 +100,33 @@ and relaxed discrete maximum principle TODO
 
 If any data array, that can suffer from a bit flip, doesn't meet a predefined
 admissibility criterion, then we assume that an SDC is present. Unfortunately
-we can not assume that any SDC occurred in the data will be detected in the
+we cannot assume that any SDC occurred in the data will be detected in the
 future because of the computations depend on the data, if we want to use task
 sharing. This means, we have to check all the data array and share our computed
 tasks. If we detect an SDC, the other team creates a checkpoint and the
 corrupted team loads it. This however requires some additional synchronization
 between and within the teams. See [example runs](#running) for usage.
+
+
+
+## Hard Error Resilience ###
+
+Method 2 was integrated into the heartbeats that teaMPI uses in
+order to detect hard error
+
+### TODO Integrating Single Heratbeats to Hard Failure Resilience ###
+
+One heartbeat pair is bound to the wall clock interval that user specifies for
+hard error resilience. And the other heartbeat interval is for the soft error
+detection, which only depends on the algorithm and only sending hashes
+
+Theoretically, correction of the data is possible in case of a soft error by
+running 3 teams at least, and by deploying a voting mechanism like in
+[redMPI](https://www.christian-engelmann.info/?page_id=1873).
+
+
+### TODO Integrating Hard Error Resilience Into Other Methods ###
+
 
 ## Setting Up ##
 
