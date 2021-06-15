@@ -769,405 +769,104 @@ int main(int argc, char** argv) {
 
             /* Primary Block computation+admissibilityChecks+report are finished */
 
-            std::vector<MPI_Request> send_reqs(11 * numTeams, MPI_REQUEST_NULL);
-
-            /* TODO
-             *  In this loop do:
-             *    If primary block, it is already computed and
-             *                      checked for SDCs, we send it
-             *    else it is secondary block, we receive it and
-             *                      check it for SDC
-             */
-            for (unsigned int i = 0; i < blocksPerRank; i++) {
-                // Get a reference to the current block
-                const int& currentBlockNr{myBlockOrder[i]};
-                auto& currentBlock = *simulationBlocks[currentBlockNr];
-
-                // Size of the update fields incl. ghost layer
-                const int fieldSizeX{(currentBlock.nx + 2) * (currentBlock.ny + 2)};
-                const int fieldSizeY{(currentBlock.nx + 1) * (currentBlock.ny + 2)};
-
-                // The first [decompFactor] blocks are the ones we always compute ourselves
-                if (i < decompFactor) {
-                    // Send to all other teams
-                    for (int destTeam{0}; destTeam < numTeams; destTeam++) {
-                        if (destTeam == myTeam || hasRecovered == true)
-                        {
-                            // Do not send to myself
-                            // Skip send if I recovered (only if from hard failure)
-                        }
-                        else {
-                            //std::cout << "Team " << myTeam << ": Sending t=" << t << " to Team " << destTeam << '\n';
-                            if (verbose) ft_logger.ft_block_sending(t, destTeam);
-
-                            /* current timestep */
-                            MPI_Isend(&t, 1, MPI_FLOAT, destTeam, 1, interTeamComm, &send_reqs[11 * destTeam]);
-                            MPI_Request_free(&send_reqs[11 * destTeam]);
-
-                            /* current block */
-                            MPI_Isend(&myBlockOrder[i],
-                                      1,
-                                      MPI_INT,
-                                      destTeam,
-                                      2,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 1]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 1]);
-
-                            /* h netupdates Left */
-                            MPI_Isend(currentBlock.hNetUpdatesLeft.getRawPointer(),
-                                      fieldSizeX,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      2,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 2]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 2]);
-
-                            /* h netupdates Right */
-                            MPI_Isend(currentBlock.hNetUpdatesRight.getRawPointer(),
-                                      fieldSizeX,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      3,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 3]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 3]);
-
-                            /* hu netupdates Left */
-                            MPI_Isend(currentBlock.huNetUpdatesLeft.getRawPointer(),
-                                      fieldSizeX,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      4,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 4]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 4]);
-
-                            /* hu netupdates Right*/
-                            MPI_Isend(currentBlock.huNetUpdatesRight.getRawPointer(),
-                                      fieldSizeX,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      5,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 5]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 5]);
-
-                            /* h netupdates below */
-                            MPI_Isend(currentBlock.hNetUpdatesBelow.getRawPointer(),
-                                      fieldSizeY,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      6,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 6]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 6]);
-
-                            /* h netupdates above */
-                            MPI_Isend(currentBlock.hNetUpdatesAbove.getRawPointer(),
-                                      fieldSizeY,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      7,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 7]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 7]);
-
-                            /* hv netupdates below */
-                            MPI_Isend(currentBlock.hvNetUpdatesBelow.getRawPointer(),
-                                      fieldSizeY,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      8,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 8]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 8]);
-
-                            /* hv netupdates above */
-                            MPI_Isend(currentBlock.hvNetUpdatesAbove.getRawPointer(),
-                                      fieldSizeY,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      9,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 9]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 9]);
-
-                            /* max time step */
-                            MPI_Isend(&(currentBlock.maxTimestep),
-                                      1,
-                                      MPI_FLOAT,
-                                      destTeam,
-                                      10,
-                                      interTeamComm,
-                                      &send_reqs[11 * destTeam + 10]);
-                            MPI_Request_free(&send_reqs[11 * destTeam + 10]);
-                        }
-                    } // end of for (int destTeam{0}; destTeam < numTeams; destTeam++)
-                } // end of if (i < decompFactor), primary blocks
-                else {
-                    int fieldSizeX = (currentBlock.nx + 2) * (currentBlock.ny + 2);
-                    int fieldSizeY = (currentBlock.nx + 1) * (currentBlock.ny + 2);
-                    std::vector<MPI_Request> reqs(11, MPI_REQUEST_NULL);
-                    std::vector<MPI_Status> stats(11);
-                    int source_rank = currentBlockNr % numTeams;
-                    float recv_t;
-                    int recv_blockNum;
-                    if (!hasRecovered)
-                    {
-                        MPI_Irecv(&recv_t, 1, MPI_FLOAT, source_rank, 1, interTeamComm, &reqs[0]);
-                        MPI_Irecv(&recv_blockNum, 1, MPI_INT, source_rank, 2, interTeamComm, &reqs[1]);
-                        MPI_Irecv(currentBlock.hNetUpdatesLeft.getRawPointer(),
-                                  fieldSizeX,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  2,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[2]);
-                        MPI_Irecv(currentBlock.hNetUpdatesRight.getRawPointer(),
-                                  fieldSizeX,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  3,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[3]);
-                        MPI_Irecv(currentBlock.huNetUpdatesLeft.getRawPointer(),
-                                  fieldSizeX,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  4,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[4]);
-                        MPI_Irecv(currentBlock.huNetUpdatesRight.getRawPointer(),
-                                  fieldSizeX,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  5,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[5]);
-                        MPI_Irecv(currentBlock.hNetUpdatesBelow.getRawPointer(),
-                                  fieldSizeY,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  6,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[6]);
-                        MPI_Irecv(currentBlock.hNetUpdatesAbove.getRawPointer(),
-                                  fieldSizeY,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  7,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[7]);
-                        MPI_Irecv(currentBlock.hvNetUpdatesBelow.getRawPointer(),
-                                  fieldSizeY,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  8,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[8]);
-                        MPI_Irecv(currentBlock.hvNetUpdatesAbove.getRawPointer(),
-                                  fieldSizeY,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  9,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[9]);
-                        MPI_Irecv(&(currentBlock.maxTimestep),
-                                  1,
-                                  MPI_FLOAT,
-                                  source_rank,
-                                  10,
-                                  TMPI_GetInterTeamComm(),
-                                  &reqs[10]);
-                    }
-
-                    //std::cout << "T" << myTeam << "R" << myRankInTeam << " MPI_Waitall start" << std::endl;
-                    int code = MPI_Waitall(11, reqs.data(), stats.data());
-                    //std::cout << "T" << myTeam << "R" << myRankInTeam << " MPI_Waitall end ^^" << std::endl;
-                    if (code != MPI_SUCCESS || hasRecovered) {
-                        std::cout << "*#*#*#*#*#*# unknown error ?  " << std::endl;
-                        assert(false); // TODO debugging right now, you can't enter here sorry :(
-                        if (code != MPI_SUCCESS)
-                        {
-                            std::cout << "Team " << myTeam << ": Error in Waitall for block " << currentBlockNr << ": "
-                                      << code << '\n';
-                        }
-                        currentBlock.computeNumericalFluxes();
-                    }
-                    else {
-                        // currentBlock.computeNumericalFluxes();
-                        //std::cout << "Team " << myTeam << ": Received t=" << recv_t << " from Team " << source_rank
-                                  //<< '\n';
-                        //if (verbose) ft_logger.ft_block_received(recv_t, source_rank);
-                    }
-                } // end of else, secondary blocks
-            }
-
-            unsigned char receivedBlocksCorrupted[blocksPerRank - decompFactor];
-            unsigned char SDC_received = 0;
-            /* validate the received secondary blocks */
-            for (unsigned int i = decompFactor; i < blocksPerRank; i++) {
-                // Get a reference to the current block
-                const int& currentBlockNr = myBlockOrder[i];
-                auto& currentReceivedBlock = *simulationBlocks[currentBlockNr];
-                int source_rank = currentBlockNr % numTeams;
-
-                /* TODO we can also inject bitflip here for testing */
-
-                /* check for soft errors */
-                bool admissible = currentReceivedBlock.validateAdmissibility(t);
-                if (!admissible) {
-                    /* TODO the error can either be in the sender or MPI communication */
-                    receivedBlocksCorrupted[i-decompFactor] = 1;
-                    SDC_received = 1;
-                }
-                else receivedBlocksCorrupted[i-decompFactor] = 0;
-
-                /* report to the owner of the received block */
-                // receivedBlock validation starts by tag 200 : TODO Isend integration is easy
-                MPI_Send(receivedBlocksCorrupted+(i-decompFactor), 1, MPI_BYTE, source_rank, 200, interTeamComm);
-            }
-
-            /* go into recovery mode for receivedBlocks */
-            while (SDC_received) {
-                /* we already know the reload replica, owner of the block
-                 * TODO you can also handle more SDC cases where the owner also is
-                 *      corrupted! This version assumes at this point that the owner
-                 *      has validated his primary blocks, and they have no SDC */
-                /* for each corrupted block receive b,h,hv,hu */
-                for (unsigned int i = decompFactor; i < blocksPerRank; i++) {
-                    if (receivedBlocksCorrupted[i-decompFactor]) {
-                        /* Get a reference to the current corrupted block */
-                        const int& currentBlockNr = myBlockOrder[i];
-                        auto& currentCorruptedBlock = *simulationBlocks[currentBlockNr];
-                        int source_rank = currentBlockNr % numTeams;
-                        /* Size of the arrays b,h,hv,hu */
-                        const int dataArraySize = (currentCorruptedBlock.nx + 2) * (currentCorruptedBlock.ny + 2);
-
-                        // receivedBlock recovery by tag 22 : receive order is important! --> b,h,hv,hu
-                        MPI_Recv(currentCorruptedBlock.b.getRawPointer(),
-                                 dataArraySize, MPI_FLOAT, source_rank, 22,
-                                 interTeamComm, MPI_STATUS_IGNORE);
-                        MPI_Recv(currentCorruptedBlock.h.getRawPointer(),
-                                 dataArraySize, MPI_FLOAT, source_rank, 22,
-                                 interTeamComm, MPI_STATUS_IGNORE);
-                        MPI_Recv(currentCorruptedBlock.hv.getRawPointer(),
-                                 dataArraySize, MPI_FLOAT, source_rank, 22,
-                                 interTeamComm, MPI_STATUS_IGNORE);
-                        MPI_Recv(currentCorruptedBlock.hu.getRawPointer(),
-                                 dataArraySize, MPI_FLOAT, source_rank, 22,
-                                 interTeamComm, MPI_STATUS_IGNORE);
-                        /* compute and validate again */
-                        currentCorruptedBlock.computeNumericalFluxes();
-                        /* receive the maxtimestep from the owner of this block */
-                        MPI_Recv(&currentCorruptedBlock.maxTimestep,
-                                 1, MPI_FLOAT, source_rank, 22, interTeamComm, MPI_STATUS_IGNORE);
-
-                        bool admissible = currentCorruptedBlock.validateAdmissibility(t);
-                        if (!admissible) assert(false); // TODO we must abort right ?
-                        /* problem solved for this corrupted block */
-                        else {
-                            receivedBlocksCorrupted[i-decompFactor] = 0;
-                            //MPI_Send(receivedBlocksCorrupted+i, 1, MPI_BYTE, reloadReplica, 100, interTeamComm); TODO integrate this later.. we assume we solved the SDC
-                        }
-                    }
-                }
-                SDC_received = 0;
-                for (unsigned int i = decompFactor; i < blocksPerRank; i++) {
-                    if (receivedBlocksCorrupted[i-decompFactor] == 1) SDC_received = 1;
-                }
-            } // TODO up this point we assume we fixed the SDC
-
-            /* indicates if the sent block is corrupted. We will receive report from each replica
-             *
-             * [replicaLowest_0, replica_secondLowest_0, .... , replica_highest_0,
-             *  replicaLowest_1, replica_secondLowest_1, .... , replica_highest_1,
-             *  ...
-             *  replicaLowest_decompFactor, replica_secondLowest_decompFactor, .... , replica_highest_decompFactor]
-             */
-            unsigned char sentBlocksCorrupted[(numTeams-1)*decompFactor];
-            unsigned char SDC_sent = 0;
-            /* receive report for all my primary blocks that I sent */
-            int index = 0;
+            /* agree on a timestep */
+            timesteps.clear();
+            /* max timestep in primary blocks */
             for (unsigned int i = 0; i < decompFactor; i++) {
-                for (int replica = 0; replica < numTeams; replica++) {
-                    if (replica != myTeam) {
-                        /* receive report */
-                        MPI_Recv(sentBlocksCorrupted+index, 1, MPI_BYTE, replica, 200,
-                                 interTeamComm, MPI_STATUS_IGNORE);
-                        if (sentBlocksCorrupted[index] == 1) SDC_sent = 1;
-                        index++;
+                /* Get a reference to the current block */
+                const int& currentBlockNr = myBlockOrder[i];
+                auto& currentPrimaryBlock = *simulationBlocks[currentBlockNr];
+                timesteps.push_back(currentPrimaryBlock.maxTimestep);
+            }
+            float minTimestep = *std::min_element(timesteps.begin(), timesteps.end());
+            float minTimeStepReplica;
+            MPI_Allreduce(&minTimestep, &minTimeStepReplica, 1, MPI_FLOAT, MPI_MIN, interTeamComm);
+            MPI_Allreduce(&minTimeStepReplica, &timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+            for (auto& block : simulationBlocks) block->maxTimestep = timestep;
+
+            /* post Irecvs for the secondary blocks */
+            std::vector<MPI_Request> recv_reqs(3, MPI_REQUEST_NULL);
+            for (unsigned int i = decompFactor; i < blocksPerRank; i++) {
+                /* Get a reference to the current secondary block */
+                const int& currentBlockNr = myBlockOrder[i];
+                auto& currentSecondaryBlock = *simulationBlocks[currentBlockNr];
+                // Size of h,hv and hu
+                const int dataArraySize = currentSecondaryBlock.dataArraySize;
+                int source_rank = currentBlockNr % numTeams;
+                // h
+                MPI_Irecv(currentSecondaryBlock.h.getRawPointer(),
+                          dataArraySize,
+                          MPI_FLOAT,
+                          source_rank,
+                          1,
+                          interTeamComm,
+                          &recv_reqs[0]);
+                // hv
+                MPI_Irecv(currentSecondaryBlock.hv.getRawPointer(),
+                          dataArraySize,
+                          MPI_FLOAT,
+                          source_rank,
+                          2,
+                          interTeamComm,
+                          &recv_reqs[1]);
+                // hu
+                MPI_Irecv(currentSecondaryBlock.hu.getRawPointer(),
+                          dataArraySize,
+                          MPI_FLOAT,
+                          source_rank,
+                          3,
+                          interTeamComm,
+                          &recv_reqs[2]);
+            }
+
+            std::vector<MPI_Request> send_reqs(3 * numTeams, MPI_REQUEST_NULL);
+            /* updateunknowns for my primary blocks + send them */
+            for (unsigned int i = 0; i < decompFactor; i++) {
+                const int& currentBlockNr = myBlockOrder[i];
+                auto& currentPrimaryBlock = *simulationBlocks[currentBlockNr];
+                currentPrimaryBlock.savePreviousData();
+                currentPrimaryBlock.updateUnknowns(timestep);
+                // Size of h,hv and hu
+                const int dataArraySize = currentPrimaryBlock.dataArraySize;
+
+                for (int destTeam = 0; destTeam < numTeams; destTeam++) {
+                    if(destTeam != myTeam) {
+                        // h
+                        MPI_Isend(currentPrimaryBlock.h.getRawPointer(),
+                                  dataArraySize,
+                                  MPI_FLOAT,
+                                  destTeam,
+                                  1,
+                                  interTeamComm,
+                                  &send_reqs[3 * destTeam]);
+                        // hv
+                        MPI_Isend(currentPrimaryBlock.hv.getRawPointer(),
+                                  dataArraySize,
+                                  MPI_FLOAT,
+                                  destTeam,
+                                  2,
+                                  interTeamComm,
+                                  &send_reqs[3 * destTeam + 1]);
+                        // hu
+                        MPI_Isend(currentPrimaryBlock.hu.getRawPointer(),
+                                  dataArraySize,
+                                  MPI_FLOAT,
+                                  destTeam,
+                                  3,
+                                  interTeamComm,
+                                  &send_reqs[3 * destTeam + 2]);
                     }
                 }
             }
-            /* if error is reported */
-            if (SDC_sent) {
-                /* recovery mode */
-                /* sent the blocks to replicas */
-                int index = 0;
-                for (unsigned int i = 0; i < decompFactor; i++) {
-                    for (int replica = 0; replica < numTeams; replica++) {
-                        if (replica != myTeam) {
-                            /* send if SDC reported */
-                            if (sentBlocksCorrupted[index] == 1) {
-                                // Get a reference to the current block
-                                const int& currentBlockNr{myBlockOrder[i]};
-                                auto& currentSentBlock = *simulationBlocks[currentBlockNr];
-                                /* Size of the arrays b,h,hv,hu */
-                                const int dataArraySize = (currentSentBlock.nx + 2) * (currentSentBlock.ny + 2);
-                                // sentBlock recovery by tag 22 : receive order is important! --> b,h,hv,hu
-                                /* send b,h,hv,hu*/
-                                MPI_Send(currentSentBlock.b.getRawPointer(),
-                                         dataArraySize, MPI_FLOAT, replica, 22,
-                                         interTeamComm);
-                                MPI_Send(currentSentBlock.h.getRawPointer(),
-                                         dataArraySize, MPI_FLOAT, replica, 22,
-                                         interTeamComm);
-                                MPI_Send(currentSentBlock.hv.getRawPointer(),
-                                         dataArraySize, MPI_FLOAT, replica, 22,
-                                         interTeamComm);
-                                MPI_Send(currentSentBlock.hu.getRawPointer(),
-                                         dataArraySize, MPI_FLOAT, replica, 22,
-                                         interTeamComm);
-                                /* This time we also need to send our maxtimestep */
-                                MPI_Send(&currentSentBlock.maxTimestep,
-                                         1, MPI_FLOAT, replica, 22,
-                                         interTeamComm);
-                            }
-                            index++;
-                        }
-                    }
-                }
-            } // end of recovery mode TODO we assume that the error is fixed after sending 1 time .. maybe validate it ?
+
+            /* wait for the task sharing to finish */
+            MPI_Waitall(3, send_reqs.data(), MPI_STATUSES_IGNORE);
+            MPI_Waitall(3, recv_reqs.data(), MPI_STATUSES_IGNORE);
 
             // -------------------- task sharing finished, blocks are validated, we can continue
 
-            hasRecovered = false;
-            recoveredFromSDC = false;
-
-            // determine max possible timestep
-            timesteps.clear();
-            for (auto& block : simulationBlocks) {
-                timesteps.push_back(block->maxTimestep);
-                //std::cout << "T" << myTeam << "R" << myRankInTeam
-                          //<< " : Single Timestep = " << block->maxTimestep
-                          //<< std::endl;
-            }
-            float minTimestep = *std::min_element(timesteps.begin(), timesteps.end());
-            float test = *std::min_element(timesteps.begin(), timesteps.end()); // TODO for debugging WE DON'T NEED TO ALLLREDUCE  IF WE DON'T COMPUTE SECOND TASKS OURSELVES
-            MPI_Allreduce(&minTimestep, &timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-            //std::cout << "T" << myTeam << "R" << myRankInTeam
-                      //<< " : Max Timestep = " << timestep << std::endl;
-            assert(test == minTimestep);
-
-            for (auto& block : simulationBlocks) block->maxTimestep = timestep;
-
-            /* redundant saving of the previous results for admissibility checks */
-            for (auto& block : simulationBlocks) block->savePreviousData();
-            for (auto& block : simulationBlocks) block->updateUnknowns(timestep);
-
+            /* TODO DEBUGGING */
+            for (auto& block : simulationBlocks) assert(block->maxTimestep = timestep);
             t += timestep;
 
             /* write output */
@@ -1211,7 +910,7 @@ int main(int argc, char** argv) {
     for (auto& block : simulationBlocks) { block->freeMpiType(); }
 
     double totalTime = MPI_Wtime() - startTime;
-    std::cout << "Rank " << myRankInTeam << " from TEAM " << myTeam
+    std::cout << "DEBUGTODORank " << myRankInTeam << " from TEAM " << myTeam
               << " total time : " << totalTime << std::endl;
 
     MPI_Finalize();

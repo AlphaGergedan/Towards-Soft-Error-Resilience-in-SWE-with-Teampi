@@ -8,8 +8,9 @@
  * Provides soft error detection by comparing the results of two
  * teams computing the same run redundantly by sending hashes in
  * the hearbeat messages during teaMPI communication. It can also
- * be improved to run 3 teams and kill the faulty team if a soft
- * error occurs. This would provide soft error resilience.
+ * be improved to run 3 teams and kill the faulty team or write
+ * reactive checkpoint for it if a soft error occurs. This would
+ * provide soft error resilience.
  *
  * Hashes are tried to be integrated to the heartbeats used in
  * the tmpi library, which helps us to compare the results of the

@@ -202,15 +202,15 @@ public:
     /* saves previous h, hv, hu for admissibility checks */
     void savePreviousData();
 
-private:
-    /* Indicates that we can check for Discrete Maximum Principle (DMP) */
-    int iterationNumber = 0;
-
     /* Data arrays size */
     size_t dataArraySize;
 
     /* Update arrays size */
     size_t fieldSizeX, fieldSizeY;
+
+private:
+    /* Indicates that we can check for Discrete Maximum Principle (DMP) */
+    int iterationNumber = 0;
 
     /* Redundant bathymetry data storage for SDC detection */
     Float2DNative b_replica;
