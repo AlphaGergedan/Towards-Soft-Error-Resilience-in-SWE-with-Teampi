@@ -830,6 +830,90 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep
     return admissible ;
 }
 
+/**
+ * Validates the following physical and numerical admissibility
+ * criteria, should be called anywhere in the code:
+ *   1. Physical Admissibility
+ *      - Bathymetry is unchanged
+ *      - No negative water height
+ *   2. Numerical Admissibility
+ *      - No NaN values
+ *
+ * Warning: there is still a chance for silent data corruptions, even
+ *          if the results are admissible. Adding more admissibility
+ *          checks can reduce this probability even more
+ *          This check only validates the data arrays stored in this block
+ *
+ * @param timeStep current timestep of the simulation
+ * @return admissible returns true if admissible
+ */
+bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(float timestep) {
+    /* return value */
+    bool admissible = true;
+
+    /* admissibility */
+    bool dataAdmissible = true;
+
+    float dt = maxTimestep;
+
+    admissible &= !std::isnan(maxTimestep);
+    /* loop over the computation domain only */
+    for (int i = 1; i < nx + 1; i++) {
+        for (int j = 1; j < ny + 2; j++) {
+            /**********************************************
+              1. NUMERICAL ADMISSIBILITY : no NaN values
+             **********************************************/
+            dataAdmissible &= !std::isnan(b[i][j]);
+            dataAdmissible &= !std::isnan(h[i][j]);
+            dataAdmissible &= !std::isnan(hv[i][j]);
+            dataAdmissible &= !std::isnan(hu[i][j]);
+
+            /******************************************************
+              1. PHYSICAL ADMISSIBILITY : bathymetry is unchanged
+             ******************************************************/
+            dataAdmissible &= b[i][j] == b_replica[i][j];
+
+            /******************************************************
+              2. PHYSICAL ADMISSIBILITY : no negative water height
+             ******************************************************/
+            dataAdmissible &= h[i][j] >= 0;
+        }
+    }
+    /* Check NaNs in the ghost layers */
+
+    /* loop over the ghost layers with indices
+     * i = 0 and i = nx + 1 */
+    for (int j = 0; j < ny + 2; j++) {
+        // access i = 0
+        dataAdmissible &= !std::isnan(b[0][j]);
+        dataAdmissible &= !std::isnan(h[0][j]);
+        dataAdmissible &= !std::isnan(hv[0][j]);
+        dataAdmissible &= !std::isnan(hu[0][j]);
+        // access i = nx + 1
+        dataAdmissible &= !std::isnan(b[nx + 1][j]);
+        dataAdmissible &= !std::isnan(h[nx + 1][j]);
+        dataAdmissible &= !std::isnan(hv[nx + 1][j]);
+        dataAdmissible &= !std::isnan(hu[nx + 1][j]);
+    }
+    /* loop over the ghost layers with indices
+     * j = 0 and j = nx + 1 */
+    for (int i = 1; i < nx + 1; i++) {
+        // access j = 0
+        dataAdmissible &= !std::isnan(b[i][0]);
+        dataAdmissible &= !std::isnan(h[i][0]);
+        dataAdmissible &= !std::isnan(hv[i][0]);
+        dataAdmissible &= !std::isnan(hu[i][0]);
+        // access j = ny + 1
+        dataAdmissible &= !std::isnan(b[i][ny + 1]);
+        dataAdmissible &= !std::isnan(h[i][ny + 1]);
+        dataAdmissible &= !std::isnan(hv[i][ny + 1]);
+        dataAdmissible &= !std::isnan(hu[i][ny + 1]);
+    }
+    /* is data admissible */
+    admissible = dataAdmissible;
+    return admissible ;
+}
+
 //------------------------------------------------------------------------------
 
 

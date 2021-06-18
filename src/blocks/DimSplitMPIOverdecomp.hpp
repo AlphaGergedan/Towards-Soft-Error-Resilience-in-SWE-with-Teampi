@@ -113,6 +113,7 @@ public:
 
     /* validates physical and numerical admissibility criteria */
     bool validateAdmissibility(float timestep);
+    bool validateAdmissibility_dataArrays(float timestep);
 
     /* injects a random bit flip into a random array */
     void injectRandomBitflip();
