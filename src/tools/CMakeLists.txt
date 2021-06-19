@@ -25,20 +25,25 @@ target_sources(swe_softRes_hardRes_hashes PRIVATE
   hasher.cpp
   hasher.hpp)
 
-target_sources(swe_softRes_admiss_useShared_v1 PRIVATE
-  help.hpp
-  Args.hpp
-  ftLogger.hpp
-  ftLogger.cpp)
+#target_sources(swe_softRes_admiss_useShared_v1 PRIVATE
+#help.hpp
+#Args.hpp
+#ftLogger.hpp
+#ftLogger.cpp)
 
-target_sources(swe_softRes_admiss_useShared_v2 PRIVATE
-  help.hpp
-  Args.hpp
-  ftLogger.hpp
-  ftLogger.cpp)
+#target_sources(swe_softRes_admiss_useShared_v2 PRIVATE
+#help.hpp
+#Args.hpp
+#ftLogger.hpp
+#ftLogger.cpp)
 
-# TODO testing out new algorithm
-target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#help.hpp
+#Args.hpp
+#ftLogger.hpp
+#ftLogger.cpp)
+
+target_sources(swe_softRes_admiss_useShared PRIVATE
   help.hpp
   Args.hpp
   ftLogger.hpp

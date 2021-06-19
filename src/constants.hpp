@@ -5,7 +5,7 @@ const float g = 9.81;
 const float defaultDryTol = 0.1;
 const float defaultCflNumber = 0.4;
 
-// MPI Tags
+// MPI Tags (OLD TAGS)
 const int MPI_TAG_TIMESTEP_LEFT = 1;
 const int MPI_TAG_TIMESTEP_RIGHT = 2;
 const int MPI_TAG_TIMESTEP_TOP = 3;
@@ -30,5 +30,12 @@ const int MPI_TAG_OUT_H_TOP = 17;
 const int MPI_TAG_OUT_B_TOP = 18;
 const int MPI_TAG_OUT_HU_TOP = 19;
 const int MPI_TAG_OUT_HV_TOP = 20;
+
+/* MPI TAGS FOR SOFT ERROR RESILIENCE */
+const int MPI_TAG_REPORT_PRIMARY_BLOCK = 100;
+const int MPI_TAG_REPORT_RECEIVED_BLOCK = 200;
+const int MPI_TAG_RECEIVE_RELOAD_REPLICA = 20;
+const int MPI_TAG_RECOVERY_PRIMARY_BLOCK = 21;
+const int MPI_TAG_RECOVERY_RECEIVED_BLOCK = 22;
 
 #endif // SWE_CONSTANTS_HPP

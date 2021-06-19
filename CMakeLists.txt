@@ -18,6 +18,7 @@ set(SOLVER "hlle" CACHE STRING "Riemann solver")
 set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVERS})
 
 option(USE_DEBUG "Debug compile mode" OFF)
+option(USE_PROFILING "Compiles for profiling" OFF)
 
 #*******************************************************************************
 # sources
@@ -28,26 +29,31 @@ add_executable(swe_checkpointRestart)                   # --> baseline version f
 # Hard error resilience with task sharing to reduce redundancy
 add_executable(swe_hardRes_wTaskSharing)                # --> old version
 
+# Combination of hard and soft error resilience using warmspares + hashes
+add_executable(swe_softRes_hardRes_hashes) # --> soft + hard error resilience
+
+########################### SOFT RESILIENCE METHODS #############################
+
 # METHOD 1   : BASELINE, NO ERROR RESILIENCE
-add_executable(swe_noRes)
+add_executable(swe_noRes)                               # --> baseline model for soft error resilience
 
 # METHOD 2   : SOFT ERROR DETECTION USING HASHES
 add_executable(swe_softRes_hashes)                             # --> soft error detection
 
-# Combination of hard and soft error resilience using warmspares + hashes
-add_executable(swe_softRes_hardRes_hashes) # --> soft + hard error resilience
-
-# METHOD 3.1 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + USING SHARED TASKS IMMEDIATELY
-add_executable(swe_softRes_admiss_useShared_v1)    # --> soft + hard error resilience
-
-# METHOD 3.2 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + USING SHARED TASKS IMMEDIATELY
-add_executable(swe_softRes_admiss_useShared_v2 )
-
-# TESTING NON BLOCKING
-add_executable(swe_softRes_admiss_useShared_v2_NONBLOCKING)
+# FINAL METHOD 3 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + USING SHARED TASKS IMMEDIATELY
+add_executable(swe_softRes_admiss_useShared)
 
 # METHOD 4   : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + ONLY USING SHARED TASKS IF SDC IS DETECTED
 add_executable(swe_softRes_admiss_redundant)
+
+# METHOD 3.1 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + USING SHARED TASKS IMMEDIATELY
+#add_executable(swe_softRes_admiss_useShared_v1)    # --> soft + hard error resilience
+
+# METHOD 3.2 : SOFT ERROR RESILIENCE WITH ADMISSIBILITY CHECKS AND TASK SHARING + USING SHARED TASKS IMMEDIATELY
+#add_executable(swe_softRes_admiss_useShared_v2 )
+
+# TESTING NON BLOCKING
+#add_executable(swe_softRes_admiss_useShared_v2_NONBLOCKING)
 
 # tests
 add_executable(swe_tests)
@@ -67,15 +73,16 @@ target_sources(swe_softRes_hashes PRIVATE src/constants.hpp)
 target_sources(swe_softRes_hardRes_hashes PRIVATE src/tolerance/swe_softRes_hardRes_hashes.cpp)
 target_sources(swe_softRes_hardRes_hashes PRIVATE src/constants.hpp)
 
-target_sources(swe_softRes_admiss_useShared_v1 PRIVATE src/tolerance/swe_softRes_admiss_useShared_v1.cpp)
-target_sources(swe_softRes_admiss_useShared_v1 PRIVATE src/constants.hpp)
+#target_sources(swe_softRes_admiss_useShared_v1 PRIVATE src/tolerance/swe_softRes_admiss_useShared_v1.cpp)
+#target_sources(swe_softRes_admiss_useShared_v1 PRIVATE src/constants.hpp)
 
-target_sources(swe_softRes_admiss_useShared_v2 PRIVATE src/tolerance/swe_softRes_admiss_useShared_v2.cpp)
-target_sources(swe_softRes_admiss_useShared_v2 PRIVATE src/constants.hpp)
+#target_sources(swe_softRes_admiss_useShared_v2 PRIVATE src/tolerance/swe_softRes_admiss_useShared_v2.cpp)
+#target_sources(swe_softRes_admiss_useShared_v2 PRIVATE src/constants.hpp)
 
-# in for testing TODO
-target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src/tolerance/swe_softRes_admiss_useShared_v2_NONBLOCKING.cpp)
-target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src/constants.hpp)
+#target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src/tolerance/swe_softRes_admiss_useShared_v2_NONBLOCKING.cpp)
+#target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src/constants.hpp)
+
+target_sources(swe_softRes_admiss_useShared PRIVATE src/tolerance/swe_softRes_admiss_useShared.cpp)
 
 target_sources(swe_softRes_admiss_redundant PRIVATE src/tolerance/swe_softRes_admiss_redundant.cpp)
 target_sources(swe_softRes_admiss_redundant PRIVATE src/constants.hpp)
@@ -107,12 +114,13 @@ target_include_directories(swe_softRes_hashes PRIVATE src)
 
 target_include_directories(swe_softRes_hardRes_hashes PRIVATE src)
 
-target_include_directories(swe_softRes_admiss_useShared_v1 PRIVATE src)
+#target_include_directories(swe_softRes_admiss_useShared_v1 PRIVATE src)
 
-target_include_directories(swe_softRes_admiss_useShared_v2 PRIVATE src)
+#target_include_directories(swe_softRes_admiss_useShared_v2 PRIVATE src)
 
-# TODO testing out new algorithm
-target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src)
+#target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE src)
+
+target_include_directories(swe_softRes_admiss_useShared PRIVATE src)
 
 target_include_directories(swe_softRes_admiss_redundant PRIVATE src)
 
@@ -141,15 +149,17 @@ target_link_libraries(swe_softRes_hashes PRIVATE ${NETCDF_LIBRARIES})
 target_include_directories(swe_softRes_hardRes_hashes SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_softRes_hardRes_hashes PRIVATE ${NETCDF_LIBRARIES})
 
-target_include_directories(swe_softRes_admiss_useShared_v1 SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
-target_link_libraries(swe_softRes_admiss_useShared_v1 PRIVATE ${NETCDF_LIBRARIES})
+#target_include_directories(swe_softRes_admiss_useShared_v1 SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+#target_link_libraries(swe_softRes_admiss_useShared_v1 PRIVATE ${NETCDF_LIBRARIES})
 
-target_include_directories(swe_softRes_admiss_useShared_v2 SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
-target_link_libraries(swe_softRes_admiss_useShared_v2 PRIVATE ${NETCDF_LIBRARIES})
+#target_include_directories(swe_softRes_admiss_useShared_v2 SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+#target_link_libraries(swe_softRes_admiss_useShared_v2 PRIVATE ${NETCDF_LIBRARIES})
 
-# TODO new alg NONBLOCKING
-target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
-target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE ${NETCDF_LIBRARIES})
+#target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+#target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE ${NETCDF_LIBRARIES})
+
+target_include_directories(swe_softRes_admiss_useShared SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+target_link_libraries(swe_softRes_admiss_useShared PRIVATE ${NETCDF_LIBRARIES})
 
 target_include_directories(swe_softRes_admiss_redundant SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_softRes_admiss_redundant PRIVATE ${NETCDF_LIBRARIES})
@@ -169,11 +179,10 @@ if (MPI_FOUND)
     target_link_libraries(swe_hardRes_wTaskSharing PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_softRes_hashes PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_softRes_hardRes_hashes PUBLIC MPI::MPI_CXX)
-    target_link_libraries(swe_softRes_admiss_useShared_v1 PUBLIC MPI::MPI_CXX)
-
-    target_link_libraries(swe_softRes_admiss_useShared_v2 PUBLIC MPI::MPI_CXX)
-    # TODO new alg NONBLOCKING
-    target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PUBLIC MPI::MPI_CXX)
+    #target_link_libraries(swe_softRes_admiss_useShared_v1 PUBLIC MPI::MPI_CXX)
+    #target_link_libraries(swe_softRes_admiss_useShared_v2 PUBLIC MPI::MPI_CXX)
+    #target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PUBLIC MPI::MPI_CXX)
+    target_link_libraries(swe_softRes_admiss_useShared PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_softRes_admiss_redundant PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_checkpointRestart PUBLIC MPI::MPI_CXX) # checkpointing doesn't need ulfm
     target_link_libraries(swe_tests PUBLIC MPI::MPI_CXX) # checkpointing doesn't need ulfm
@@ -201,10 +210,10 @@ add_library(tmpi SHARED
 target_link_libraries(swe_hardRes_wTaskSharing PRIVATE tmpi)
 target_link_libraries(swe_softRes_hashes PRIVATE tmpi)
 target_link_libraries(swe_softRes_hardRes_hashes PRIVATE tmpi)
-target_link_libraries(swe_softRes_admiss_useShared_v1 PRIVATE tmpi)
-target_link_libraries(swe_softRes_admiss_useShared_v2 PRIVATE tmpi)
-# TODO new al NONBLOCKING
-target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE tmpi)
+#target_link_libraries(swe_softRes_admiss_useShared_v1 PRIVATE tmpi)
+#target_link_libraries(swe_softRes_admiss_useShared_v2 PRIVATE tmpi)
+#target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE tmpi)
+target_link_libraries(swe_softRes_admiss_useShared PRIVATE tmpi)
 target_link_libraries(swe_softRes_admiss_redundant PRIVATE tmpi)
 target_link_libraries(swe_tests PRIVATE tmpi)
 
@@ -212,10 +221,10 @@ target_link_libraries(swe_tests PRIVATE tmpi)
 target_include_directories(swe_hardRes_wTaskSharing PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_hashes PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_hardRes_hashes PRIVATE teampi-soft-error-resilience/include)
-target_include_directories(swe_softRes_admiss_useShared_v1 PRIVATE teampi-soft-error-resilience/include)
-target_include_directories(swe_softRes_admiss_useShared_v2 PRIVATE teampi-soft-error-resilience/include)
-# TODO new alg
-target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE teampi-soft-error-resilience/include)
+#target_include_directories(swe_softRes_admiss_useShared_v1 PRIVATE teampi-soft-error-resilience/include)
+#target_include_directories(swe_softRes_admiss_useShared_v2 PRIVATE teampi-soft-error-resilience/include)
+#target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE teampi-soft-error-resilience/include)
+target_include_directories(swe_softRes_admiss_useShared PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_admiss_redundant PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_tests PRIVATE teampi-soft-error-resilience/include)
 
@@ -246,14 +255,16 @@ if (USE_DEBUG)
     target_compile_options(swe_softRes_hardRes_hashes PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
     )
-    target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
-    )
-    target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
-    )
-# TODO new alg NONBLOCKING
-    target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+#)
+#target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+#)
+#target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
+#)
+    target_compile_options(swe_softRes_admiss_useShared  PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unused-parameter -g -pedantic>
     )
     target_compile_options(swe_softRes_admiss_redundant PRIVATE
@@ -278,14 +289,16 @@ elseif (USE_PROFILING)
     target_compile_options(swe_softRes_hardRes_hashes PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
     )
-    target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
-    )
-    target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
-    )
-# TODO new alg NON BLOCKING
-    target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+#)
+#target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+#)
+#target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>:-g -O2>
+#)
+    target_compile_options(swe_softRes_admiss_useShared PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
     )
     target_compile_options(swe_softRes_admiss_redundant PRIVATE
@@ -310,14 +323,16 @@ else ()
     target_compile_options(swe_softRes_hardRes_hashes PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>: -O3 >
     )
-    target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>: -O3 >
-    )
-    target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>: -O3 >
-    )
-# TODO new alg NONBLOCKING
-    target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#target_compile_options(swe_softRes_admiss_useShared_v1 PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>: -O3 >
+#)
+#target_compile_options(swe_softRes_admiss_useShared_v2 PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>: -O3 >
+#)
+#target_compile_options(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>: -O3 >
+#)
+    target_compile_options(swe_softRes_admiss_useShared PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>: -O3 >
     )
     target_compile_options(swe_softRes_admiss_redundant PRIVATE

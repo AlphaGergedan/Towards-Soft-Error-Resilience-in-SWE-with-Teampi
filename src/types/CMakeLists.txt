@@ -22,20 +22,25 @@ target_sources(swe_softRes_hardRes_hashes PRIVATE
   Float2DNative.hpp
   Float2DBuffer.hpp)
 
-target_sources(swe_softRes_admiss_useShared_v1 PRIVATE
-  Boundary.hpp
-  Float2D.hpp
-  Float2DNative.hpp
-  Float2DBuffer.hpp)
+#target_sources(swe_softRes_admiss_useShared_v1 PRIVATE
+#Boundary.hpp
+#Float2D.hpp
+#Float2DNative.hpp
+#Float2DBuffer.hpp)
 
-target_sources(swe_softRes_admiss_useShared_v2 PRIVATE
-  Boundary.hpp
-  Float2D.hpp
-  Float2DNative.hpp
-  Float2DBuffer.hpp)
+#target_sources(swe_softRes_admiss_useShared_v2 PRIVATE
+#Boundary.hpp
+#Float2D.hpp
+#Float2DNative.hpp
+#Float2DBuffer.hpp)
 
-# TODO testing new algorithm NONBLOCKING
-target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#target_sources(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE
+#Boundary.hpp
+#Float2D.hpp
+#Float2DNative.hpp
+#Float2DBuffer.hpp)
+
+target_sources(swe_softRes_admiss_useShared PRIVATE
   Boundary.hpp
   Float2D.hpp
   Float2DNative.hpp
