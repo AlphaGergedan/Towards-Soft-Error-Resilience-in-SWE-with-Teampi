@@ -64,7 +64,7 @@ add_executable(swe_tests)
 target_sources(swe_noRes PRIVATE src/tolerance/swe_noRes.cpp)
 target_sources(swe_hardRes_wTaskSharing PRIVATE src/constants.hpp)
 
-target_sources(swe_hardRes_wTaskSharing PRIVATE src/main.cpp)
+target_sources(swe_hardRes_wTaskSharing PRIVATE src/tolerance/swe_hardRes_wTaskSharing.cpp)
 target_sources(swe_hardRes_wTaskSharing PRIVATE src/constants.hpp)
 
 target_sources(swe_softRes_hashes PRIVATE src/tolerance/swe_softRes_hashes.cpp)
