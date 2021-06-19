@@ -54,7 +54,7 @@ resilience as the heartbeat intervals depend on the time steps.
 for the implementation and [its executable](#running) for usage examples)
 
 We assume that any bitflip occurs in our data will eventually be detected by the
-hash comparisons. This allows us to detect any SDC that may occur in our data
+hash comparisons. This allows us to detect any SDC that may have occurred in our data
 arrays that we are hashing. But this method uses replication, which loses half
 of our computation power, and even if an SDC is detected we must restart the
 application again for recalculation since we don't have a 3 Team support for
@@ -63,53 +63,80 @@ to choose the healthy team. It can then write reactive checkpoint for the other
 teams and the application can continue.
 
 ### Method 3 | Soft Error Resilience Using Admissibility Checks and Task Sharing ###
-TODO
-
-soft error resilience with admissibility checks and using shared tasks
-Checks for admissibility of the computations (also see validateAdmissibility
-in src/blocks/DimSplitMPIOverdecomp.cpp) and only share the results if they
-are admissible. If they are not, a healthy replica sends its block data to
-the failed replicas. We use shared tasks immediately, and check
-them for admissibility in case of SDC during transmission (undetected SDC
-spreads immediately, but saves computation time for secondary blocks).
-
-### Method 4 | Soft Error Resilience Using Admissibility Checks and Redundant Computation ###
-TODO
-
-
-### Soft and Hard Error Resilience with Task Sharing ###
-or we need to check if our results are
-"sane" enough to proceed (like checking for absence of NaNs etc.).
-techniques, and still try to provide soft resilient HPC applications using
-teaMPI.
-
-
-We already had hard error resilience using warm spares with task sharing in
-[Simon's version](https://github.com/xile273/SWE/tree/simon_task_sharing) of SWE
-with teaMPI. Integrating soft error resilience to task sharing using hashes is
-not possible in theory, hence hashes need to be validated after redundant
-computations. Fortunately we can still validate the task computations by
-prechecking admissibility criteria of the task computations, which are usually
-not transparent to applications. In this version of SWE, we share a computed
-task, only if it is validated using the following 2 criteria:
+In order to reduce the overhead of the redundant computation Simon Schuck integrated
+task sharing into hard error resilience in his work
+[here](https://github.com/xile273/SWE/tree/simon_task_sharing). However task
+sharing cannot be integrated if the method depends on redundant computation like
+in the previous soft resilience methods. Therefore we need to use another
+resilience technique. We can validate the results of task computations by
+prechecking some predefined admissibility criteria. We use the following 2 main
+criteria:
 1. ***Physical Admissibility*** : Computations are within some certain physical
 constraints, like no negative water height or bathymetry data is constant. These
 criteria are higly application specific
 2. ***Numerical Admissibility*** : No floating point errors are present (NaN)
-and relaxed discrete maximum principle TODO
+and relaxed discrete maximum principle (DMP) in the sense of polynomials.
 
-If any data array, that can suffer from a bit flip, doesn't meet a predefined
-admissibility criterion, then we assume that an SDC is present. Unfortunately
-we cannot assume that any SDC occurred in the data will be detected in the
-future because of the computations depend on the data, if we want to use task
-sharing. This means, we have to check all the data array and share our computed
-tasks. If we detect an SDC, the other team creates a checkpoint and the
-corrupted team loads it. This however requires some additional synchronization
-between and within the teams. See [example runs](#running) for usage.
+We divide the ranks into two teams, and we divide the domain into
+multiple blocks, where each rank can have ***primary*** and ***secondary*** blocks.
+Each rank will have ***'d'*** primary blocks, and
+***'number of teams - 1' * 'd'*** secondary blocks computed by their replicas,
+where 'd' is the ***decomposition factor***. Ranks will first compute their
+primary blocks and the solutions are checked for certain admissibility criteria.
+We use the following simple admissibility criteria:
+1. ***Physical Admissibility Criteria***
+  - bathymetry data must be constant
+  - water height cannot be negative
+2. ***Numerical Admissibility Criteria***
+  - no floating point errors (NaN)
+  - DMP
 
+All the criteria except DMP can be checked cheaply with library functions. For
+the implementation see the function ***validateAdmissibility*** in the file
+[DimSplitMPIOverdecomp.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/blocks/DimSplitMPIOverdecomp.cpp).
 
+After validating their primary blocks, ranks share their primary blocks to their
+replicas, only if the results are admissible. We use the shared tasks
+immediately after validating them with the admissibility criteria as well. If
+an admissibility criterion fails, we assume that we have detected an SDC. In
+that case we receive the data arrays of the corrupted blocks from a healthy
+replica. To check the state of the blocks, we send small reports (MPI\_BYTE) to the
+replicas. (See
+[swe\_softRes\_admiss\_useShared.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_admiss_useShared.cpp)
+for the implementation and [its executable](#running) for usage examples)
 
-## Hard Error Resilience ###
+Blocks need to be large enough to make task sharing less expensive than
+their calculation. task sharing was reported as not flexible in Simon's thesis,
+we changed the task sharing so that we only share the data arrays b, h, hv and hu,
+which is a lot easier than sharing the net update arrays. We also managed to
+improve task sharing so that we check if one block is received and update the
+results while waiting for other blocks. We use non-blocking MPI communication
+to manage this. If the communication is slow, increasing the decomposition
+factor may decrease the runtime.
+
+With the task sharing we can save redundant computation time, but there is also
+a downside of this method. There is still a chance for an SDC, even if the
+results are admissible. This means there is a chance of an undetected SDC, which
+spreads immediately with the task sharing, because the receiving replicas use the
+same criteria to validate the received block and they also cannot detect the SDC.
+In order cope with this issue, we introduce a similar method.
+
+### Method 4 | Soft Error Resilience Using Admissibility Checks and Redundant Computation ###
+
+This method is very similar to the method 3 above. The only difference is that
+we only share a task if it is already corrupted in another replica to save the
+replica. We use the same admissibility criteria and reporting system to validate
+the blocks, but since we don't share the tasks and use them immediately, we can
+prevent any possible undetected SDC from spreading and corrupting the other
+replicas. We assume that an undetected SDC is eventually going to violate some
+of the admissibility criterion like DMP in the further timesteps if it is 'big'
+enough. With this method we cannot save any computation overhead caused by the
+replication like we did in the previous method, but we can provide resilience for
+later detected SDCs because each replica keeps its results for itself. (See
+[swe\_softRes\_admiss\_redundant.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_admiss_redundant.cpp)
+for the implementation and [its executable](#running) for usage examples)
+
+## TODO Hard Error Resilience ###
 
 Method 2 was integrated into the heartbeats that teaMPI uses in
 order to detect hard error
