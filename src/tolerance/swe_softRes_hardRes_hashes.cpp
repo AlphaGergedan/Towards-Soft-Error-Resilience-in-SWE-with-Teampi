@@ -35,14 +35,13 @@
  * @author Atamert Rahma rahma@in.tum.de
  */
 
+#include <teaMPI.h>
 #include <bits/c++config.h>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <mpi.h>
 #include <string>
 #include <system_error>
-#include <teaMPI.h>
 #include <type_traits>
 #include <unistd.h>
 

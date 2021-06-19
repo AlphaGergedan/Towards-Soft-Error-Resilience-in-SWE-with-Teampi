@@ -22,40 +22,7 @@
 namespace tools {
   class FtLogger {
 
-    private:
-
-        /* TODO testing out this, or maybe just employ progress bar */
-        std::string sep = " | ";
-        std::string box_edge_upperLeft = "\u256D";
-        std::string box_edge_upperRight = "\u256E";
-        std::string box_edge_downLeft = "\u2570";
-        std::string box_edge_downRight = "\u256F";
-        std::string box_line_row = "\u2500";
-        std::string box_line_col = "\u2502";
-
-        std::string boxInfoTeam;
-        std::string boxInfoRank;
-        std::string boxInfoTime;
-
-        /* Some teaMPI Information */
-        unsigned int myTeam;
-        unsigned int myRankInTeam;
-        char hostname[HOST_NAME_MAX];
-
-        /*Short Print Team and Rank */
-        void print_team_rank_short();
-
-        /* Long Print Team and Rank */
-        void print_team_rank_long();
-
-        /* Print 3 line breaks for better readability */
-        void print_extraLine();
-
-        /* Prints small box with text, text should not be very large TODO */
-        void print_Box(std::string text, float t);
-
     public:
-
         /**
          * TODO Constructor
          */
@@ -137,6 +104,37 @@ namespace tools {
 
         //TODO
         void ft_SDC_cannotBeFixed();
+
+    private:
+        /* TODO testing out this, or maybe just employ progress bar */
+        std::string sep = " | ";
+        std::string box_edge_upperLeft = "\u256D";
+        std::string box_edge_upperRight = "\u256E";
+        std::string box_edge_downLeft = "\u2570";
+        std::string box_edge_downRight = "\u256F";
+        std::string box_line_row = "\u2500";
+        std::string box_line_col = "\u2502";
+
+        std::string boxInfoTeam;
+        std::string boxInfoRank;
+        std::string boxInfoTime;
+
+        /* Some teaMPI Information */
+        unsigned int myTeam;
+        unsigned int myRankInTeam;
+        char hostname[HOST_NAME_MAX];
+
+        /*Short Print Team and Rank */
+        void print_team_rank_short();
+
+        /* Long Print Team and Rank */
+        void print_team_rank_long();
+
+        /* Print 3 line breaks for better readability */
+        void print_extraLine();
+
+        /* Prints small box with text, text should not be very large TODO */
+        void print_Box(std::string text, float t);
 
   }; // end of class FtLogger
 } // end of namepace tools

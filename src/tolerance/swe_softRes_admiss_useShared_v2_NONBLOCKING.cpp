@@ -546,6 +546,8 @@ int main(int argc, char** argv) {
         for (auto& block : simulationBlocks) { block->writeTimestep(0.f); }
     }
 
+    const MPI_Comm interTeamComm{TMPI_GetInterTeamComm()};
+
     // simulate until end of simulation
     while (t < simulationDuration) {
         // Start Hearbeat
@@ -574,11 +576,9 @@ int main(int argc, char** argv) {
             // exchange boundaries between blocks
             for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
             for (auto& currentBlock : simulationBlocks) { currentBlock->receiveGhostLayer(); }
-            const MPI_Comm interTeamComm{TMPI_GetInterTeamComm()};
-            if (!hasRecovered && !recoveredFromSDC) {
-                // Avoid overwriting an old send buffer before everyone reaches this point TODO find a better solution
-                MPI_Barrier(interTeamComm);
-            }
+
+            // Avoid overwriting an old send buffer before everyone reaches this point TODO find a better solution
+            MPI_Barrier(interTeamComm);
 
             /* indicates if the primary block is corrupted */
             unsigned char primaryBlocksCorrupted[decompFactor];

@@ -457,6 +457,8 @@ int main(int argc, char** argv) {
         for (auto& block : simulationBlocks) { block->writeTimestep(0.f); }
     }
 
+    const MPI_Comm interTeamComm{TMPI_GetInterTeamComm()};
+
     // simulate until end of simulation
     while (t < simulationDuration) {
         // Start Hearbeat
@@ -485,7 +487,6 @@ int main(int argc, char** argv) {
             // exchange boundaries between blocks
             for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
             for (auto& currentBlock : simulationBlocks) { currentBlock->receiveGhostLayer(); }
-            const MPI_Comm interTeamComm{TMPI_GetInterTeamComm()};
 
             /* indicates if the a block is corrupted */
             unsigned char blocksCorrupted[blocksPerRank];
