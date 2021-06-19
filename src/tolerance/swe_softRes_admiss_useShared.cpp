@@ -1,7 +1,7 @@
 /**
  * @file src/tolerance/swe_softRes_admiss_useShared.cpp
  *
- * @brief Sof error resilience with admissibility checks and using shared tasks immediately
+ * @brief Soft error resilience with admissibility checks and using shared tasks immediately
  *
  * Checks for admissibility of the computations (also see validateAdmissibility
  * in src/blocks/DimSplitMPIOverdecomp.cpp) and only share the results if they
@@ -19,8 +19,6 @@
  *    while (timeSinceLastHeartbeat < heartbeatInterval &&
  *           t < simulationDuration) {
  *
- *      Barrier(interTeamComm)
- *
  *      for each block in primaryBlocks
  *        // computeNumericalFluxes + validate Admissibility criteria
  *
@@ -30,7 +28,7 @@
  *      // go into recovery mode to receive if SDC is present
  *
  *      for replica in replicas
- *        // receive a single report (if primary blocks in replcia has SDC)
+ *        // receive a single report (if primary blocks in replica has SDC)
  *
  *      // go into recovery mode to send the blocks if SDC reported
  *
@@ -58,17 +56,6 @@
  * @author Atamert Rahma rahma@in.tum.de
  */
 
-
-// TODO check these and remove if nes
-//#include <array>
-//#include <limits>
-//#include <mpi.h>
-//#include <unistd.h>
-//#include <algorithm>
-//#include <ostream>
-//#include <sstream>
-//#include <fstream>
-//#include <climits>
 
 #include <teaMPI.h>
 #include <string>
@@ -579,10 +566,6 @@ int main(int argc, char** argv) {
             for (auto& currentBlock : simulationBlocks) { currentBlock->setGhostLayer(); }
             for (auto& currentBlock : simulationBlocks) { currentBlock->receiveGhostLayer(); }
 
-            // Avoid overwriting an old send buffer before everyone reaches this point
-            // TODO see if you can remove this!
-            MPI_Barrier(interTeamComm);
-
             /* compute and validate the primary blocks */
             for (unsigned int i = 0; i < decompFactor; i++) {
                 // Get a reference to the current block
@@ -663,7 +646,7 @@ int main(int argc, char** argv) {
                         const int& currentBlockNr = myBlockOrder[i];
                         auto& currentCorruptedBlock = *simulationBlocks[currentBlockNr];
                         /* Size of the arrays b,h,hv,hu */
-                        const int dataArraySize = (currentCorruptedBlock.nx + 2) * (currentCorruptedBlock.ny + 2);
+                        const int dataArraySize = currentCorruptedBlock.dataArraySize;
                         // TODO debugging
                         std::cout << "T" << myTeam << "R" << myRankInTeam
                                   << " : receiving b,h,hv,hu for my primaryBlock" << currentBlockNr
@@ -762,7 +745,7 @@ int main(int argc, char** argv) {
                             if (secondaryBlocksCorrupted[i-decompFactor] == 1) {
                                 auto& currentSecondaryBlock = *simulationBlocks[currentBlockNr];
                                 /* Size of the arrays b,h,hv,hu */
-                                const int dataArraySize = (currentSecondaryBlock.nx + 2) * (currentSecondaryBlock.ny + 2);
+                                const int dataArraySize = currentSecondaryBlock.dataArraySize;
                                 int source_rank = currentBlockNr % numTeams;
                                 std::cout << "T" << myTeam << "R" << myRankInTeam
                                           << " : sending to replica in team " << source_rank
@@ -1087,8 +1070,6 @@ int main(int argc, char** argv) {
 
             // -------------------- task sharing finished, blocks are validated, we can continue
 
-            /* TODO DEBUGGING */
-            for (auto& block : simulationBlocks) assert(block->maxTimestep = timestep);
             t += timestep;
 
             /* write output */
