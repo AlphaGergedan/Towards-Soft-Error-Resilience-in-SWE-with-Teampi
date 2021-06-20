@@ -144,13 +144,13 @@ int main(int argc, char** argv) {
     args.addOption("resolution-y", 'y', "Number of simulated cells in y-direction");
     args.addOption("decomp-factor",
                    'd',
-                   "Split each rank into \"TEAMS\" * \"decomp-factor\" blocks",
+                   "Split each rank into \"decomp-factor\" blocks",
                    tools::Args::Required,
                    false);
     args.addOption("output-basepath", 'o', "Output base file name");
     args.addOption("restart-basepath", 'r', "Restart base file name", tools::Args::Required, false);
     args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
-    args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
+    args.addOption("inject-bitflip", 'f', "Injects a random bit-flip into a random data array in a random team and rank right after the simulation time reaches the given time", args.Required, false);
     args.addOption("kill-rank", 'k', "Kills the rank 0 of team 0 at the specified simulation time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
 

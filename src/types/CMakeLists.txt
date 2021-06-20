@@ -58,8 +58,8 @@ target_sources(swe_checkpointRestart PRIVATE
   Float2DNative.hpp
   Float2DBuffer.hpp)
 
-target_sources(swe_tests PRIVATE
-  Boundary.hpp
-  Float2D.hpp
-  Float2DNative.hpp
-  Float2DBuffer.hpp)
+#target_sources(swe_tests PRIVATE
+#Boundary.hpp
+#Float2D.hpp
+#Float2DNative.hpp
+#Float2DBuffer.hpp)

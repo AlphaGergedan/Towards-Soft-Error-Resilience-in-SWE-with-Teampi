@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
     args.addOption("hash-method", 'm', "Which hashing method to use: ( 0=NONE | 1=stdhash ), default: 1", args.Required, false);
     args.addOption("hash-count", 'c', "Number of total hashes to send to the replica", args.Required, true);
-    args.addOption("inject-bitflip", 'f', "Injects a bit-flip to the first rank right after the simulation time reaches the given time", args.Required, false);
+    args.addOption("inject-bitflip", 'f', "Injects a random bit-flip into a random data array in a random team and rank right after the simulation time reaches the given time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
 
     // Parse command line arguments

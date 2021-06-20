@@ -61,10 +61,10 @@ target_sources(swe_checkpointRestart PRIVATE
   ftLogger.hpp
   ftLogger.cpp)
 
-target_sources(swe_tests PRIVATE
-  help.hpp
-  Args.hpp
-  ftLogger.hpp
-  ftLogger.cpp
-  hasher.cpp
-  hasher.hpp)
+#target_sources(swe_tests PRIVATE
+#help.hpp
+#Args.hpp
+#ftLogger.hpp
+#ftLogger.cpp
+#hasher.cpp
+#hasher.hpp)

@@ -48,7 +48,7 @@ target_sources(swe_checkpointRestart PRIVATE
   DimSplitMPIOverdecomp.cpp
   DimSplitMPIOverdecomp.hpp)
 
-target_sources(swe_tests PRIVATE
-  Block.hpp
-  DimSplitMPIOverdecomp.cpp
-  DimSplitMPIOverdecomp.hpp)
+#target_sources(swe_tests PRIVATE
+#Block.hpp
+#DimSplitMPIOverdecomp.cpp
+#DimSplitMPIOverdecomp.hpp)

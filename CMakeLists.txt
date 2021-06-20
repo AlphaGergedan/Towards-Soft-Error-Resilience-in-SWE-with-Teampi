@@ -56,7 +56,7 @@ add_executable(swe_softRes_admiss_redundant)
 #add_executable(swe_softRes_admiss_useShared_v2_NONBLOCKING)
 
 # tests
-add_executable(swe_tests)
+#add_executable(swe_tests)
 
 
 
@@ -90,10 +90,10 @@ target_sources(swe_softRes_admiss_redundant PRIVATE src/constants.hpp)
 target_sources(swe_checkpointRestart PRIVATE src/tolerance/swe_checkpointRestart.cpp)
 target_sources(swe_checkpointRestart PRIVATE src/constants.hpp)
 
-target_sources(swe_tests PRIVATE src/tolerance/swe_tests.cpp)
-target_sources(swe_tests PRIVATE src/constants.hpp)
-target_sources(swe_tests PRIVATE src/tolerance/tests/bitflip_injection_tests.hpp)
-target_sources(swe_tests PRIVATE src/tolerance/tests/bitflip_injection_tests.cpp)
+#target_sources(swe_tests PRIVATE src/tolerance/swe_tests.cpp)
+#target_sources(swe_tests PRIVATE src/constants.hpp)
+#target_sources(swe_tests PRIVATE src/tolerance/tests/bitflip_injection_tests.hpp)
+#target_sources(swe_tests PRIVATE src/tolerance/tests/bitflip_injection_tests.cpp)
 
 
 # Each subdirectory has it's own CMakeLists.txt to target their sources
@@ -126,7 +126,7 @@ target_include_directories(swe_softRes_admiss_redundant PRIVATE src)
 
 target_include_directories(swe_checkpointRestart PRIVATE src)
 
-target_include_directories(swe_tests PRIVATE src)
+#target_include_directories(swe_tests PRIVATE src)
 
 
 #*******************************************************************************
@@ -167,8 +167,8 @@ target_link_libraries(swe_softRes_admiss_redundant PRIVATE ${NETCDF_LIBRARIES})
 target_include_directories(swe_checkpointRestart SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
 target_link_libraries(swe_checkpointRestart PRIVATE ${NETCDF_LIBRARIES})
 
-target_include_directories(swe_tests SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
-target_link_libraries(swe_tests PRIVATE ${NETCDF_LIBRARIES})
+#target_include_directories(swe_tests SYSTEM PRIVATE NETCDF_INCLUDE_DIRS)
+#target_link_libraries(swe_tests PRIVATE ${NETCDF_LIBRARIES})
 
 # ULFM
 # Set this to the directory, that contains the "bin" folder which contains ULFM's MPI executables
@@ -185,7 +185,7 @@ if (MPI_FOUND)
     target_link_libraries(swe_softRes_admiss_useShared PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_softRes_admiss_redundant PUBLIC MPI::MPI_CXX)
     target_link_libraries(swe_checkpointRestart PUBLIC MPI::MPI_CXX) # checkpointing doesn't need ulfm
-    target_link_libraries(swe_tests PUBLIC MPI::MPI_CXX) # checkpointing doesn't need ulfm
+    #    target_link_libraries(swe_tests PUBLIC MPI::MPI_CXX) # checkpointing doesn't need ulfm
 else()
     message(FATAL_ERROR "MPI not found!")
 endif()
@@ -215,7 +215,7 @@ target_link_libraries(swe_softRes_hardRes_hashes PRIVATE tmpi)
 #target_link_libraries(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE tmpi)
 target_link_libraries(swe_softRes_admiss_useShared PRIVATE tmpi)
 target_link_libraries(swe_softRes_admiss_redundant PRIVATE tmpi)
-target_link_libraries(swe_tests PRIVATE tmpi)
+#target_link_libraries(swe_tests PRIVATE tmpi)
 
 # include path
 target_include_directories(swe_hardRes_wTaskSharing PRIVATE teampi-soft-error-resilience/include)
@@ -226,7 +226,7 @@ target_include_directories(swe_softRes_hardRes_hashes PRIVATE teampi-soft-error-
 #target_include_directories(swe_softRes_admiss_useShared_v2_NONBLOCKING PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_admiss_useShared PRIVATE teampi-soft-error-resilience/include)
 target_include_directories(swe_softRes_admiss_redundant PRIVATE teampi-soft-error-resilience/include)
-target_include_directories(swe_tests PRIVATE teampi-soft-error-resilience/include)
+#target_include_directories(swe_tests PRIVATE teampi-soft-error-resilience/include)
 
 #*******************************************************************************
 # Boost for testing
@@ -343,9 +343,9 @@ else ()
     )
 endif ()
 
-target_compile_options(swe_tests PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>: -O3 >
-)
+#target_compile_options(swe_tests PRIVATE
+#$<$<COMPILE_LANGUAGE:CXX>: -O3 >
+#)
 
 
 #*******************************************************************************
