@@ -109,7 +109,6 @@ do
 done
 
 #   --  METHOD 3 : softRes_admiss_useShared --  ##
-# run swe_softRes_admiss_useShared with -np ${np}   & compare results & delete results TODO fix the name of the executable after testing
 let np_3=$np
 outputPrefix_3='TEST_softRes_admiss_useShared_t'
 runPrefix_3='TEST_softRes_admiss_useShared'
@@ -151,7 +150,6 @@ do
 done
 
 #   --  METHOD 4 : softRes_admiss_redundant --  ##
-# run swe_softRes_admiss_redundant with -np ${np}   & compare results & delete results
 let np_4=2*$np
 outputPrefix_4='TEST_softRes_admiss_redundant_t'
 runPrefix_4='TEST_softRes_admiss_redundant'
@@ -227,9 +225,6 @@ do
             echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
             exit 1;
         fi
-        echo "rm $f2"
-        echo "";
-        #rm $f2
     done
 done
 
@@ -269,11 +264,6 @@ do
                 echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
                 exit 1;
             fi
-            echo "rm $f2"
-            echo "rm ${outputPrefix_3}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
-            echo ""
-            #rm $f2
-            eval "rm BACKUP_${outputPrefix_3}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
         done
     done
 done
@@ -314,11 +304,6 @@ do
                 echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
                 exit 1;
             fi
-            echo "rm $f2"
-            echo "rm ${outputPrefix_4}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
-            echo ""
-            #rm $f2
-            eval "rm BACKUP_${outputPrefix_4}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
         done
     done
 done
@@ -332,18 +317,83 @@ else
     echo "******************************************************************"
 fi
 
-# remove noRes output as well
+# remove noRes output
 for (( j=0; j<$ranksPerTeam_1; j++ ))
 do
     let localBlockPositionX=$j/$blockCountY_1;
     let localBlockPositionY=$j%$blockCountY_1;
     echo "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
-    #eval "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
+    eval "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
+done
+# remove method 4 output
+for (( i=0; i<$TEAMS; i++ ))
+do
+    for (( j=0; j<$ranksPerTeam_4; j++ ))
+    do
+        startPoint=$(( $j * $blocksPerRank_4 ))
+        for (( currentBlockNr=$startPoint; currentBlockNr<$(( $startPoint + $blocksPerRank_4 )); currentBlockNr++ ))
+        do
+            let localBlockPositionX=$currentBlockNr/$blockCountY_4
+            let localBlockPositionY=$currentBlockNr%$blockCountY_4;
+            f="${outputPrefix_4}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
+            rm $f
+            eval "rm BACKUP_${outputPrefix_4}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
+        done
+    done
+done
+# remove method 3 output
+for (( i=0; i<$TEAMS; i++ ))
+do
+    for (( j=0; j<$ranksPerTeam_3; j++ ))
+    do
+        startPoint=$(( $j * $blocksPerRank_3 ))
+        for (( currentBlockNr=$startPoint; currentBlockNr<$(( $startPoint + $blocksPerRank_3 )); currentBlockNr++ ))
+        do
+            let localBlockPositionX=$currentBlockNr/$blockCountY_3
+            let localBlockPositionY=$currentBlockNr%$blockCountY_3;
+            f="${outputPrefix_3}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
+            rm $f
+            eval "rm BACKUP_${outputPrefix_3}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
+        done
+    done
+done
+# remove method 2 output
+for (( i=0; i<$TEAMS; i++ ))
+do
+    for (( j=0; j<$ranksPerTeam_2; j++ ))
+    do
+        let localBlockPositionX=$j/$blockCountY_2;
+        let localBlockPositionY=$j%$blockCountY_2;
+        f="${outputPrefix_2}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
+        rm $f
+    done
 done
 
-echo "******************************************************************"
-echo "** METHOD 4 : method 4 produced the same output as the method 1 **"
-echo "******************************************************************"
 echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
-echo "TESTS ARE FINISHED! ALL OUTPUTS ARE EQUAL"
-exit 0;
+
+if [ $(( $method2Correct + $method3Correct + $method4Correct )) -ne 3 ]
+then
+    echo "==> TESTS FAILED!!! ONE METHOD CREATED A DIFFERENT OUTPUT O.O"
+    if [ $method2Correct -eq 0 ]
+    then
+        echo "  * method 2 : soft error detection with hashes -> created DIFFERENT outputs ==> FAILED"
+    else
+        echo "  * method 2 : soft error detection with hashes -> created the same outputs ==> PASSED"
+    fi
+    if [ $method3Correct -eq 0 ]
+    then
+        echo "  * method 3 : soft error resilience with admissibility checks and using task sharing -> created DIFFERENT outputs ==> FAILED"
+    else
+        echo "  * method 3 : soft error resilience with admissibility checks and using task sharing -> created the same outputs ==> PASSED"
+    fi
+    if [ $method4Correct -eq 0 ]
+    then
+        echo "  * method 4 : soft error resilience with admissibility checks and redundant computation -> created DIFFERENT outputs ==> FAILED"
+    else
+        echo "  * method 4 : soft error resilience with admissibility checks and redundant computation -> created the same outputs ==> PASSED"
+    fi
+    exit 1
+else
+    echo "==> TESTS ARE FINISHED! ALL OUTPUTS ARE EQUAL"
+    exit 0;
+fi

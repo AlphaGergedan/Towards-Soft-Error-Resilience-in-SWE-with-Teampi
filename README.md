@@ -264,3 +264,19 @@ For soft error resilience we have the following executables:
   ```
   mpirun -np 4 build-directory/swe_softRes_admiss_redundant -t 2 -x 1000 -y 1000 -o outputFile -w -i 5 -d 1 -v
   ```
+
+### Testing ###
+
+For testing the methods we prepared a bash script `runTests.sh` that runs all
+the methods and compares their results without injecting any SDC. One can
+specify the simulation parameters like simulation duratiion or even decompositon
+factor, which only affects the method 3 and 4. We take the solution of the first
+method (no resilience) as a reference for all the comparisons. Here is an
+example tests:
+```
+bash runTests.sh -b release-build -n 4 -x 200 -y 200 -t 10 -d 8
+```
+
+We also prepared a script to see how many SDCs can be detected from the
+admissibility checks in the methods 3 and 4.
+
