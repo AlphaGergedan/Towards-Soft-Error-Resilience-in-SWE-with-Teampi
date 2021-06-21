@@ -919,7 +919,6 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(flo
 
 /**
  * Injects a random bit flip into one of the following arrays:
-
  *  --> b, h, hv, hu, hNetUpdatesLeft, hNetUpdatesRight,
  *      huNetUpdatesLeft, huNetUpdatesRight, hNetUpdatesAbove,
  *      hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow
@@ -1044,6 +1043,209 @@ void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoData() {
 
     print_injectionIntoData(rand_index, rand_float, rand_bit, oldValue, newValue);
 }
+
+// ------------ FOR SDC DETECTION RATE ANALYSIS --------------- //
+
+/**
+ * Injects a random bit flip into b
+ *
+ * The element and bit to corrupt is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_into_b() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* inject into b */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = 0;
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    /* float to flip */
+    float target = (data_arrays[rand_index])[rand_float];
+    std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
+
+    float oldValue = (data_arrays[rand_index])[rand_float];
+    /* flip the bit and write it */
+    targetFloat->flip(rand_bit); (data_arrays[rand_index])[rand_float] = target;
+    float newValue = (data_arrays[rand_index])[rand_float];
+    assert(target == newValue);
+
+    print_injectionIntoData(rand_index, rand_float, rand_bit, oldValue, newValue);
+}
+
+/**
+ * Injects a random bit flip into h
+ *
+ * The element and bit to corrupt is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_into_h() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* inject into h */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = 1;
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    /* float to flip */
+    float target = (data_arrays[rand_index])[rand_float];
+    std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
+
+    float oldValue = (data_arrays[rand_index])[rand_float];
+    /* flip the bit and write it */
+    targetFloat->flip(rand_bit); (data_arrays[rand_index])[rand_float] = target;
+    float newValue = (data_arrays[rand_index])[rand_float];
+    assert(target == newValue);
+
+    print_injectionIntoData(rand_index, rand_float, rand_bit, oldValue, newValue);
+}
+
+/**
+ * Injects a random bit flip into hv
+ *
+ * The element and bit to corrupt is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_into_hv() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* inject into hv */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = 2;
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    /* float to flip */
+    float target = (data_arrays[rand_index])[rand_float];
+    std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
+
+    float oldValue = (data_arrays[rand_index])[rand_float];
+    /* flip the bit and write it */
+    targetFloat->flip(rand_bit); (data_arrays[rand_index])[rand_float] = target;
+    float newValue = (data_arrays[rand_index])[rand_float];
+    assert(target == newValue);
+
+    print_injectionIntoData(rand_index, rand_float, rand_bit, oldValue, newValue);
+}
+
+/**
+ * Injects a random bit flip into hu
+ *
+ * The element and bit to corrupt is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_into_hu() {
+    float* data_arrays[4] = { b.getRawPointer(), h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* inject into hu */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = 3;
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    /* float to flip */
+    float target = (data_arrays[rand_index])[rand_float];
+    std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
+
+    float oldValue = (data_arrays[rand_index])[rand_float];
+    /* flip the bit and write it */
+    targetFloat->flip(rand_bit); (data_arrays[rand_index])[rand_float] = target;
+    float newValue = (data_arrays[rand_index])[rand_float];
+    assert(target == newValue);
+
+    print_injectionIntoData(rand_index, rand_float, rand_bit, oldValue, newValue);
+}
+
+/**
+ * Injects a random bit flip into one of the following arrays:
+ *
+ *  --> h, hv, hu
+ *
+ * The array, element and bit to corrupt is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip_intoData_EXCEPT_b() {
+    float* data_arrays[3] = { h.getRawPointer(),
+                              hv.getRawPointer(), hu.getRawPointer()};
+    unsigned int arraySize = dataArraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 3;
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    /* float to flip */
+    float target = (data_arrays[rand_index])[rand_float];
+    std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
+
+    float oldValue = (data_arrays[rand_index])[rand_float];
+    /* flip the bit and write it */
+    targetFloat->flip(rand_bit); (data_arrays[rand_index])[rand_float] = target;
+    float newValue = (data_arrays[rand_index])[rand_float];
+    assert(target == newValue);
+
+    print_injectionIntoData(rand_index+1, rand_float, rand_bit, oldValue, newValue);
+}
+
+
+/**
+ * Injects a random bit flip into one of the following arrays:
+ *  --> h, hv, hu, hNetUpdatesLeft, hNetUpdatesRight,
+ *      huNetUpdatesLeft, huNetUpdatesRight, hNetUpdatesAbove,
+ *      hNetUpdatesBelow, hvNetUpdatesAbove, hvNetUpdatesBelow
+ *
+ * The array, element and bit to corrupt is selected randomly.
+ */
+void SWE_DimensionalSplittingMPIOverdecomp::injectRandomBitflip__EXCEPT_b() {
+    float* data_arrays[11] = {
+       /* arrays with size (nx+2)*(ny+2) */
+        h.getRawPointer(),
+        hv.getRawPointer(), hu.getRawPointer(),
+        hNetUpdatesLeft.getRawPointer(), hNetUpdatesRight.getRawPointer(),
+        huNetUpdatesLeft.getRawPointer(), huNetUpdatesRight.getRawPointer(),
+        /* arrays with size (nx+1)*(ny+2) */
+        hNetUpdatesAbove.getRawPointer(), hNetUpdatesBelow.getRawPointer(),
+        hvNetUpdatesAbove.getRawPointer(), hvNetUpdatesBelow.getRawPointer()};
+    unsigned int arraySize;
+
+    /* randomly select the data array */
+    srand (static_cast <unsigned> (time(NULL)));
+    int rand_index = std::rand() % 11;
+    arraySize = (rand_index < 7) ? fieldSizeX : fieldSizeY;
+
+    /* randomly select the float index and bit to flip */
+    int rand_float = std::rand() % arraySize;
+    int rand_bit = std::rand() % 32;
+
+    /* float to flip */
+    float target = (data_arrays[rand_index])[rand_float];
+    std::bitset<32> *targetFloat = reinterpret_cast<std::bitset<32> *>(&target);
+
+    float oldValue = (data_arrays[rand_index])[rand_float];
+    /* flip the bit and write it */
+    targetFloat->flip(rand_bit); (data_arrays[rand_index])[rand_float] = target;
+    float newValue = (data_arrays[rand_index])[rand_float];
+    assert(target == newValue);
+
+    print_injectionRandom(rand_index+1, rand_float, rand_bit, oldValue, newValue);
+}
+
 
 // ------------ FOR TESTS  --------------- //
 

@@ -124,6 +124,14 @@ public:
     /* injects a random bit flip into a data array, for debugging */
     void injectRandomBitflip_intoData();
 
+    /* These injections are for SDC detection rate analysis */
+    void injectRandomBitflip_into_b();
+    void injectRandomBitflip_into_h();
+    void injectRandomBitflip_into_hv();
+    void injectRandomBitflip_into_hu();
+    void injectRandomBitflip_intoData_EXCEPT_b();
+    void injectRandomBitflip__EXCEPT_b();
+
     /* These injections are for tests */
     void injectNaN_intoData();
     void injectInf_intoData();
