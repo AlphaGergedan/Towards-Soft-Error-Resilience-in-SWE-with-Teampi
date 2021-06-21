@@ -85,11 +85,11 @@ where `d` is the ***decomposition factor***. Ranks will first compute their
 primary blocks and the solutions are checked for certain admissibility criteria.
 We use the following simple admissibility criteria:
 1. ***Physical Admissibility Criteria***
-  - bathymetry data must be constant
-  - water height cannot be negative
+    - bathymetry data must be constant
+    - water height cannot be negative
 2. ***Numerical Admissibility Criteria***
-  - no floating point errors (NaN)
-  - DMP
+    - no floating point errors (NaN)
+    - DMP
 
 All the criteria except DMP can be checked cheaply with library functions. For
 the implementation see the function ***validateAdmissibility*** in the file
