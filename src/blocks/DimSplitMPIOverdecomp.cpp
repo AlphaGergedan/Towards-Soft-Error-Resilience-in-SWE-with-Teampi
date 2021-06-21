@@ -859,7 +859,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(flo
     admissible &= !std::isnan(maxTimestep);
     /* loop over the computation domain only */
     for (int i = 1; i < nx + 1; i++) {
-        for (int j = 1; j < ny + 2; j++) {
+        for (int j = 1; j < ny + 1; j++) {
             /**********************************************
               1. NUMERICAL ADMISSIBILITY : no NaN values
              **********************************************/
@@ -896,7 +896,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(flo
         dataAdmissible &= !std::isnan(hu[nx + 1][j]);
     }
     /* loop over the ghost layers with indices
-     * j = 0 and j = nx + 1 */
+     * j = 0 and j = ny + 1 */
     for (int i = 1; i < nx + 1; i++) {
         // access j = 0
         dataAdmissible &= !std::isnan(b[i][0]);

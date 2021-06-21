@@ -31,6 +31,12 @@ if [ -z "${b}" ] || [ -z "${np}" ] || [ -z "${x}" ] || [ -z "${y}" ] || [ -z "${
     usage
 fi
 
+if [ $TEAMS -ne 2 ]
+then
+    echo "set the environment variable TEAMS to 2 before running the tests!"
+    exit 1
+fi
+
 ####################################################################################
 ## RUN ALL THE METHODS ONCE WITHOUT INJECTING SDC | SEE IF THEY ARE EXITING WITH 0 ##
 ####################################################################################
