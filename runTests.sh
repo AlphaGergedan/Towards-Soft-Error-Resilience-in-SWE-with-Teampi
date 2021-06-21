@@ -202,6 +202,8 @@ echo ""
 
 sleep 1
 
+method2Correct=1
+
 # compare method 2 with method 1
 for (( i=0; i<$TEAMS; i++ ))
 do
@@ -220,29 +222,28 @@ do
         elif [ $? -eq 1 ]
         then
             echo "ERROR: OUTPUTS NOT EQUAL: $f1 & $f2 DIFFER!";
-            #exit 1;
+            method2Correct=0
         else
             echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
             exit 1;
         fi
         echo "rm $f2"
         echo "";
-        rm $f2
+        #rm $f2
     done
 done
-echo "******************************************************************"
-echo "** METHOD 2 : method 2 produced the same output as the method 1 **"
-echo "******************************************************************"
 
+if [ $method2Correct -eq 0 ]
+then
+    echo "! WARNING: METHOD 2 PRODUCED A DIFFERENT OUTPUT !"
+else
+    echo "******************************************************************"
+    echo "** METHOD 2 : method 2 produced the same output as the method 1 **"
+    echo "******************************************************************"
+fi
+
+method3Correct=1
 # compare method 3 with method 1
-for (( i=0; i<$TEAMS; i++ ))
-do
-    for (( j=0; j<$ranksPerTeam_3; j++ ))
-    do
-        let localBlockPositionX=$j/$blockCountY_3;
-        let localBlockPositionY=$j%$blockCountY_3;
-    done
-done
 for (( i=0; i<$TEAMS; i++ ))
 do
     for (( j=0; j<$ranksPerTeam_3; j++ ))
@@ -263,7 +264,7 @@ do
             elif [ $? -eq 1 ]
             then
                 echo "ERROR: OUTPUTS NOT EQUAL: $f1 & $f2 DIFFER!";
-                #exit 1;
+                method3Correct=0
             else
                 echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
                 exit 1;
@@ -271,15 +272,22 @@ do
             echo "rm $f2"
             echo "rm ${outputPrefix_3}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
             echo ""
-            rm $f2
+            #rm $f2
             eval "rm BACKUP_${outputPrefix_3}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
         done
     done
 done
-echo "******************************************************************"
-echo "** METHOD 3 : method 3 produced the same output as the method 1 **"
-echo "******************************************************************"
 
+if [ $method3Correct -eq 0 ]
+then
+    echo "! WARNING: METHOD 3 PRODUCED A DIFFERENT OUTPUT !"
+else
+    echo "******************************************************************"
+    echo "** METHOD 3 : method 3 produced the same output as the method 1 **"
+    echo "******************************************************************"
+fi
+
+method4Correct=1
 # compare method 4 with method 1
 for (( i=0; i<$TEAMS; i++ ))
 do
@@ -301,7 +309,7 @@ do
             elif [ $? -eq 1 ]
             then
                 echo "ERROR: OUTPUTS NOT EQUAL: $f1 & $f2 DIFFER!";
-                #exit 1;
+                method4Correct=0
             else
                 echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
                 exit 1;
@@ -309,11 +317,20 @@ do
             echo "rm $f2"
             echo "rm ${outputPrefix_4}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
             echo ""
-            rm $f2
+            #rm $f2
             eval "rm BACKUP_${outputPrefix_4}${i}_${localBlockPositionX}_${localBlockPositionY}_metadata"
         done
     done
 done
+
+if [ $method4Correct -eq 0 ]
+then
+    echo "! WARNING: METHOD 4 PRODUCED A DIFFERENT OUTPUT !"
+else
+    echo "******************************************************************"
+    echo "** METHOD 4 : method 4 produced the same output as the method 1 **"
+    echo "******************************************************************"
+fi
 
 # remove noRes output as well
 for (( j=0; j<$ranksPerTeam_1; j++ ))
@@ -321,7 +338,7 @@ do
     let localBlockPositionX=$j/$blockCountY_1;
     let localBlockPositionY=$j%$blockCountY_1;
     echo "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
-    eval "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
+    #eval "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
 done
 
 echo "******************************************************************"
