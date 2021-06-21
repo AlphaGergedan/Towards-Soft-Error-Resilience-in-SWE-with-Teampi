@@ -80,7 +80,7 @@ and relaxed discrete maximum principle (DMP) in the sense of polynomials.
 We divide the ranks into two teams, and we divide the domain into
 multiple blocks, where each rank can have ***primary*** and ***secondary*** blocks.
 Each rank will have `d` primary blocks, and
-`number_of_teams - 1' * d` secondary blocks computed by their replicas,
+`'number_of_teams - 1' * d` secondary blocks computed by their replicas,
 where `d` is the ***decomposition factor***. Ranks will first compute their
 primary blocks and the solutions are checked for certain admissibility criteria.
 We use the following simple admissibility criteria:
