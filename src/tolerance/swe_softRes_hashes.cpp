@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     args.addOption("write-output", 'w', "Write output using netcdf writer to the specified output file", args.No, false);
     args.addOption("hash-method", 'm', "Which hashing method to use: ( 0=NONE | 1=stdhash ), default: 1", args.Required, false);
     args.addOption("hash-count", 'c', "Number of total hashes to send to the replica", args.Required, true);
-    args.addOption("inject-bitflip", 'f', "Injects a random bit-flip into a random data array in a random team and rank right after the simulation time reaches the given time", args.Required, false);
+    args.addOption("inject-bitflip", 'f', "Injects a random bit-flip into a random data array in the rank 0 of team 0 right after the simulation time reaches the given time", args.Required, false);
     args.addOption("verbose", 'v', "Let the simulation produce more output, default: No", args.No, false);
 
     // Parse command line arguments
@@ -333,13 +333,9 @@ int main(int argc, char** argv) {
             /* compute current updates */
             block.computeNumericalFluxes();
 
-            /* Inject a bitflip at random team and random rank */
+            /* Inject a bitflip at team 0 and rank 0 */
             if (bitflip_at >= 0  && t > bitflip_at) {
-                /* Seed the random generator */
-                std::srand (static_cast <unsigned> (time(NULL)));
-                int teamToCorrupt = std::rand() % numTeams;
-                int rankToCorrupt = std::rand() % ranksPerTeam;
-                if (myTeam == teamToCorrupt && myRankInTeam == rankToCorrupt) {
+                if (myTeam == 0 && myRankInTeam == 0) {
                     std::cout << "T" << myTeam << "R" << myRankInTeam
                               << " : INJECTING A BITFLIP" << std::endl;
                     block.injectRandomBitflip();

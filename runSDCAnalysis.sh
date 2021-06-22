@@ -235,6 +235,11 @@ do
         done
     done
     totalRuns=$(( $totalRuns - 1 ))
+    echo "METHOD 3: corrected $method3_corrected of $(( $numberOfInjectedSDC - $totalRuns )) SDCs"
+    echo "METHOD 3: failed $method3_failed times (UNKNOWN ERROR)"
+    echo "METHOD 4: corrected $method4_corrected of $(( $numberOfInjectedSDC - $totalRuns )) SDCs"
+    echo "METHOD 4: failed $method4_failed times (UNKNOWN ERROR)"
+    echo "$totalRuns injections to finish.."
 done
 
 # remove noRes output
