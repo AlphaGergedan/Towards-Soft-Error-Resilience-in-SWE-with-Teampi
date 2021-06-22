@@ -4,6 +4,7 @@
 ## Welcome to runTests.sh! ##
 #############################
 # run with -h flag to see usage
+# @author Atamert Rahma rahma@in.tum.de
 
 
 usage() {
@@ -46,8 +47,8 @@ np_1=$(( np * d ))
 echo "np is given as $np_1"
 outputPrefix_1='TEST_noRes_t'
 runPrefix_1='TEST_noRes'
-echo "mpirun --oversubscribe --display-map -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
-eval "mpirun --oversubscribe --display-map -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
+echo "mpirun --oversubscribe -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
+eval "mpirun --oversubscribe -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
 if [ $? -eq 0 ]
 then
     echo "-----------------------------------------------"
@@ -81,8 +82,8 @@ done
 let np_2=2*$np*$d
 outputPrefix_2='TEST_softRes_hashes_t'
 runPrefix_2='TEST_softRes_hashes'
-echo "mpirun --oversubscribe --display-map -np $np_2 $b/swe_softRes_hashes -x $x -y $y -t $t -o $runPrefix_2 -w -c 5"
-eval "mpirun --oversubscribe --display-map -np $np_2 $b/swe_softRes_hashes -x $x -y $y -t $t -o $runPrefix_2 -w -c 5"
+echo "mpirun --oversubscribe -np $np_2 $b/swe_softRes_hashes -x $x -y $y -t $t -o $runPrefix_2 -w -c 5"
+eval "mpirun --oversubscribe -np $np_2 $b/swe_softRes_hashes -x $x -y $y -t $t -o $runPrefix_2 -w -c 5"
 if [ $? -eq 0 ]
 then
     echo "--------------------------------------------------------"
@@ -118,8 +119,8 @@ done
 let np_3=$np
 outputPrefix_3='TEST_softRes_admiss_useShared_t'
 runPrefix_3='TEST_softRes_admiss_useShared'
-echo "mpirun --oversubscribe --display-map -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d"
-eval "mpirun --oversubscribe --display-map -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d"
+echo "mpirun --oversubscribe -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d"
+eval "mpirun --oversubscribe -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d"
 if [ $? -eq 0 ]
 then
     echo "------------------------------------------------------------------"
@@ -159,8 +160,8 @@ done
 let np_4=2*$np
 outputPrefix_4='TEST_softRes_admiss_redundant_t'
 runPrefix_4='TEST_softRes_admiss_redundant'
-echo "mpirun --oversubscribe --display-map -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d"
-eval "mpirun --oversubscribe --display-map -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d"
+echo "mpirun --oversubscribe -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d"
+eval "mpirun --oversubscribe -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d"
 if [ $? -eq 0 ]
 then
     echo "------------------------------------------------------------------"

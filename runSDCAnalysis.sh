@@ -1,5 +1,12 @@
 #!/bin/bash
 
+##############################
+## Welcome to SDC analysis! ##
+##############################
+# run with -h flag to see usage
+# @author Atamert Rahma rahma@in.tum.de
+
+
 usage() {
     echo "Usage: $0 [-b <path-to-build-dir>] [-n <number of processes>] [-x <field size in x>] [-y <field size in y>] [-t <simulation time>] [-d decomposition factor] [-r totalRuns]"
     1>&2;
@@ -40,8 +47,8 @@ np_1=$(( np * d ))
 echo "np is given as $np_1"
 outputPrefix_1='TEST_noRes_t'
 runPrefix_1='TEST_noRes'
-echo "mpirun --oversubscribe --display-map -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
-eval "mpirun --oversubscribe --display-map -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
+echo "mpirun --oversubscribe -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
+eval "mpirun --oversubscribe -np $np_1 $b/swe_noRes -x $x -y $y -t $t -o $runPrefix_1 -w"
 if [ $? -eq 0 ]
 then
     echo "-----------------------------------------------"
@@ -90,8 +97,8 @@ do
     let np_3=$np
     outputPrefix_3='TEST_softRes_admiss_useShared_t'
     runPrefix_3='TEST_softRes_admiss_useShared'
-    echo "mpirun --oversubscribe --display-map -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d -f $(( $t / 2 ))"
-    eval "mpirun --oversubscribe --display-map -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d -f $(( $t / 2 ))"
+    echo "mpirun --oversubscribe -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d -f $(( $t / 2 ))"
+    eval "mpirun --oversubscribe -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d -f $(( $t / 2 ))"
     if [ $? -ne 0 ]
     then
         echo "ERROR: METHOD 3 : softRes_admiss_useShared has failed!"
@@ -102,8 +109,8 @@ do
     let np_4=2*$np
     outputPrefix_4='TEST_softRes_admiss_redundant_t'
     runPrefix_4='TEST_softRes_admiss_redundant'
-    echo "mpirun --oversubscribe --display-map -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d -f $(( $t / 2 ))"
-    eval "mpirun --oversubscribe --display-map -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d -f $(( $t / 2 ))"
+    echo "mpirun --oversubscribe -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d -f $(( $t / 2 ))"
+    eval "mpirun --oversubscribe -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d -f $(( $t / 2 ))"
     if [ $? -ne 0 ]
     then
         echo "ERROR: METHOD 4 : softRes_admiss_redundant has failed!"
@@ -251,13 +258,13 @@ do
     eval "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
 done
 
-echo "------- TESTS FINNISHED -------"
-echo "METHOD 3: corrected $method3_corrected of $numberOfInjected SDCs"
+echo "------- Analysis FINNISHED -------"
+echo "METHOD 3: corrected $method3_corrected of $numberOfInjectedSDC SDCs"
 echo "METHOD 3: failed $method3_failed times (UNKNOWN ERROR)"
-echo "METHOD 4: corrected $method4_corrected of $numberOfInjected SDCs"
+echo "METHOD 4: corrected $method4_corrected of $numberOfInjectedSDC SDCs"
 echo "METHOD 4: failed $method4_failed times (UNKNOWN ERROR)"
 echo "==> M3 has a correction rate of $method3_corrected/$numberOfInjectedSDC = $(echo "scale=4; $method3_corrected/$numberOfInjectedSDC" | bc)"
 echo "==> M4 has a correction rate of $method4_corrected/$numberOfInjectedSDC = $(echo "scale=4; $method4_corrected/$numberOfInjectedSDC" | bc)"
-echo "-------------------------------"
+echo "----------------------------------"
 
 exit 0

@@ -268,15 +268,25 @@ For soft error resilience we have the following executables:
 ### Testing ###
 
 For testing the methods we prepared a bash script `runTests.sh` that runs all
-the methods and compares their results without injecting any SDC. One can
-specify the simulation parameters like simulation duratiion or even decompositon
-factor, which only affects the method 3 and 4. We take the solution of the first
-method (no resilience) as a reference for all the comparisons. Here is an
-example tests:
+the methods and compares their results without injecting any SDC. Make sure
+to install ***bc*** and export the environment variable `TEAMS=2` before running
+the script. One can specify the simulation parameters like simulation duratiion
+or even decompositon factor, which only affects the method 3 and 4. We take the
+solution of the first method (no resilience) as a reference for all the
+comparisons. The parameters of the script are almost identical to the simulation,
+the user should also provide a build directory. Here is an example tests:
 ```
-bash runTests.sh -b release-build -n 4 -x 200 -y 200 -t 10 -d 8
+bash runTests.sh -b build-directory -n 4 -x 200 -y 200 -t 10 -d 8
 ```
 
-We also prepared a script to see how many SDCs can be detected from the
-admissibility checks in the methods 3 and 4.
-
+We have also prepared a script to see how many SDCs can be detected in the methods
+3 and 4 from the admissibility checks . It is important to mention that the
+SDC injection is called in the application itself, and can be changed in the methods
+to test different kinds of SDCs. Default bitflip injection covers 12 arrays with
+all the main data arrays b,h,hv,hu and the net-update arrays and the array, float
+and bit to corrupt is randomly selected. The number of runs with SDC injection
+can be specified in the `-r` flag. Here is an example run that injects
+5 SDCs:
+```
+bash runSDCAnalysis.sh -b build-directory -n 2 -x 200 -y 200 -t 20 -d 1 -r 5
+```
