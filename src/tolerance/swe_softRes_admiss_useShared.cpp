@@ -691,10 +691,11 @@ int main(int argc, char** argv) {
             /* receive report from other replicas */
             for (int sourceTeam = 0; sourceTeam < numTeams; sourceTeam++) {
                 // TODO Irecv integration
-                if (sourceTeam != myTeam)
+                if (sourceTeam != myTeam) {
                     MPI_Recv(replicaCorrupted+sourceTeam, 1, MPI_BYTE, sourceTeam,
                              MPI_TAG_REPORT_PRIMARY_BLOCK, interTeamComm, MPI_STATUS_IGNORE);
-                if (replicaCorrupted[sourceTeam] == 1) SDC_inReplica = 1;
+                    if (replicaCorrupted[sourceTeam] == 1) SDC_inReplica = 1;
+                }
             }
             /* if an error is present */
             if (SDC_inReplica == 1) {
@@ -999,10 +1000,11 @@ int main(int argc, char** argv) {
             /* receive report from other replicas */
             for (int sourceTeam = 0; sourceTeam < numTeams; sourceTeam++) {
                 // TODO Irecv integration
-                if (sourceTeam != myTeam)
+                if (sourceTeam != myTeam) {
                     MPI_Recv(replicaCorrupted+sourceTeam, 1, MPI_BYTE, sourceTeam,
                              MPI_TAG_REPORT_RECEIVED_BLOCK, interTeamComm, MPI_STATUS_IGNORE);
-                if (replicaCorrupted[sourceTeam] == 1) SDC_inReplica = 1;
+                    if (replicaCorrupted[sourceTeam] == 1) SDC_inReplica = 1;
+                }
             }
             /* if an error is present */
             if (SDC_inReplica == 1) {
