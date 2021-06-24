@@ -220,11 +220,12 @@ do
         f2="${outputPrefix_2}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
         echo "--> cmp $f1 $f2"
         eval "cmp $f1 $f2"
-        if [ $? -eq 0 ]
+        exitCode=$?
+        if [ $exitCode -eq 0 ]
         then
             #echo "OUTPUTS EQUAL: $f1 & $f2";
             echo "";
-        elif [ $? -eq 1 ]
+        elif [ $exitCode -eq 1 ]
         then
             echo "ERROR: OUTPUTS NOT EQUAL: $f1 & $f2 DIFFER!";
             method2Correct=0
@@ -259,11 +260,12 @@ do
             f2="${outputPrefix_3}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
             echo "--> cmp $f1 $f2"
             eval "cmp $f1 $f2"
-            if [ $? -eq 0 ]
+            exitCode=$?
+            if [ $exitCode -eq 0 ]
             then
                 #echo "OUTPUTS EQUAL: $f1 & $f2";
                 echo "";
-            elif [ $? -eq 1 ]
+            elif [ $exitCode -eq 1 ]
             then
                 echo "ERROR: OUTPUTS NOT EQUAL: $f1 & $f2 DIFFER!";
                 method3Correct=0
@@ -299,11 +301,12 @@ do
             f2="${outputPrefix_4}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
             echo "--> cmp $f1 $f2"
             eval "cmp $f1 $f2"
-            if [ $? -eq 0 ]
+            exitCode=$?
+            if [ $exitCode -eq 0 ]
             then
                 #echo "OUTPUTS EQUAL: $f1 & $f2";
                 echo "";
-            elif [ $? -eq 1 ]
+            elif [ $exitCode -eq 1 ]
             then
                 echo "ERROR: OUTPUTS NOT EQUAL: $f1 & $f2 DIFFER!";
                 method4Correct=0
