@@ -143,6 +143,8 @@ do
     let "blockCountX_4 = $totalBlocks_4 / $blockCountY_4"
 
     method3Correct=1
+    method3_t0_correct=1
+    method3_t1_correct=1
     # compare method 3 with method 1
     for (( i=0; i<$TEAMS; i++ ))
     do
@@ -156,12 +158,20 @@ do
                 f1="${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc"
                 f2="${outputPrefix_3}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
                 eval "cmp $f1 $f2"
-                if [ $? -eq 0 ]
+                exitCode=$?
+                if [ $exitCode -eq 0 ]
                 then
                     #echo "OUTPUTS EQUAL: $f1 & $f2";
                     echo "";
-                elif [ $? -eq 1 ]
+                elif [ $exitCode -eq 1 ]
                 then
+                    if [ $i -eq 0 ]
+                    then
+                        method3_t0_correct=0
+                    elif [ $i -eq 1 ]
+                    then
+                        method3_t1_correct=0
+                    fi
                     method3Correct=0
                     echo "method 3 could not detect this SDC.."
                 else
@@ -174,9 +184,27 @@ do
     if [ $method3Correct -eq 1 ]
     then
         method3_corrected=$(( $method3_corrected + 1 ))
+    else
+        anyTeamCorrected=0
+        if [ $method3_t0_correct -eq 1 ]
+        then
+            echo "METHOD 3 TEAM 0 HAS CORRECTED THE INJECTED SDC!"
+            anyTeamCorrected=1
+        fi
+        if [ $method3_t1_correct -eq 1 ]
+        then
+            echo "METHOD 3 TEAM 1 HAS CORRECTED THE INJECTED SDC!"
+            anyTeamCorrected=1
+        fi
+        if [ $anyTeamCorrected -eq 1 ]
+        then
+            method3_corrected=$(( $method3_corrected + 1 ))
+        fi
     fi
 
     method4Correct=1
+    method4_t0_correct=1
+    method4_t1_correct=1
     # compare method 4 with method 1
     for (( i=0; i<$TEAMS; i++ ))
     do
@@ -190,11 +218,19 @@ do
                 f1="${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc"
                 f2="${outputPrefix_4}${i}_${localBlockPositionX}_$localBlockPositionY.nc"
                 eval "cmp $f1 $f2"
-                if [ $? -eq 0 ]
+                exitCode=$?
+                if [ $exitCode -eq 0 ]
                 then
                     echo "";
-                elif [ $? -eq 1 ]
+                elif [ $exitCode -eq 1 ]
                 then
+                    if [ $i -eq 0 ]
+                    then
+                        method4_t0_correct=0
+                    elif [ $i -eq 1 ]
+                    then
+                        method4_t1_correct=0
+                    fi
                     method4Correct=0
                     echo "method 4 could not detect this SDC.."
                 else
@@ -208,6 +244,22 @@ do
     if [ $method4Correct -eq 1 ]
     then
         method4_corrected=$(( $method4_corrected + 1 ))
+    else
+        anyTeamCorrected=0
+        if [ $method4_t0_correct -eq 1 ]
+        then
+            echo "METHOD 4 TEAM 0 HAS CORRECTED THE INJECTED SDC!"
+            anyTeamCorrected=1
+        fi
+        if [ $method4_t1_correct -eq 1 ]
+        then
+            echo "METHOD 4 TEAM 1 HAS CORRECTED THE INJECTED SDC!"
+            anyTeamCorrected=1
+        fi
+        if [ $anyTeamCorrected -eq 1 ]
+        then
+            method4_corrected=$(( $method4_corrected + 1 ))
+        fi
     fi
     # remove method 4 output
     for (( i=0; i<$TEAMS; i++ ))
