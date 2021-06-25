@@ -682,7 +682,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep
     admissible &= !std::isnan(maxTimestep);
     /* loop over the computation domain only */
     for (int i = 1; i < nx + 1; i++) {
-        for (int j = 1; j < ny + 2; j++) {
+        for (int j = 1; j < ny + 1; j++) {
             /**********************************************
               1. NUMERICAL ADMISSIBILITY : no NaN values
              **********************************************/
@@ -785,6 +785,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep
         dataAdmissible &= !std::isnan(h[0][j]);
         dataAdmissible &= !std::isnan(hv[0][j]);
         dataAdmissible &= !std::isnan(hu[0][j]);
+        dataAdmissible &= b[0][j] == b_replica[0][j];
         // access i = nx + 1
         updatesAdmissible &= !std::isnan(hNetUpdatesLeft[nx + 1][j]);
         updatesAdmissible &= !std::isnan(hNetUpdatesRight[nx + 1][j]);
@@ -794,6 +795,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep
         dataAdmissible &= !std::isnan(h[nx + 1][j]);
         dataAdmissible &= !std::isnan(hv[nx + 1][j]);
         dataAdmissible &= !std::isnan(hu[nx + 1][j]);
+        dataAdmissible &= b[nx + 1][j] == b_replica[nx + 1][j];
     }
     /* loop over the ghost layers with indices
      * j = 0 and j = nx + 1 */
@@ -811,6 +813,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep
         dataAdmissible &= !std::isnan(h[i][0]);
         dataAdmissible &= !std::isnan(hv[i][0]);
         dataAdmissible &= !std::isnan(hu[i][0]);
+        dataAdmissible &= b[i][0] == b_replica[i][0];
         // access j = ny + 1
         updatesAdmissible &= !std::isnan(hNetUpdatesAbove[i][ny + 1]);
         updatesAdmissible &= !std::isnan(hNetUpdatesBelow[i][ny + 1]);
@@ -824,6 +827,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep
         dataAdmissible &= !std::isnan(h[i][ny + 1]);
         dataAdmissible &= !std::isnan(hv[i][ny + 1]);
         dataAdmissible &= !std::isnan(hu[i][ny + 1]);
+        dataAdmissible &= b[i][ny + 1] == b_replica[i][ny + 1];
     }
     /* is data admissible */
     admissible = updatesAdmissible && dataAdmissible;
@@ -889,11 +893,13 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(flo
         dataAdmissible &= !std::isnan(h[0][j]);
         dataAdmissible &= !std::isnan(hv[0][j]);
         dataAdmissible &= !std::isnan(hu[0][j]);
+        dataAdmissible &= b[0][j] == b_replica[0][j];
         // access i = nx + 1
         dataAdmissible &= !std::isnan(b[nx + 1][j]);
         dataAdmissible &= !std::isnan(h[nx + 1][j]);
         dataAdmissible &= !std::isnan(hv[nx + 1][j]);
         dataAdmissible &= !std::isnan(hu[nx + 1][j]);
+        dataAdmissible &= b[nx + 1][j] == b_replica[nx + 1][j];
     }
     /* loop over the ghost layers with indices
      * j = 0 and j = ny + 1 */
@@ -903,11 +909,13 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(flo
         dataAdmissible &= !std::isnan(h[i][0]);
         dataAdmissible &= !std::isnan(hv[i][0]);
         dataAdmissible &= !std::isnan(hu[i][0]);
+        dataAdmissible &= b[i][0] == b_replica[i][0];
         // access j = ny + 1
         dataAdmissible &= !std::isnan(b[i][ny + 1]);
         dataAdmissible &= !std::isnan(h[i][ny + 1]);
         dataAdmissible &= !std::isnan(hv[i][ny + 1]);
         dataAdmissible &= !std::isnan(hu[i][ny + 1]);
+        dataAdmissible &= b[i][ny + 1] == b_replica[i][ny + 1];
     }
     /* is data admissible */
     admissible = dataAdmissible;
