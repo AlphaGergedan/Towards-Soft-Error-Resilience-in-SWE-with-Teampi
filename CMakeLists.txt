@@ -11,8 +11,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #*******************************************************************************
-# There is only one solver, but having the option is nice
-set(SOLVER "hlle" CACHE STRING "Riemann solver")
+# solver options
+option(SOLVER "Wave Propagation Solver" "hlle")
+set(SOLVERS "fwave, hlle, augrie")
 
 # This displays a combo box in CMake GUIs
 set_property(CACHE SOLVER PROPERTY STRINGS ${SOLVERS})

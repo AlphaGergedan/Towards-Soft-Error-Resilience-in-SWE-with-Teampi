@@ -67,6 +67,10 @@
 #include "types/Float2DNative.hpp"
 #if SOLVER == 0
     #include "solvers/HLLEFun.hpp"
+#elif SOLVER == 1
+    #include "solvers/FWave.hpp"
+#elif SOLVER == 2
+    #include "solvers/AugRie.hpp"
 #endif
 
 class SWE_DimensionalSplittingMPIOverdecomp : public SWE_Block<Float2DNative>
@@ -173,14 +177,14 @@ public:
     MPI_Datatype HORIZONTAL_BOUNDARY;
     std::shared_ptr<io::Writer> writer;
     bool write;
-#if WAVE_PROPAGATION_SOLVER == 0
+#if SOLVER == 0
     //! Hybrid solver (f-wave + augmented)
     // solver::Hybrid<float> solver;
     solver::HLLEFun<float> solver;
-#elif WAVE_PROPAGATION_SOLVER == 1
+#elif SOLVER == 1
     //! F-wave Riemann solver
     solver::FWave<float> solver;
-#elif WAVE_PROPAGATION_SOLVER == 2
+#elif SOLVER == 2
     //! Approximate Augmented Riemann solver
     solver::AugRie<float> solver;
 #endif
