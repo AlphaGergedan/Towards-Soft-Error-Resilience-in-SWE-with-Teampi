@@ -6,33 +6,21 @@
  *
  * @author Philipp Samfass,
  *
- * Alexander Pöppl  (samfass@in.tum.de poeppl@in.tum.de(
+ * Alexander Pöppl  (samfass@in.tum.de poeppl@in.tum.de)
  *
  * @section
  * LICENSE
-
- * *
+ *
+ *
  * SWE is free software: you can redistribute it and/or modify
-
- * * it under
- * the terms of the GNU General Public License as published by
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 3
+ * of the License, or (at your option) any later version.
  *
- * the Free
- * Software Foundation, either version 3 of the License, or
- * (at
- * your option)
- * any later version.
- *
- * SWE is distributed in the hope that
- * it will be
- * useful,
+ * SWE is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied
- * warranty of
- *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
- * the
- * GNU General
- * Public License for more details.
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
  *
  * You should have
  * received a copy of the
@@ -835,18 +823,20 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility(float timestep
 }
 
 /**
+ * Important: This check only validates the data arrays stored in this block
+ *            use validateAdmissibility to validate all the arrays
  * Validates the following physical and numerical admissibility
- * criteria, should be called anywhere in the code:
+ * criteria, should be called after the second loop iteration for DMP:
  *   1. Physical Admissibility
  *      - Bathymetry is unchanged
  *      - No negative water height
  *   2. Numerical Admissibility
  *      - No NaN values
+ *      - Discrete Maximum Principle (DMP)
  *
  * Warning: there is still a chance for silent data corruptions, even
  *          if the results are admissible. Adding more admissibility
  *          checks can reduce this probability even more
- *          This check only validates the data arrays stored in this block
  *
  * @param timeStep current timestep of the simulation
  * @return admissible returns true if admissible
@@ -871,6 +861,36 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(flo
             dataAdmissible &= !std::isnan(h[i][j]);
             dataAdmissible &= !std::isnan(hv[i][j]);
             dataAdmissible &= !std::isnan(hu[i][j]);
+
+            /**********************************************
+              2. NUMERICAL ADMISSIBILITY : DMP
+             **********************************************/
+            /* get the neigbours max and min */
+            float h_max = std::max({h_prev[i][j-1], h_prev[i][j+1], h_prev[i-1][j], h_prev[i+1][j]});
+            float h_min = std::min({h_prev[i][j-1], h_prev[i][j+1], h_prev[i-1][j], h_prev[i+1][j]});
+            float hv_max = std::max({hv_prev[i][j-1], hv_prev[i][j+1], hv_prev[i-1][j], hv_prev[i+1][j]});
+            float hv_min = std::min({hv_prev[i][j-1], hv_prev[i][j+1], hv_prev[i-1][j], hv_prev[i+1][j]});
+            float hu_max = std::max({hu_prev[i][j-1], hu_prev[i][j+1], hu_prev[i-1][j], hu_prev[i+1][j]});
+            float hu_min = std::min({hu_prev[i][j-1], hu_prev[i][j+1], hu_prev[i-1][j], hu_prev[i+1][j]});
+
+            /* Relaxation factor d */
+            float d = 100.f;
+
+            /*
+             * check Discrete Maximum Principle holding only if we already have
+             * a previous solution. Previous solution must be saved by calling
+             * the function savePreviousData by the application before writing
+             * the results with updateUnknowns
+             *
+             * TODO add DMP checks to update arrays as well
+             *      alternative: save the previous updates and try to 'guess' the next update interval
+             */
+            /* check the current data arrays */
+            if (iterationNumber > 0) {
+                dataAdmissible &= h_min - d <= h[i][j] && h[i][j] <= h_max + d;
+                dataAdmissible &= hv_min - d <= hv[i][j] && hv[i][j] <= hv_max + d;
+                dataAdmissible &= hu_min - d <= hu[i][j] && hu[i][j] <= hu_max + d;
+            }
 
             /******************************************************
               1. PHYSICAL ADMISSIBILITY : bathymetry is unchanged
@@ -919,6 +939,7 @@ bool SWE_DimensionalSplittingMPIOverdecomp::validateAdmissibility_dataArrays(flo
     }
     /* is data admissible */
     admissible = dataAdmissible;
+    iterationNumber++;
     return admissible ;
 }
 

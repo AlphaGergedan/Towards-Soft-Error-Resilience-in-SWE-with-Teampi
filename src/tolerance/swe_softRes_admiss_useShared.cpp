@@ -799,6 +799,7 @@ int main(int argc, char** argv) {
                 /* Get a reference to the current secondary block */
                 const int& currentBlockNr = myBlockOrder[i];
                 auto& currentSecondaryBlock = *simulationBlocks[currentBlockNr];
+                currentSecondaryBlock.savePreviousData();
                 // Size of h,hv and hu
                 const int dataArraySize = currentSecondaryBlock.dataArraySize;
                 int source_rank = currentBlockNr % numTeams;
@@ -807,7 +808,7 @@ int main(int argc, char** argv) {
                           dataArraySize,
                           MPI_FLOAT,
                           source_rank,
-                          1,
+                          MPI_TAG_TS_H,
                           interTeamComm,
                           &recv_reqs[3*(i-decompFactor)]);
                 // hv
@@ -815,7 +816,7 @@ int main(int argc, char** argv) {
                           dataArraySize,
                           MPI_FLOAT,
                           source_rank,
-                          2,
+                          MPI_TAG_TS_HV,
                           interTeamComm,
                           &recv_reqs[3*(i-decompFactor) + 1]);
                 // hu
@@ -823,7 +824,7 @@ int main(int argc, char** argv) {
                           dataArraySize,
                           MPI_FLOAT,
                           source_rank,
-                          3,
+                          MPI_TAG_TS_HU,
                           interTeamComm,
                           &recv_reqs[3*(i-decompFactor) + 2]);
             }
@@ -846,7 +847,7 @@ int main(int argc, char** argv) {
                                   dataArraySize,
                                   MPI_FLOAT,
                                   destTeam,
-                                  1,
+                                  MPI_TAG_TS_H,
                                   interTeamComm,
                                   &send_reqs[requestIndex]);
                         requestIndex++;
@@ -855,7 +856,7 @@ int main(int argc, char** argv) {
                                   dataArraySize,
                                   MPI_FLOAT,
                                   destTeam,
-                                  2,
+                                  MPI_TAG_TS_HV,
                                   interTeamComm,
                                   &send_reqs[requestIndex]);
                         requestIndex++;
@@ -864,7 +865,7 @@ int main(int argc, char** argv) {
                                   dataArraySize,
                                   MPI_FLOAT,
                                   destTeam,
-                                  3,
+                                  MPI_TAG_TS_HU,
                                   interTeamComm,
                                   &send_reqs[requestIndex]);
                         requestIndex++;
