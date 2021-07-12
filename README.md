@@ -185,7 +185,8 @@ Follow the following steps to compile the project:
 - go to the root `/` directory of the project
 - make sure you have teaMPI by running: `git submodule update --init --recursive`
 - run `cmake -DMPI_HOME=/ulfm/installation/path -B build-directory -S .`
-(-DUSE\_DEBUG='on' option can be used for debug mode and -DUSE\_PROFILING='on'
+(-DSOLVER={hlle,fwave,augrie} specifies the wave propagation solver,
+-DUSE\_DEBUG='on' option can be used for debug mode and -DUSE\_PROFILING='on'
 option can be used for profiling with a profiler like VTune)
 - now prepend the include directory of the installed Open MPI with ULFM (for
 example by running `export CPATH=/ulfm/installation/path/include:$CPATH`)
