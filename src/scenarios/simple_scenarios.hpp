@@ -206,13 +206,26 @@ class SWE_SeaAtRestScenario : public SWE_Scenario
 public:
     float getWaterHeight(float x, float y)
     {
-        return (sqrt((x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5)) < 0.1f) ? 9.9f : 10.0f;
+        return 10.0f;
     };
 
     float getBathymetry(float x, float y)
     {
-        return (sqrt((x - 0.5) * (x - 0.5) + (y - 0.5) * (y - 0.5)) < 0.1f) ? 0.1f : 0.0f;
+        return 0.0f;
     };
+    // Added
+    virtual float endSimulation() { return (float)15; };
+    virtual BoundaryType getBoundaryType(Boundary edge) { return OUTFLOW;};
+    float getBoundaryPos(Boundary boundary) {
+        if (boundary == BND_LEFT)
+            return (float)0;
+        else if (boundary == BND_RIGHT)
+            return (float)2000;
+        else if (boundary == BND_BOTTOM)
+            return (float)0;
+        else
+            return (float)2000;
+    }
 };
 
 /**
@@ -228,6 +241,8 @@ public:
 
     virtual float endSimulation() { return (float)15; };
 
+    virtual BoundaryType getBoundaryType(Boundary edge) { return OUTFLOW; };
+
     /** Get the boundary positions
      *
      * @param boundary which edge
@@ -238,11 +253,11 @@ public:
         if (boundary == BND_LEFT)
             return (float)0;
         else if (boundary == BND_RIGHT)
-            return (float)1000;
+            return (float)2000;
         else if (boundary == BND_BOTTOM)
             return (float)0;
         else
-            return (float)1000;
+            return (float)2000;
     };
 };
 
