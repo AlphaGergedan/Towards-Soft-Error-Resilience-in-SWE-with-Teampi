@@ -184,9 +184,9 @@ depending on your configurations
 Follow the following steps to compile the project:
 - go to the root `/` directory of the project
 - make sure you have teaMPI by running: `git submodule update --init --recursive`
-- run `cmake -DMPI_HOME=/ulfm/installation/path -B build-directory -S .`
-(optional options: -DSOLVER={hlle,fwave,augrie} specifies the wave propagation solver,
--DUSE\_DEBUG='on' option can be used for debug mode and -DUSE\_PROFILING='on'
+- run `cmake -DMPI_HOME=/ulfm/installation/path -DSOLVER=hlle -B build-directory -S .`
+(optional: -DSOLVER={hlle,fwave,augrie} specifies the wave propagation solver,
+-DUSE\_DEBUG='on' option can be used for debug mode for developers and -DUSE\_PROFILING='on'
 option can be used for profiling with a profiler like VTune)
 - now prepend the include directory of the installed Open MPI with ULFM (for
 example by running `export CPATH=/ulfm/installation/path/include:$CPATH`)
@@ -270,30 +270,31 @@ For soft error resilience we have the following executables:
 
 For testing the methods we prepared a bash script `runTests.sh` that runs all
 the methods and compares their results without injecting any SDC. Make sure
-to install ***bc*** and export the environment variable `TEAMS=2` before running
-the script. One can specify the simulation parameters like simulation duration
-or even decompositon factor, which only affects the method 3 and 4. We take the
-solution of the first method (no resilience) as a reference for all the
-comparisons. The parameters of the script are almost identical to the simulation,
-the user should also provide a build directory. Here is an example tests:
+to install [bc](https://www.gnu.org/software/bc/) and export the environment
+variable `TEAMS=2` before running the script. One can specify the simulation
+parameters like simulation duration or decompositon factor, which only affects the
+method 3 and 4. We take the outputs of the first method (no resilience)
+as a reference solution for all the comparisons. The parameters of the script are almost
+identical to the simulation, the user should also provide a build directory.
+Here is an example test run:
 ```
 bash runTests.sh -b build-directory -n 4 -x 200 -y 200 -t 10 -d 8
 ```
 
 We have also prepared a script to see how many SDCs can be detected in the methods
-3 and 4 from the admissibility checks. It is important to mention that the
+3 and 4 using the admissibility checks. It is important to mention that the
 SDC injection is called in the application itself, and can be changed in the methods
 to test different kinds of SDCs. Default bitflip injection covers 12 arrays with
 all the main data arrays b,h,hv,hu and the net-update arrays and the array, float
 and bit to corrupt is randomly selected. After the injection we wait for the
 application to finish and we compare its team's outputs with the reference
 solution. We assume that the method has detected and corrected the error, if any
-of its team outputs are matching with the reference solution. The methods tell
-the user which teams have detected SDC in their blocks, so the user can know
-which teams could have written a faulty output. The number of runs with SDC
-injection can be specified in the `-r` flag. Provide big numbers to see a more
-precise detection/correction rate. Here is an example run that executes the methods
-5 times and injects a random SDC in each of them:
+of its team outputs are matching with the reference solution and the application
+actually reported the faulty team. So the user can know which teams have detected
+an SDC in their blocks and could have written a faulty output. The number of runs
+with SDC injection can be specified in the `-r` flag. Provide big numbers to see
+a more precise detection/correction rate. Here is an example run with 5
+SDC injections executions the methods 5 times and injects a random SDC in each of them:
 ```
 bash runSDCAnalysis.sh -b build-directory -n 2 -x 200 -y 200 -t 20 -d 1 -r 5
 ```

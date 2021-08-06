@@ -347,7 +347,7 @@ int main(int argc, char** argv) {
             /* Agree on a timestep */
             timestep = block.maxTimestep;
             float agreed_timestep;
-            PMPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+            MPI_Allreduce(&timestep, &agreed_timestep, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 
             block.maxTimestep = agreed_timestep;
             block.updateUnknowns(agreed_timestep);
