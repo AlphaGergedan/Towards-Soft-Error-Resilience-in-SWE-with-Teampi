@@ -38,7 +38,7 @@
 ##  calculate totalInjections-NEGLIGIBLE and divide it with the number  ##
 ##  of total detections/corrections.                                    ##
 ##                                                                      ##
-##  Usage: python extractSDC_correctionRate.py <SDC-injection-output>   ##
+##  Usage: python extractSDC_outcomeRate.py <SDC-injection-output>   ##
 ##          <build-dir> <number-MPI-processes> <size-x> <size-y>        ##
 ##          <simulation-duration> <decomposition-factor>                ##
 ##  Author: Atamert Rahma | rahma@in.tum.de                             ##

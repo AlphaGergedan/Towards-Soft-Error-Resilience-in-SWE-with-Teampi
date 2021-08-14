@@ -296,7 +296,7 @@ solution from ***NoRes***. We assume that a method has detected and corrected th
 of its team outputs are matching with the reference solution and the application
 actually reported the faulty team. So the user can know which teams have detected
 an SDC in their blocks and could have written a faulty output. For more detailed
-explanation on the outcome analysis, please see the script `scripts/extractSDC_correctionRate.py`
+explanation on the outcome analysis, please see the script `scripts/extractSDC_outcomeRate.py`
 which was used to analyze the standard output of our bitflip injection script `runSDCAnalysis.sh`
 to decide whether an injected error has resulted in a correctable outcome, DUE or SDC. The script
 `scripts/runSDCAnalysis.sh` runs the method multiple times and injects a bitflip in
@@ -305,5 +305,5 @@ Provide big numbers to see more precise DUE/Correctable outcome rates. Here is a
 example run with 5 SDC injections executions the methods 5 times and injects a random SDC in each of them:
 ```
 bash runSDCAnalysis.sh -b build-directory -n 2 -x 200 -y 200 -t 20 -d 1 -r 5 >> output
-python scripts/extractSDC_correctionRate.py output build-directory 2 200 200 20 1
+python scripts/extractSDC_outcomeRate.py output build-directory 2 200 200 20 1
 ```

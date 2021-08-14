@@ -1,5 +1,6 @@
 ##--------------------------------------------------##
 ##  nc file comparison script for debugging         ##
+##  Compares the arrays of two given SWE solutions  ##
 ##  usage: python ncfloatcmp.py file1.nc file2.nc   ##
 ##  author: Atamert Rahma | rahma@in.tum.de         ##
 ##--------------------------------------------------##
