@@ -1,24 +1,24 @@
-# Towards Soft Error Resilience in SWE with teaMPI #
-This repository tries to integrate soft error resilience in SWE using teaMPI
+# Towards Soft Error Resilience in SWE with TeaMPI #
+This repository tries to integrate soft error resilience into SWE using the TeaMPI
 library. See the original [SWE](https://github.com/TUM-I5/SWE) and
 [teaMPI](https://gitlab.lrz.de/hpcsoftware/teaMPI). Integration over
 [hard failure tolerance in teaMPI and SWE](https://github.com/xile273/SWE/tree/simon_task_sharing)
 
 ## Soft Error Resilience ##
-Increased error rates in high performance computing due to multiple cores and
-memories may lead to silent data corruptions (SDCs) with bitflips. In such a
-case, we are unable to detect the error without observing the application's
-results because in case of an SDC the application seems to be running correctly
-and it doesn't instantly report an error when an SDC occurs. In order to provide
-detection and resilience for SDCs, we introduce the following methods.
+Increased number of components in high performance computing due to demand on multiple
+cores and memories may lead to increased silent data corruptions (SDCs) materialized
+as bitflips. In case of an SDC, we are unable to detect the error without observing
+the application's outputs because the application seems to be running correctly
+but it doesn't instantly report an error when an SDC occurs. In order to provide
+resilience for SDCs, we introduce the following methods.
 
-### Method 1 | No Resilience ###
-This method doesn't have any built in soft detection or resilience mechanism, so
-it also doesn't have their overheads. This method can be run to see the fastest
-possible computation and it represents our baseline model. A naive soft error
-detection can be done by running the application twice. For resilience we need
-to run it again in order to decide which one of the initial runs had an SDC by
-using voting.
+### Method 1 | No Resilience (NoRes) ###
+This method doesn't have any built in soft error detection or resilience mechanisms,
+so it also doesn't have their overheads. This method can be run to see the fastest
+possible runtime and it represents our baseline model. A naive soft error
+detection is still possible if the application is run twice and their results are
+compared. For correction we need to run it again in order to decide which one of
+the initial runs had an SDC by employing a voting mechanism (guess).
 
 SWE domain is divided into `number_of_ranks` blocks and each rank computes its
 own block. (See
@@ -27,12 +27,12 @@ for the implementation and [its executable](#running) for usage examples)
 
 We try to improve this naive method with the following techniques.
 
-### Method 2 | Soft Error Detection Using Hashes ###
-In this method we provide soft error detection by running the application
-redundantly twice. We hash the 'tasks' computed by the replicas of 2 Teams and
-share the hashes across them. This can provide an early SDC detection, however
-it cannot correct the soft errors. For soft resilience an additional run is
-required, or this method can be extended to work with 3 Teams with a voting
+### Method 2 | Soft Error Detection Using Hashes (Hashes) ###
+In this method we provide soft error detection by employing process replication using 2
+TeaMPI teams. We hash the 'tasks' computed by the replicas and share the hashes
+across them. This can provide an early SDC detection, however
+it cannot correct the soft errors. For soft error resilience an additional run is
+required, or this method can be extended to work with 3 Teams again with a voting
 mechanism.
 
 We use `std::hash` for better performance. According to
@@ -40,98 +40,101 @@ We use `std::hash` for better performance. According to
 the function object `std::hash<>` is based on ***MurmurHashUnaligned2*** for the
 specialization for `std::strings`, and it is 8 bytes long. Other hash functions
 like SHA-1 could also be used but it is expected to be slower due to its
-increased length.
+greater length.
 
 We compute one block per rank in team. So we divide the SWE domain into
 `number_of_ranks_in_a_team` blocks. Each rank computes its own block and issues
 a single heartbeat in each `heartbeat-interval` in simulation time. In each
-single heartbeat they send the hashes of the computed updates to their replicas.
-TeaMPI handles the comparison of the hashes, and therefore an early detection of
-an SDC is possible. This method however does not guarantee any hard failure
-resilience as the heartbeat intervals depend on the time steps.
+single heartbeat they send a combined hash value (combined using xor operations)
+of the hash values of the updated data arrays and the agreed time step size to their replicas.
+TeaMPI handles the comparison of the hashes with our additional modifications, and
+makes an early detection of an SDC possible. This method however doesn't guarantee
+any hard failure resilience as the heartbeat intervals are bound to simulation time
+and not on wall-clock time which is neccessary for detection of any failing or slowing
+ranks.
 (See
 [swe\_softRes\_hashes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_hashes.cpp)
 for the implementation and [its executable](#running) for usage examples)
 
-We assume that any bitflip occurs in our data will eventually be detected by the
-hash comparisons. This allows us to detect any SDC that may have occurred in our data
-arrays that we are hashing. But this method uses replication, which loses half
-of our computation power, and even if an SDC is detected we must restart the
-application again for recalculation since we don't have a 3 Team support for
-this method yet. This can be done in further research with a voting mechanism
-to choose the healthy team. It can then write reactive checkpoint for the other
-teams and the application can continue.
+We assume that any bitflip that occurs in our data that we hash in each iteration will
+eventually be detected by the hash comparisons. This allows us to also detect any SDC
+that may have occurred in other data structures if they eventually affect our data
+arrays that we are hashing. One downside of this method is that it uses replication
+which loses half of our computation power, and even if an SDC is detected we must
+restart the application again for recalculation since we don't have a 3 Team support for
+this method yet. This can be done again by using more than 2 teams and with a voting
+mechanism to identify healthy teams. A healthy team can then write reactive
+checkpoints for the corrupted teams and the application can continue its execution.
 
-### Method 3 | Soft Error Resilience Using Admissibility Checks and Task Sharing ###
-In order to reduce the overhead of the redundant computation Simon Schuck integrated
-task sharing into hard error resilience in his work
-[here](https://github.com/xile273/SWE/tree/simon_task_sharing). However task
+### Method 3 | Soft Error Resilience Using Admissibility Checks and Task Sharing (Sharing) ###
+In order to reduce the overhead of the redundant computation Simon Schuck has integrated
+task sharing into SWE for hard error resilience in his work
+[here](https://github.com/xile273/SWE/tree/simon_task_sharing). However, task
 sharing cannot be integrated if the method depends on redundant computation like
-in the previous soft resilience methods. Therefore we need to use another
-resilience technique. We can validate the results of task computations by
+in "Hashes". Therefore we need to use another
+soft error detection technique: We validate the results of task computations by
 prechecking some predefined admissibility criteria. We use the following 2 main
 criteria:
 1. ***Physical Admissibility*** : Computations are within some certain physical
 constraints, like no negative water height or bathymetry data is constant. These
-criteria are higly application specific
+criteria can be are higly application specific
 2. ***Numerical Admissibility*** : No floating point errors are present (NaN)
-and relaxed discrete maximum principle (DMP) in the sense of polynomials.
+and relaxed discrete maximum principle (rDMP) in the sense of polynomials.
 
-We divide the ranks into two teams, and we divide the domain into
+We divide the global ranks into two teams, and we divide the simulation domain into
 multiple blocks, where each rank can have ***primary*** and ***secondary*** blocks.
 Each rank will have `d` primary blocks, and
-`'number_of_teams - 1' * d` secondary blocks computed by their replicas,
-where `d` is the ***decomposition factor***. Ranks will first compute their
-primary blocks and the solutions are checked for certain admissibility criteria.
-We use the following simple admissibility criteria:
+`'number_of_teams - 1' * d` (also equals to number of its replicas) secondary blocks
+computed by their replicas, where `d` is the ***decomposition factor***. Ranks will
+first compute their primary blocks and check their solutions using some the following
+simple predefined admissibility criteria:
 1. ***Physical Admissibility Criteria***
     - bathymetry data must be constant
     - water height cannot be negative
 2. ***Numerical Admissibility Criteria***
     - no floating point errors (NaN)
-    - DMP
+    - rDMP
 
-All the criteria except DMP can be checked cheaply with library functions. For
+All the criteria except rDMP can be checked cheaply with library functions. For
 the implementation see the function ***validateAdmissibility*** in the file
 [DimSplitMPIOverdecomp.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/blocks/DimSplitMPIOverdecomp.cpp).
 
 After validating their primary blocks, ranks share their primary blocks to their
-replicas, only if the results are admissible. We use the shared tasks
+replicas only if the results are admissible. We use the shared tasks
 immediately after validating them with the admissibility criteria. If
 an admissibility criterion fails, we assume that we have detected an SDC. In
-that case we receive the data arrays of the corrupted blocks from a healthy
-replica. To check the state of the blocks, we send small reports (MPI\_BYTE) to the
+that case we receive the data arrays of the possibly corrupted blocks from a possibly
+healthy replica. To check the state of the blocks, we send small reports (MPI\_BYTE) to the
 replicas. (See
 [swe\_softRes\_admiss\_useShared.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_admiss_useShared.cpp)
 for the implementation and [its executable](#running) for usage examples)
 
-Blocks need to be large enough to make task sharing less expensive than
-their calculation. task sharing was reported as not flexible in Simon's thesis,
-we changed the task sharing so that we only share the data arrays b, h, hv and hu,
-which is a lot easier than sharing the net update arrays. We also managed to
-improve task sharing so that we check if one block is received and update the
-results while waiting for other blocks. We use non-blocking MPI communication
-to manage this. If the communication is slow, increasing the decomposition
-factor may decrease the runtime.
+Blocks need to be large enough to make the MPI communications in the task sharing
+compensate for their calculations. Task sharing was reported as not flexible
+in Schuck's thesis, and we have changed the task sharing so that we only share the
+data arrays h, hv and hu, which is a lot easier than sharing the net update arrays.
+We again use non-blocking MPI communications in the task sharing. If the communication
+is slow due to very large message sizes, increasing the decomposition factor may
+help.
 
-With the task sharing we can save redundant computation time, but there is also
-a downside of this method. There is still a chance for an SDC, even if the
+With the task sharing we can save redundant computation time but this also comes
+with a downside. There is still a chance for an SDC, even if the
 results are admissible. This means there is a chance of an undetected SDC, which
-spreads immediately with the task sharing, because the receiving replicas use the
-same criteria to validate the received block and they also cannot detect the SDC.
-In order cope with this issue, we introduce a similar method.
+spreads immediately with the task sharing because the receiving replicas use the
+same criteria to validate the received block and they also would not detect the SDC.
+In order to cope with this issue, we introduce the following redundant method.
 
-### Method 4 | Soft Error Resilience Using Admissibility Checks and Redundant Computation ###
+### Method 4 | Soft Error Resilience Using Admissibility Checks and Redundant Computation (Redundant) ###
 
-This method is very similar to the method 3 above. The only difference is that
-we only share a task if it is already corrupted in another replica to save the
+This method is very similar to our method ***Sharing***. The only difference is that
+we only share a task if it is already corrupted in another replica to recover the
 replica. We use the same admissibility criteria and reporting system to validate
 the blocks, but since we don't share the tasks and not use them immediately, we can
 prevent any possible undetected SDC from spreading and corrupting the other
 replicas. We assume that an undetected SDC is eventually going to violate some
-of the admissibility criterion like DMP in the further timesteps. With this
+of the admissibility criterion like rDMP in the later iterations. With this
 method we cannot save any computation overhead caused by the
-replication like we did in the previous method, but we can provide resilience for
+replication like we did in the previous method, but we can provide additional resilience for
 later detected SDCs because each replica keeps its results for itself. (See
 [swe\_softRes\_admiss\_redundant.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_admiss_redundant.cpp)
 for the implementation and [its executable](#running) for usage examples)
@@ -139,22 +142,18 @@ for the implementation and [its executable](#running) for usage examples)
 ## Hard Error Resilience ###
 
 We did not test if the hard error resilience is still working in this work.
-However all the methods (except No Resilience) are prepared for future hard
-resilience integration. For example the method 3 and 4 are sending heartbeats
-using teaMPI in regular intervals, which does not depend on the simulation time,
-but depend on the wall-clock time. This means we can detect the slowing ranks.
-The most challenging part of integrating hard error resilience is the handling
-of failed MPI calls in case of a hard failure. ULFM provides us error codes, which
-can be checked after every MPI call. However we have a lot of MPI calls,
-especially in the method 3, where we share the computed tasks in every timestep.
+However the proposed soft error resilient methods are prepared for future hard
+resilience integration. For example the methods ***Sharing*** and ***Redundant***
+are sending heartbeats using teaMPI in regular intervals that are bound to wall-clock
+time. This means we can eventually detect any slowing or failing ranks.
 
-We also prepared another version of the method 2 (Soft Error Detection Using
-Hashes) in the file
+We have also prepared (not tested since hard error resilience was out of scope for this work)
+another version of the method ***Hashes*** in the file
 [swe\_softRes\_hardRes\_hashes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_hardRes_hashes.cpp)
 where we send two independent heartbeats between the replicas. One heartbeat
 pair is bound to a wall-clock interval that the user specifies for hard error
-resilience. And the other single heartbeat is for the soft error
-detection, which only depends on the application's simulation time and its only
+resilience, and the other single heartbeat is for the soft error
+detection which is only bound to the application's simulation time and its only
 purpose is to send the hashes of the computed data arrays to the other replicas
 for validation. This method can be improved in the future
 for hard error resilience integration.
@@ -202,11 +201,11 @@ on the submodule before running the simulation and set the required environment
 variables (for this repository important one is the `TEAMS` environment
 variable, it is 2 by default).
 
-Also read the 'help' outputs of the each executables before executing them by
+Also read the usage outputs of the each executables before executing them by
 running `./executable -h`
 
-For soft error resilience we have the following executables:
-1. Method 1 - No Resilience: `./build-directory/swe_noRes` with options
+We have the following executables:
+1. ***NoRes***: `./build-directory/swe_noRes` with options
   - `-t SIMULATION_DURATION`: time in seconds to simulate
   - `-x RESOLUTION_X`: number of simulated cells in x-direction
   - `-y RESOLUTION_Y`: number of simulated cells in y-direction
@@ -219,7 +218,7 @@ For soft error resilience we have the following executables:
   ```
   mpirun -np 2 build-directory/swe_noRes -t 2 -x 1000 -y 1000 -o outputFile -w -v
   ```
-2. Method 2 - Soft Error Detection Using Hashes: `./build-directory/swe_softRes_hashes` with options
+2. ***Hashes*** : `./build-directory/swe_softRes_hashes` with options
   - `-t SIMULATION_DURATION`: time in seconds to simulate
   - `-x RESOLUTION_X`: number of simulated cells in x-direction
   - `-y RESOLUTION_Y`: number of simulated cells in y-direction
@@ -235,7 +234,7 @@ For soft error resilience we have the following executables:
   ```
   mpirun -np 4 build-directory/swe_softRes_hashes -t 2 -x 1000 -y 1000 -o outputFile -w -m 1 -c 5 -v
   ```
-3. Method 3 - Soft Error Resilience Using Admissibility Checks and Task Sharing : `./build-directory/swe_softRes_admiss_useShared`
+3. ***Sharing*** : `./build-directory/swe_softRes_admiss_useShared`
   - `-t SIMULATION_DURATION`: time in seconds to simulate
   - `-x RESOLUTION_X`: number of simulated cells in x-direction
   - `-y RESOLUTION_Y`: number of simulated cells in y-direction
@@ -250,7 +249,7 @@ For soft error resilience we have the following executables:
   ```
   mpirun -np 2 build-directory/swe_softRes_admiss_useShared -t 2 -x 1000 -y 1000 -o outputFile -w -i 5 -d 1 -v
   ```
-4. Method 4 - Soft Error Resilience Using Admissibility Checks and Redundant Computation: `./build-directory/swe_softRes_admiss_redundant`
+4. ***Redundant*** : `./build-directory/swe_softRes_admiss_redundant`
   - `-t SIMULATION_DURATION`: time in seconds to simulate
   - `-x RESOLUTION_X`: number of simulated cells in x-direction
   - `-y RESOLUTION_Y`: number of simulated cells in y-direction
@@ -268,33 +267,43 @@ For soft error resilience we have the following executables:
 
 ### Testing ###
 
-For testing the methods we prepared a bash script `runTests.sh` that runs all
+For testing we have prepared a bash script `runTests.sh` that runs all
 the methods and compares their results without injecting any SDC. Make sure
 to install [bc](https://www.gnu.org/software/bc/) and export the environment
-variable `TEAMS=2` before running the script. One can specify the simulation
+variable `TEAMS=2` before running this script. One can specify the simulation
 parameters like simulation duration or decompositon factor, which only affects the
-method 3 and 4. We take the outputs of the first method (no resilience)
-as a reference solution for all the comparisons. The parameters of the script are almost
+method ***Sharing*** and ***Redundant***. We take the outputs of the method ***NoRes***
+as a reference solution for all the comparisons. We have noticed that netcdf outputs
+can sometimes produce different binaries even for the same method for large simulation grids.
+In this case one can verify the data arrays' equality by running the script `scripts/ncfloatcmp.py`.
+The parameters of the test script are almost
 identical to the simulation, the user should also provide a build directory.
 Here is an example test run:
 ```
 bash runTests.sh -b build-directory -n 4 -x 200 -y 200 -t 10 -d 8
 ```
 
-We have also prepared a script to see how many SDCs can be detected in the methods
-3 and 4 using the admissibility checks. It is important to mention that the
-SDC injection is called in the application itself, and can be changed in the methods
-to test different kinds of SDCs. Default bitflip injection covers 12 arrays with
-all the main data arrays b,h,hv,hu and the net-update arrays and the array, float
+We have also prepared a script to analyze the outcome of SDCs in the methods
+***Sharing*** and ***Redundant***. It is important to mention that the
+SDC injection is called in the application itself, and therefore can only be changed
+in the methods (bitflips are implemented in the blocks with different types
+of injections) to test different kinds of SDCs. Default bitflip injection covers the
+largest data structures in SWE applications: 12 arrays with
+all the main data arrays b,h,hv,hu and the net-update arrays. The array, float
 and bit to corrupt is randomly selected. After the injection we wait for the
-application to finish and we compare its team's outputs with the reference
-solution. We assume that the method has detected and corrected the error, if any
+application to finish and we compare its teams' outputs with a reference
+solution from ***NoRes***. We assume that a method has detected and corrected the error, if any
 of its team outputs are matching with the reference solution and the application
 actually reported the faulty team. So the user can know which teams have detected
-an SDC in their blocks and could have written a faulty output. The number of runs
-with SDC injection can be specified in the `-r` flag. Provide big numbers to see
-a more precise detection/correction rate. Here is an example run with 5
-SDC injections executions the methods 5 times and injects a random SDC in each of them:
+an SDC in their blocks and could have written a faulty output. For more detailed
+explanation on the outcome analysis, please see the script `scripts/extractSDC_correctionRate.py`
+which was used to analyze the standard output of our bitflip injection script `runSDCAnalysis.sh`
+to decide whether an injected error has resulted in a correctable outcome, DUE or SDC. The script
+`scripts/runSDCAnalysis.sh` runs the method multiple times and injects a bitflip in
+each run. The number of runs with SDC injection can be specified in the `-r` flag.
+Provide big numbers to see more precise DUE/Correctable outcome rates. Here is an
+example run with 5 SDC injections executions the methods 5 times and injects a random SDC in each of them:
 ```
-bash runSDCAnalysis.sh -b build-directory -n 2 -x 200 -y 200 -t 20 -d 1 -r 5
+bash runSDCAnalysis.sh -b build-directory -n 2 -x 200 -y 200 -t 20 -d 1 -r 5 >> output
+python scripts/extractSDC_correctionRate.py output build-directory 2 200 200 20 1
 ```
