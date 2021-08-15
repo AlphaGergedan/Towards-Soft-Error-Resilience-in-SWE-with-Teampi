@@ -1,7 +1,7 @@
 /**
  * @file src/tolerance/swe_noRes.cpp
  *
- * @brief METHOD 1 : No resilience for benchmarking
+ * @brief Method "NoRes": No resilience for benchmarking
  *
  * @author Atamert Rahma rahma@in.tum.de
  *

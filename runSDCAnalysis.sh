@@ -42,7 +42,7 @@ fi
 #########################################
 ## RUN METHOD 1 FOR REFERENCE SOLUTION ##
 #########################################
-#   --  METHOD 1 : noRes    --  ##
+#   --  METHOD 1 : NoRes    --  ##
 np_1=$(( np * d ))
 echo "np is given as $np_1"
 outputPrefix_1='TEST_noRes_t'
@@ -55,7 +55,7 @@ then
     echo "-- METHOD 1 : noRes is successfully finished --"
     echo "-----------------------------------------------"
 else
-    echo "ERROR: METHOD 1 : noRes has failed!"
+    echo "ERROR in NoRes: swe_noRes has failed!"
     exit 1;
 fi
 
@@ -93,7 +93,7 @@ method4_failed=0
 
 while [ $totalRuns -ne 0 ]
 do
-    #   --  METHOD 3 : softRes_admiss_useShared --  ##
+    #   --  METHOD 3 : Sharing --  ##
     let np_3=$np
     outputPrefix_3='TEST_softRes_admiss_useShared_t'
     runPrefix_3='TEST_softRes_admiss_useShared'
@@ -101,11 +101,11 @@ do
     eval "mpirun --oversubscribe -np $np_3 $b/swe_softRes_admiss_useShared -x $x -y $y -t $t -o $runPrefix_3 -w -i 1 -d $d -f $(( $t / 2 ))"
     if [ $? -ne 0 ]
     then
-        echo "ERROR: METHOD 3 : softRes_admiss_useShared has failed!"
+        echo "ERROR in Sharing: softRes_admiss_useShared has failed!"
         method3_failed=$(( $method3_failed + 1 ))
     fi
 
-    #   --  METHOD 4 : softRes_admiss_redundant --  ##
+    #   --  METHOD 4 : Redundant --  ##
     let np_4=2*$np
     outputPrefix_4='TEST_softRes_admiss_redundant_t'
     runPrefix_4='TEST_softRes_admiss_redundant'
@@ -113,7 +113,7 @@ do
     eval "mpirun --oversubscribe -np $np_4 $b/swe_softRes_admiss_redundant -x $x -y $y -t $t -o $runPrefix_4 -w -i 1 -d $d -f $(( $t / 2 ))"
     if [ $? -ne 0 ]
     then
-        echo "ERROR: METHOD 4 : softRes_admiss_redundant has failed!"
+        echo "ERROR in Redundant: softRes_admiss_redundant has failed!"
         method4_failed=$(( $method4_failed + 1 ))
     fi
 
@@ -173,7 +173,7 @@ do
                         method3_t1_correct=0
                     fi
                     method3Correct=0
-                    echo "method 3 could not detect this SDC.."
+                    echo "Sharing could not detect this SDC.."
                 else
                     echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
                     exit 1;
@@ -188,12 +188,12 @@ do
         anyTeamCorrected=0
         if [ $method3_t0_correct -eq 1 ]
         then
-            echo "METHOD 3 TEAM 0 HAS CORRECTED THE INJECTED SDC!"
+            echo "Sharing TEAM 0 HAS A CORRECT SOLUTION!"
             anyTeamCorrected=1
         fi
         if [ $method3_t1_correct -eq 1 ]
         then
-            echo "METHOD 3 TEAM 1 HAS CORRECTED THE INJECTED SDC!"
+            echo "Sharing TEAM 1 HAS A CORRECT SOLUTION!"
             anyTeamCorrected=1
         fi
         if [ $anyTeamCorrected -eq 1 ]
@@ -232,7 +232,7 @@ do
                         method4_t1_correct=0
                     fi
                     method4Correct=0
-                    echo "method 4 could not detect this SDC.."
+                    echo "Redundant could not detect this SDC.."
                 else
                     echo "ERROR: FILE NOT FOUND: $f1 or $f2 doesn't exists!"
                     exit 1;
@@ -248,12 +248,12 @@ do
         anyTeamCorrected=0
         if [ $method4_t0_correct -eq 1 ]
         then
-            echo "METHOD 4 TEAM 0 HAS CORRECTED THE INJECTED SDC!"
+            echo "Redundant TEAM 0 HAS A CORRECT SOLUTION!"
             anyTeamCorrected=1
         fi
         if [ $method4_t1_correct -eq 1 ]
         then
-            echo "METHOD 4 TEAM 1 HAS CORRECTED THE INJECTED SDC!"
+            echo "Redundant TEAM 1 HAS A CORRECT SOLUTION!"
             anyTeamCorrected=1
         fi
         if [ $anyTeamCorrected -eq 1 ]
@@ -294,10 +294,10 @@ do
         done
     done
     totalRuns=$(( $totalRuns - 1 ))
-    echo "METHOD 3: corrected $method3_corrected of $(( $numberOfInjectedSDC - $totalRuns )) SDCs"
-    echo "METHOD 3: failed $method3_failed times (UNKNOWN ERROR)"
-    echo "METHOD 4: corrected $method4_corrected of $(( $numberOfInjectedSDC - $totalRuns )) SDCs"
-    echo "METHOD 4: failed $method4_failed times (UNKNOWN ERROR)"
+    echo "Sharing: $method3_corrected of $(( $numberOfInjectedSDC - $totalRuns )) cases are correct"
+    echo "Sharing: $method3_failed times failed because of abort (UNKNOWN ERROR)"
+    echo "Redundant: $method4_corrected of $(( $numberOfInjectedSDC - $totalRuns )) cases are correct"
+    echo "Redundant: $method4_failed times failed because of abort (UNKNOWN ERROR)"
     echo "$totalRuns injections to finish.."
 done
 
@@ -310,13 +310,13 @@ do
     eval "rm ${outputPrefix_1}0_${localBlockPositionX}_$localBlockPositionY.nc";
 done
 
-echo "------- Analysis FINNISHED -------"
-echo "METHOD 3: corrected $method3_corrected of $numberOfInjectedSDC SDCs"
-echo "METHOD 3: failed $method3_failed times (UNKNOWN ERROR)"
-echo "METHOD 4: corrected $method4_corrected of $numberOfInjectedSDC SDCs"
-echo "METHOD 4: failed $method4_failed times (UNKNOWN ERROR)"
-echo "==> M3 has a correction rate of $method3_corrected/$numberOfInjectedSDC = $(echo "scale=4; $method3_corrected/$numberOfInjectedSDC" | bc)"
-echo "==> M4 has a correction rate of $method4_corrected/$numberOfInjectedSDC = $(echo "scale=4; $method4_corrected/$numberOfInjectedSDC" | bc)"
+echo "------- pre-Analysis FINISHED -------"
+echo "Sharing: $method3_corrected of $numberOfInjectedSDC cases are correct"
+echo "Sharing: $method3_failed times failed because of abort (UNKNOWN ERROR)"
+echo "Redundant: $method4_corrected of $numberOfInjectedSDC cases are correct"
+echo "Redundant: $method4_failed times failed because of abort (UNKNOWN ERROR)"
+echo "==> Sharing has a correct result rate of $method3_corrected/$numberOfInjectedSDC = $(echo "scale=4; $method3_corrected/$numberOfInjectedSDC" | bc)"
+echo "==> Redundant has a correct result rate of $method4_corrected/$numberOfInjectedSDC = $(echo "scale=4; $method4_corrected/$numberOfInjectedSDC" | bc)"
 echo "----------------------------------"
 
 exit 0

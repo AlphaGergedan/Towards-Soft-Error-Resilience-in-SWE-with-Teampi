@@ -23,7 +23,11 @@ namespace tools {
 
     public:
 
-        /* Constructor */
+        /* Constructor
+         * int fieldSizeX: should be given as (nx+2)*(ny+2) including the ghost layers
+         * int fieldSizeY: should be given as (nx+1)*(ny+2)
+         * currentBlock: corresponding block
+         */
         Hasher(int fieldSizeX, int fieldSizeY, SWE_DimensionalSplittingMPIOverdecomp *currentBlock);
 
         /* hashes with std::hash */
@@ -33,20 +37,8 @@ namespace tools {
 
     private:
 
-        /* Size of the update fields incl. ghost layer */
+        /* Size of the fields of the given block */
         int fieldSizeX, fieldSizeY;
-
-        /* h udpates to hash, with size fieldSizeX */
-        float *hNetUpdatesLeft, *hNetUpdatesRight;
-
-        /* hu updates to hash, with size fieldSizeX */
-        float *huNetUpdatesLeft, *huNetUpdatesRight;
-
-        /* h updates to hash, with size fieldSizeY */
-        float *hNetUpdatesBelow, *hNetUpdatesAbove;
-
-        /* hv updates to hash, with size fieldSizeY */
-        float *hvNetUpdatesBelow, *hvNetUpdatesAbove;
 
         /* max time step to hash, with size 1 */
         float *maxTimeStep;
@@ -55,10 +47,8 @@ namespace tools {
         float *h, *hv, *hu, *b;
 
         /* Strings values to hash, converting to strings may sound expensive but
-        * float hasher seems not be optimized very well by compiler */
-        std::string str_hLeft, str_hRight, str_huLeft, str_huRight, str_hBelow,
-            str_hAbove, str_hvBelow, str_hvAbove, str_maxTimeStep,
-            str_h, str_hu, str_hv, str_b;
+         * float hasher seems not be optimized very well by compiler */
+        std::string str_maxTimeStep, str_h, str_hu, str_hv, str_b;
 
         /* hash function and hash storage */
         std::hash<std::string> hash_fn;

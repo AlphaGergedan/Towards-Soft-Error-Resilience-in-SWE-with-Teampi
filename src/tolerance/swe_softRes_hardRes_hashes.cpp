@@ -3,9 +3,12 @@
  *
  * @brief hard error resiliency with soft error detection without task sharing
  *
+ * Warning: we did not finish implementing this file and did not evaluate the
+ *          hard resilience. The idea was to add an additional heartbeat that is
+ *          bound to wall-clock time to additionally provide hard error resilience
+ *          to our method Hashes (src/tolerance/swe_softRes_hashes.cpp).
+ *
  * TODO description
- *
- *
  *
  *  Here is a short pseudo-code for the computation loop:
  *
@@ -712,7 +715,7 @@ int main(int argc, char** argv)
                 return 1;
                 //std::cout << "ETERNAL SLEEP TIME FOR THE TEAM:1 Rank:0 for hard failure simulation...."
                           //<< std::endl;
-                //while(true) sleep(10); TODO also check if this is working
+                //while(true) sleep(10);
             }
 
         } // end of while(t < sendHashAt[i])

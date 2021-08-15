@@ -3,9 +3,6 @@
  *
  * @brief Implementation of src/tools/hasher.hpp
  *
- * TODO XOR operation is used when combining hashes but see boost::hash_combine
- *      as it might be better/faster
- *
  * @author Atamert Rahma rahma@in.tum.de
  */
 
@@ -24,20 +21,7 @@
 tools::Hasher::Hasher(int fieldSizeX, int fieldSizeY, SWE_DimensionalSplittingMPIOverdecomp *currentBlock) {
 
     Hasher::fieldSizeX = fieldSizeX;
-//    Hasher::fieldSizeY = fieldSizeY;
-
-    ///* Update arrays */
-    //Hasher::hNetUpdatesLeft = currentBlock->hNetUpdatesLeft.getRawPointer();
-    //Hasher::hNetUpdatesRight = currentBlock->hNetUpdatesRight.getRawPointer();
-//
-    //Hasher::huNetUpdatesLeft = currentBlock->huNetUpdatesLeft.getRawPointer();
-    //Hasher::huNetUpdatesRight = currentBlock->huNetUpdatesRight.getRawPointer();
-//
-    //Hasher::hNetUpdatesBelow = currentBlock->hNetUpdatesBelow.getRawPointer();
-    //Hasher::hNetUpdatesAbove = currentBlock->hNetUpdatesAbove.getRawPointer();
-//
-    //Hasher::hvNetUpdatesBelow = currentBlock->hvNetUpdatesBelow.getRawPointer();
-    //Hasher::hvNetUpdatesAbove = currentBlock->hvNetUpdatesAbove.getRawPointer();
+    //Hasher::fieldSizeY = fieldSizeY; // wedo not use this parameter
 
     /* Data arrays */
     Hasher::h = currentBlock->getWaterHeight().getRawPointer();
@@ -81,9 +65,9 @@ void tools::Hasher::update_stdHash() {
 
 /* Tries to improve hashing by not converting them to strings
  * However this method seems to be slower than string hashing..
- * Compiler is able to optimize the hasher::update_stdHash() better
+ * Compiler seems to optimize the hasher::update_stdHash() better
  *
- * Warning: this method seems to be slower than update_stdHash(). Do not use this one TODO test this
+ * Warning: this method seems to be slower than update_stdHash().
  */
 void tools::Hasher::update_stdHash_float() {
     /* update the hash using float hasher  */

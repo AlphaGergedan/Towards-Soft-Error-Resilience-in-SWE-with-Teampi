@@ -3,13 +3,14 @@
  *
  * @brief baseline model for hard error resilience, checkpoint/restart.
  *
+ * Warning: C/R does not provide soft error resilience alone. We did not finish
+ *          this implementation.
+ *
  * Ideal for running without checkpoints to see the baseline simulation time or
  * running with checkpoints without writing output.
  *
  * TODO
  *  - don't allow -r and -c at the same time (also x,y and t)
- *
- *  - tested with 1, 2 and 4 processes but with 6 processes..
  *
  *  known issues
  *    checkpoints slow down due to copying as the data gets larger

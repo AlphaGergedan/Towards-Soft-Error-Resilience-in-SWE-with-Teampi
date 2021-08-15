@@ -1,6 +1,8 @@
 /**
- * @file src/main.cpp
- * @brief hard failure mitigation with task sharing
+ * @file src/tolerance/swe_hardRes_wTaskSharing.cpp
+ *
+ * Warning: this file is from Simon Schuck's work (see README.md) and was the
+ *          baseline of our task sharing method Sharing. We do not use this file.
  *
  * TODO
  *   - description
@@ -9,12 +11,7 @@
  *
  *   - currently supports classical checkpointing, it should be enabled by the
  *     user.
- *
- *
  */
-
-
-
 
 #include <mpi.h>
 #include <string>
@@ -797,7 +794,7 @@ int main(int argc, char** argv)
                 return 1;
                 //std::cout << "ETERNAL SLEEP TIME FOR THE TEAM:0 Rank:0 for hard failure simulation...."
                           //<< std::endl;
-                //while(true) sleep(10); TODO also check if this is working
+                //while(true) sleep(10);
             }
         }
 

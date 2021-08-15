@@ -40,7 +40,8 @@ We use `std::hash` for better performance. According to
 the function object `std::hash<>` is based on ***MurmurHashUnaligned2*** for the
 specialization for `std::strings`, and it is 8 bytes long. Other hash functions
 like SHA-1 could also be used but it is expected to be slower due to its
-greater length.
+greater length. We have prepared a Hasher class in `src/tools/Hasher.cpp` for hashing the
+data structures of SWE.
 
 We compute one block per rank in team. So we divide the SWE domain into
 `number_of_ranks_in_a_team` blocks. Each rank computes its own block and issues

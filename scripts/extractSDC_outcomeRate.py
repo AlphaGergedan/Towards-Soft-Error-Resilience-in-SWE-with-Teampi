@@ -121,11 +121,11 @@ for line in f:
         M4_oneTeamAlive = False
         M4error = "Errorhandler"
         M4_SDC_report = "SDC reported"
-        M4_teamCorrected_string = 'METHOD 4 TEAM 1 HAS CORRECTED THE INJECTED SDC!'
+        M4_teamCorrected_string = 'Redundant TEAM 1 HAS A CORRECT SOLUTION!'
         M3_seems_corrected = True
         M4_seems_corrected = True
-        M3couldNotDetect = "method 3 could not detect this SDC.."
-        M4couldNotDetect = "method 4 could not detect this SDC.."
+        M3couldNotDetect = "Sharing could not detect this SDC.."
+        M4couldNotDetect = "Redundant could not detect this SDC.."
         for m4Line in block_redundant:
             if M3couldNotDetect in m4Line:
                 M3_seems_corrected = False
@@ -198,16 +198,16 @@ if nonVanishedInjections_M3 != (M3_SDC + M3_SDC_detected + M3_SDC_corrected):
 if nonVanishedInjections_M4 != (M4_SDC + M4_SDC_detected + M4_SDC_corrected):
     print("WARNING: nonVanishedInjections_M4 = " + str(nonVanishedInjections_M4) + " != " + str(M4_SDC + M4_SDC_detected + M4_SDC_corrected) + " (M4_SDC + M4_SDC_detected + M4_SDC_corrected)")
 
-print("**** M3 **** " + str(totalInjections) + " total injections")
-print(" -> SDC VANISHED \t: " + str(M3_SDC_vanished) + "\t--> " + str(perc_M3_vanished) + "\tof total")
-print(" -> SDC DETECTED (ERROR): " + str(M3_SDC_detected) + "\t--> " + str(perc_M3_detected) + "\tof nonVanished")
-print(" -> SDC CORRECTED \t: " + str(M3_SDC_corrected) + "\t--> " + str(perc_M3_corrected) + "\tof nonVanished")
+print("**** Sharing **** " + str(totalInjections) + " total injections")
+print(" -> SDC is VANISHED \t: " + str(M3_SDC_vanished) + "\t--> " + str(perc_M3_vanished) + "\tof total")
+print(" -> SDC is DETECTED (ERROR): " + str(M3_SDC_detected) + "\t--> " + str(perc_M3_detected) + "\tof nonVanished")
+print(" -> SDC is CORRECTED \t: " + str(M3_SDC_corrected) + "\t--> " + str(perc_M3_corrected) + "\tof nonVanished")
 print(" -> SDC \t\t: " + str(M3_SDC) + "\t--> " + str(perc_M3_SDC) + "\tof nonVanished")
 print(" -> correction rate = SDC CORRECTED / nonVanished  = " + str((M3_SDC_corrected) / nonVanishedInjections_M3))
-print("**** M4 **** " + str(totalInjections) + " total injections")
-print(" -> SDC VANISHED \t: " + str(M4_SDC_vanished) + "\t--> " + str(perc_M4_vanished) + "\tof total")
-print(" -> SDC DETECTED (ERROR): " + str(M4_SDC_detected) + "\t--> " + str(perc_M4_detected) + "\tof nonVanished")
-print((" -> SDC CORRECTED \t: " + str(M4_SDC_corrected)) + "\t--> " + str(perc_M4_corrected) + "\tof nonVanished " + (" | only 1 team corrected: " + str(M4_detected_otherTeamAlive) + "\t--> " + str(perc_M4_oneTeamCorrected) + "\tof nonVanished"))
+print("**** Redundant **** " + str(totalInjections) + " total injections")
+print(" -> SDC is VANISHED \t: " + str(M4_SDC_vanished) + "\t--> " + str(perc_M4_vanished) + "\tof total")
+print(" -> SDC is DETECTED (ERROR): " + str(M4_SDC_detected) + "\t--> " + str(perc_M4_detected) + "\tof nonVanished")
+print((" -> SDC is CORRECTED \t: " + str(M4_SDC_corrected)) + "\t--> " + str(perc_M4_corrected) + "\tof nonVanished " + (" | only 1 team corrected: " + str(M4_detected_otherTeamAlive) + "\t--> " + str(perc_M4_oneTeamCorrected) + "\tof nonVanished"))
 print(" -> SDC \t\t: " + str(M4_SDC) + "\t--> " + str(perc_M4_SDC) + "\tof nonVanished")
 print(" -> correction rate = SDC CORRECTED / nonVanished  = " + str((M4_SDC_corrected) / (M4_SDC + M4_SDC_detected + M4_SDC_corrected)))
 print("************")

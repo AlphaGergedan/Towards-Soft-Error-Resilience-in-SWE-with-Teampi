@@ -1,12 +1,12 @@
 /**
  * @file src/tolerance/swe_softRes_admiss_redundant.cpp
  *
- * @brief Soft error resilience with admissibility checks and redundant computation
+ * @brief Method "Redundant": Soft error resilience with admissibility checks and redundant computation
  *
  * Checks for admissibility of the computations (also see validateAdmissibility
- * in src/blocks/DimSplitMPIOverdecomp.cpp). If they are not admissible, a healthy
- * replica sends its block data to the failed replicas. We don't share the tasks
- * unless a replica reports an SDC. This way an undetected SDC cannot be immediately
+ * in src/blocks/DimSplitMPIOverdecomp.cpp). If they are not admissible, a possibly
+ * healthy replica sends its block data to the failed replicas. We don't share any tasks
+ * unless a replica reports a possible SDC. This way an undetected SDC cannot be immediately
  * spread across all the replicas. This way we cannot save any computation overhead
  * caused by the replication but we can provide resilience for later detected SDCs,
  * because each replica keeps its results for itself.
@@ -567,7 +567,7 @@ int main(int argc, char** argv) {
 
             /* report to all replicas */
             for (int destTeam = 0; destTeam < numTeams; destTeam++) {
-                // primaryblock validation starts by tag 100 : TODO Isend integration is easy
+                // primaryblock validation
                 if (destTeam != myTeam)
                     MPI_Send(&SDC, 1, MPI_BYTE, destTeam,
                              MPI_TAG_REPORT_PRIMARY_BLOCK, interTeamComm);
@@ -582,7 +582,6 @@ int main(int argc, char** argv) {
                 /* Receive the reload replica : tag 20 for reload replica */
                 MPI_Recv(&reloadReplica, 1, MPI_INT, MPI_ANY_SOURCE,
                          MPI_TAG_RECEIVE_RELOAD_REPLICA, interTeamComm, MPI_STATUS_IGNORE);
-                // TODO debugging
                 std::cout << "T" << myTeam << "R" << myRankInTeam
                           << " : I will receive from my replica in team " << reloadReplica
                           << std::endl;
@@ -598,7 +597,6 @@ int main(int argc, char** argv) {
                         auto& currentCorruptedBlock = *simulationBlocks[i];
                         /* Size of the arrays b,h,hv,hu */
                         const int dataArraySize = currentCorruptedBlock.dataArraySize;
-                        // TODO debugging
                         std::cout << "T" << myTeam << "R" << myRankInTeam
                                   << " : receiving b,h,hv,hu for my block " << i
                                   << std::endl;
@@ -619,7 +617,6 @@ int main(int argc, char** argv) {
                                  dataArraySize, MPI_FLOAT, reloadReplica,
                                  MPI_TAG_RECOVERY_PRIMARY_BLOCK,
                                  interTeamComm, MPI_STATUS_IGNORE);
-                        // TODO debugging
                         std::cout << "T" << myTeam << "R" << myRankInTeam
                                   << " : b,h,hv,hu for my block " << i
                                   << " are received! Thanks replica " << reloadReplica
@@ -631,11 +628,10 @@ int main(int argc, char** argv) {
                         /* problem solved for this corrupted block */
                         else {
                             primaryBlocksCorrupted[i] = 0;
-                            // TODO debugging
                             std::cout << "T" << myTeam << "R" << myRankInTeam
                                       << " : problem solved for my primaryBlock" << i
                                       << std::endl;
-                            //MPI_Send(primaryBlocksCorrupted+i, 1, MPI_BYTE, reloadReplica, 100, interTeamComm); TODO integrate this later.. we assume we solved the SDC
+                            //MPI_Send(primaryBlocksCorrupted+i, 1, MPI_BYTE, reloadReplica, 100, interTeamComm); TODO we assume we solved the SDC
                         }
                     }
                 }
@@ -647,7 +643,6 @@ int main(int argc, char** argv) {
             SDC_inReplica = 0;
             /* receive report from other replicas */
             for (int sourceTeam = 0; sourceTeam < numTeams; sourceTeam++) {
-                // TODO Irecv integration
                 if (sourceTeam != myTeam) {
                     MPI_Recv(replicaCorrupted+sourceTeam, 1, MPI_BYTE, sourceTeam,
                              MPI_TAG_REPORT_PRIMARY_BLOCK, interTeamComm, MPI_STATUS_IGNORE);
@@ -772,7 +767,7 @@ int main(int argc, char** argv) {
                 return 1;
                 //std::cout << "ETERNAL SLEEP TIME FOR THE TEAM:0 Rank:0 for hard failure simulation...."
                           //<< std::endl;
-                //while(true) sleep(10); TODO also check if this is working
+                //while(true) sleep(10);
             }
         }
 

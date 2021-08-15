@@ -1,7 +1,7 @@
 /**
  * @file src/tolerance/swe_softRes_hashes.cpp
  *
- * @brief METHOD 2 : Soft error detection using hashes
+ * @brief Method "Hashes": Soft error detection using hashes
  *
  * @author Atamert Rahma rahma@in.tum.de
  *
@@ -14,7 +14,7 @@
  *
  * Hashes are tried to be integrated to the heartbeats used in
  * the tmpi library, which helps us to compare the results of the
- * replicas.
+ * replicas transparently to the application.
  *
  *
  *  Here is a short pseudo-code for the computation loop:
