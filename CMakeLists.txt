@@ -217,7 +217,7 @@ elseif (USE_PROFILING)
     target_compile_options(swe_checkpointRestart PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-g -O2>
     )
-else ()
+else () # release
     target_compile_options(tmpi PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>: -O3 >
     )

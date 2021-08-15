@@ -36,11 +36,12 @@
 ##  At the end of the script we get detection/correction rates of the   ##
 ##  methods against soft errors. In order to calcualate them we         ##
 ##  calculate totalInjections-NEGLIGIBLE and divide it with the number  ##
-##  of total detections/corrections.                                    ##
+##  of total detections/corrections. See README.md for example usage.   ##
 ##                                                                      ##
-##  Usage: python extractSDC_outcomeRate.py <SDC-injection-output>   ##
+##  Usage: python extractSDC_outcomeRate.py <SDC-injection-output>      ##
 ##          <build-dir> <number-MPI-processes> <size-x> <size-y>        ##
 ##          <simulation-duration> <decomposition-factor>                ##
+##                                                                      ##
 ##  Author: Atamert Rahma | rahma@in.tum.de                             ##
 ##----------------------------------------------------------------------##
 

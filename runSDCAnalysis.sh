@@ -3,7 +3,7 @@
 ##############################
 ## Welcome to SDC analysis! ##
 ##############################
-# run with -h flag to see usage
+# run with -h flag to see usage, see README.md for example usage
 # @author Atamert Rahma rahma@in.tum.de
 
 

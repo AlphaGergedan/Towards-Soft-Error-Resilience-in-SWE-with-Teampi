@@ -1,7 +1,8 @@
 # Towards Soft Error Resilience in SWE with TeaMPI #
 This repository tries to integrate soft error resilience into SWE using the TeaMPI
 library. See the original [SWE](https://github.com/TUM-I5/SWE) and
-[teaMPI](https://gitlab.lrz.de/hpcsoftware/teaMPI). Integration over
+[teaMPI](https://gitlab.lrz.de/hpcsoftware/teaMPI). We modify and integrate soft
+error resilience over
 [hard failure tolerance in teaMPI and SWE](https://github.com/xile273/SWE/tree/simon_task_sharing)
 
 ## Soft Error Resilience ##

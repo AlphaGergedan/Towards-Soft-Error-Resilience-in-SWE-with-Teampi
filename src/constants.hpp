@@ -41,5 +41,4 @@ const int MPI_TAG_TS_H = 26;
 const int MPI_TAG_TS_HV = 27;
 const int MPI_TAG_TS_HU = 28;
 
-
 #endif // SWE_CONSTANTS_HPP
