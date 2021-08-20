@@ -23,7 +23,7 @@ the initial runs had an SDC by employing a voting mechanism (guess).
 
 SWE domain is divided into `number_of_ranks` blocks and each rank computes its
 own block. (See
-[swe\_noRes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_noRes.cpp)
+[swe\_noRes.cpp](https://github.com/AlphaGergedan/Towards-Soft-Error-Resilience-in-SWE-with-Teampi/blob/master/src/tolerance/swe_noRes.cpp)
 for the implementation and [its executable](#running) for usage examples)
 
 We try to improve this naive method with the following techniques.
@@ -55,7 +55,7 @@ any hard failure resilience as the heartbeat intervals are bound to simulation t
 and not on wall-clock time which is neccessary for detection of any failing or slowing
 ranks.
 (See
-[swe\_softRes\_hashes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_hashes.cpp)
+[swe\_softRes\_hashes.cpp](https://github.com/AlphaGergedan/Towards-Soft-Error-Resilience-in-SWE-with-Teampi/blob/master/src/tolerance/swe_softRes_hashes.cpp)
 for the implementation and [its executable](#running) for usage examples)
 
 We assume that any bitflip that occurs in our data that we hash in each iteration will
@@ -99,7 +99,7 @@ simple predefined admissibility criteria:
 
 All the criteria except rDMP can be checked cheaply with library functions. For
 the implementation see the function ***validateAdmissibility*** in the file
-[DimSplitMPIOverdecomp.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/blocks/DimSplitMPIOverdecomp.cpp).
+[DimSplitMPIOverdecomp.cpp](https://github.com/AlphaGergedan/Towards-Soft-Error-Resilience-in-SWE-with-Teampi/blob/master/src/blocks/DimSplitMPIOverdecomp.cpp).
 
 After validating their primary blocks, ranks share their primary blocks to their
 replicas only if the results are admissible. We use the shared tasks
@@ -108,7 +108,7 @@ an admissibility criterion fails, we assume that we have detected an SDC. In
 that case we receive the data arrays of the possibly corrupted blocks from a possibly
 healthy replica. To check the state of the blocks, we send small reports (MPI\_BYTE) to the
 replicas. (See
-[swe\_softRes\_admiss\_useShared.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_admiss_useShared.cpp)
+[swe\_softRes\_admiss\_useShared.cpp](https://github.com/AlphaGergedan/Towards-Soft-Error-Resilience-in-SWE-with-Teampi/blob/master/src/tolerance/swe_softRes_admiss_useShared.cpp)
 for the implementation and [its executable](#running) for usage examples)
 
 Blocks need to be large enough to make the MPI communications in the task sharing
@@ -138,7 +138,7 @@ of the admissibility criterion like rDMP in the later iterations. With this
 method we cannot save any computation overhead caused by the
 replication like we did in the previous method, but we can provide additional resilience for
 later detected SDCs because each replica keeps its results for itself. (See
-[swe\_softRes\_admiss\_redundant.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_admiss_redundant.cpp)
+[swe\_softRes\_admiss\_redundant.cpp](https://github.com/AlphaGergedan/Towards-Soft-Error-Resilience-in-SWE-with-Teampi/blob/master/src/tolerance/swe_softRes_admiss_redundant.cpp)
 for the implementation and [its executable](#running) for usage examples)
 
 ## Hard Error Resilience ###
@@ -151,7 +151,7 @@ time. This means we can eventually detect any slowing or failing ranks.
 
 We have also prepared (not tested since hard error resilience was out of scope for this work)
 another version of the method ***Hashes*** in the file
-[swe\_softRes\_hardRes\_hashes.cpp](https://gitlab.lrz.de/AtamertRahma/towards-soft-error-resilience-in-swe-with-teampi/-/blob/master/src/tolerance/swe_softRes_hardRes_hashes.cpp)
+[swe\_softRes\_hardRes\_hashes.cpp](https://github.com/AlphaGergedan/Towards-Soft-Error-Resilience-in-SWE-with-Teampi/blob/master/src/tolerance/swe_softRes_hardRes_hashes.cpp)
 where we send two independent heartbeats between the replicas. One heartbeat
 pair is bound to a wall-clock interval that the user specifies for hard error
 resilience, and the other single heartbeat is for the soft error
@@ -198,7 +198,7 @@ Now you should see the executables in the specified 'build-directory'.
 ### Running ###
 
 You should read the
-'[README.md](https://gitlab.lrz.de/AtamertRahma/teampi-soft-error-resilience/-/blob/master/README.md)'
+'[README.md](https://github.com/AlphaGergedan/Towards-Soft-Error-Resilience-in-SWE-with-Teampi/blob/master/README.md)'
 on the submodule before running the simulation and set the required environment
 variables (for this repository important one is the `TEAMS` environment
 variable, it is 2 by default).
