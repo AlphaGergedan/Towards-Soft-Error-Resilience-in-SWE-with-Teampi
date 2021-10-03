@@ -309,3 +309,7 @@ example run with 5 SDC injections executions the methods 5 times and injects a r
 bash runSDCAnalysis.sh -b build-directory -n 2 -x 200 -y 200 -t 20 -d 1 -r 5 >> output
 python scripts/extractSDC_outcomeRate.py output build-directory 2 200 200 20 1
 ```
+
+## Contact ##
+
+Feel free to contact `rahma@in.tum.de` for any questions!
